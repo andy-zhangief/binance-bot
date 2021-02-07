@@ -52,7 +52,7 @@ async function pump() {
 	console.log("pump");
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
 	let quantity = (MAX_OVERRIDE > 0 ? MAX_OVERRIDE : PCT_BUY * getBalance(baseCurrency)) * latestPrice;
-	quantity = quantity.toFixed(2);
+	quantity = quantity.toFixed(8);
 	binance.marketBuy(coinpair, quantity, async (error, response) => {
 		if (error) {
 			console.log(`PUMP ERROR: ${error.body}`);
