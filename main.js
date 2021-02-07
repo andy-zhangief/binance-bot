@@ -12,13 +12,14 @@ const binance = new Binance().options({
 });
 
 // Using override to test
-const MAX_OVERRIDE = 12;
+const MAX_OVERRIDE = 0.001;
 const PCT_BUY = 0.2;
-const TAKE_PROFIT_MULTIPLIER = 2;
-const STOP_LOSS_MULTIPLIER = 0.9;
+const TAKE_PROFIT_MULTIPLIER = 1.05;
+const STOP_LOSS_MULTIPLIER = 0.98;
+const RUNTIME = 10; //mins
 
-let dump_count = 0;
-let latestPrice = 0;
+dump_count = 0;
+latestPrice = 0;
 
 balances = {};
 
@@ -38,10 +39,11 @@ async function init() {
 	}
 	await binance.useServerTime();
 	await getBalanceAsync();
-	getLatestPriceAsync(coinpair)
-	while (Object.keys(balances).length == 0 || latestPrice == 0) {
+	while (Object.keys(balances).length == 0) {
 		await sleep(100);
 	}
+	latestPrice = await getLatestPriceAsync(coinpair);
+	console.log(latestPrice)
 
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	await pump();
@@ -51,8 +53,9 @@ async function pump() {
 	//buy code here
 	console.log("pump");
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
-	let quantity = (MAX_OVERRIDE > 0 ? MAX_OVERRIDE : PCT_BUY * getBalance(baseCurrency)) * latestPrice;
-	quantity = quantity.toFixed(8);
+	let quantity = (MAX_OVERRIDE > 0 ? MAX_OVERRIDE : PCT_BUY * getBalance(baseCurrency)) / latestPrice;
+	quantity = quantity.toPrecision(2);
+	console.log(quantity)
 	binance.marketBuy(coinpair, quantity, async (error, response) => {
 		if (error) {
 			console.log(`PUMP ERROR: ${error.body}`);
@@ -61,68 +64,45 @@ async function pump() {
 		console.log("pump is successful")
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
-		price = response.price; // replace with price from response
+
+		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		actualquantity = response.executedQty // replace with bought quantity
-		await ndump(price * TAKE_PROFIT_MULTIPLIER, price, price * STOP_LOSS_MULTIPLIER, actualquantity);
+		await ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(8), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(8), actualquantity);
 	});
 }
 
-async function ndump(take_profit, buy_price, stop_loss_price, quantity, market = false) {
-	console.log("dump x" + dump_count);
-	if (market) {
-		binance.marketSell(coinpair, quantity, (error, response) => {
-			if (error) {
-				console.log(`MARKET DUMP ERROR: ${error.body}`);
-				return;
-			}
-			console.log("market dump is successful")
-			console.info("Market Buy response", response);
-			console.info("order id: " + response.orderId);
-			process.exit(0); // kill kill kill
-		});
-		return;
+async function ndump(take_profit, buy_price, stop_loss_price, quantity) {
+	waiting = true;
+	await sleep(2000);
+	start = Date.now();
+	end = Date.now() + RUNTIME * 60000
+	while (latestPrice > stop_loss_price && latestPrice < take_profit) {
+		latestPrice = await getLatestPriceAsync(coinpair)
+		console.log(`buy: ${buy_price}, profit: ${take_profit}, price: ${latestPrice}, loss: ${stop_loss_price}`);
+		await sleep(100);
+		if (Date.now() > end) {
+			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
+			break;
+		}
 	}
-
-	binance.order('SELL', coinpair, quantity, take_profit, { type:'OCO', stopLimitPrice: stop_loss_price, stopPrice: buy_price }, async (error, response) => {
-		// THIS WILL ERROR 404 IF TEST IS ENABLED
+	console.log(latestPrice > take_profit ? "taking profit" : "stopping loss");
+	binance.marketSell(coinpair, quantity, (error, response) => {
 		if (error) {
-			console.log(`DUMP ERROR: ${error.body}`);
-			if (++dump_count < 5) {
-				console.log(`TRYING AGAIN`);
-				await ndump(take_profit, buy_price, stop_loss_price, quantity);
-			} else {
-				console.log(`DUMP OCO FAILED, BEGIN MARKET SELL`); // sadness awaits
-				await ndump(take_profit, buy_price, stop_loss_price, quantity, true);
-			}
-			return
-		} else {
-			// loop every 100ms
-			console.log("market dump OCO is successful")
-			console.info("Market Buy response", response);
-			console.info("order id: " + response.orderId);
-			checkPrice();
-			checkOCO(orderId);
+			console.log(`MARKET DUMP ERROR: ${error.body}`);
+			console.log("we're screwed");
+			return;
 		}
+		console.log("market dump is successful")
+		console.info("Market sell response", response);
+		console.info("order id: " + response.orderId);
+		process.exit(0); // kill kill kill
 	});
+	return;
 }
 
-// Checks price every 100ms, checks order status filled, handles exceptions
-async function checkOCO() {
-	binance.orderStatus("ETHBTC", orderid, (error, orderStatus, symbol) => {
-	  console.info(symbol+" order status:", orderStatus);
-	});
-	process.exit(0)
-}
-
-function getLatestPriceAsync(coinpair) {
-	return new Promise(async (resolve) => {
-		while (true) {
-			let ticker = await binance.prices(coinpair);
-			latestPrice = ticker[coinpair]
-			//console.log(`latest price is ${latestPrice}`);
-			sleep(1500);
-		}
-	});
+async function getLatestPriceAsync(coinpair) {
+	let ticker = await binance.prices(coinpair);
+	return ticker[coinpair];
 }
 
 async function getBalanceAsync(coin) {
