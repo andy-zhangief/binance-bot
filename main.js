@@ -18,7 +18,7 @@ const binance = new Binance().options({
 const MAX_OVERRIDE_BTC = 0.001;
 const MAX_OVERRIDE_USDT = 0;
 const PCT_BUY = 0.5;
-const TAKE_PROFIT_MULTIPLIER = 1.1;
+const TAKE_PROFIT_MULTIPLIER = 1.06;
 const STOP_LOSS_MULTIPLIER = 0.97;
 const RUNTIME = 10; //mins
 const USE_TIMEOUT = false;
@@ -26,7 +26,9 @@ const SELL_LOCAL_MAX = true;
 const BUY_LOCAL_MIN = true;
 const QUEUE_SIZE = 101; // USE ODD NUMBER
 const POLL_INTERVAL = 1000;
+const CONSOLE_UPDATE_INTERVAL = 10000
 const LOOP = true;
+const EPSILON = 0.000069420;
 
 dump_count = 0;
 latestPrice = 0;
@@ -118,12 +120,14 @@ async function waitUntilTimeToBuy() {
 		q.push(latestPrice);
 		if (BUY_LOCAL_MIN && q.shift() != null) {
 			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length == 0 && q.slice(q.length/2 + 0.5).filter(v => v < middle).length == 0) {
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length == 0 
+				&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length == 0 
+				&& arr.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
 				console.log(`Local min reached at ${middle}`);
 				return latestPrice;
 			}
 		}
-		if (++count%10 == 0) {
+		if (++count%(CONSOLE_UPDATE_INTERVAL/POLL_INTERVAL) == 0) {
 			//dont spam
 			console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
 		}
@@ -141,12 +145,14 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		q.push(latestPrice);
 		if (SELL_LOCAL_MAX && q.shift() != null) {
 			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length == 0 && q.slice(q.length/2 + 0.5).filter(v => v > middle).length == 0) {
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length == 0 
+				&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length == 0
+				&& arr.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
 				console.log(`Local max reached at ${middle}`);
 				return latestPrice;
 			}
 		}
-		if (++count%10 == 0) {
+		if (++count%(CONSOLE_UPDATE_INTERVAL/POLL_INTERVAL) == 0) {
 			//dont spam
 			console.log(`buy: ${buy_price}, profit: ${take_profit}, price: ${latestPrice}, loss: ${stop_loss}`);
 		}
