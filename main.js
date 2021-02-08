@@ -3,6 +3,7 @@ const {
 	API_SECRET
 } = require("./secrets.js")
 
+const fs = require('fs');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const binance = new Binance().options({
@@ -11,20 +12,27 @@ const binance = new Binance().options({
   //test: true // comment out when running for real
 });
 
+
+// MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // Using override to test
-const MAX_OVERRIDE = 0.001;
-const PCT_BUY = 0.2;
-const TAKE_PROFIT_MULTIPLIER = 1.05;
-const STOP_LOSS_MULTIPLIER = 0.98;
+const MAX_OVERRIDE_BTC = 0.001;
+const MAX_OVERRIDE_USDT = 0;
+const PCT_BUY = 0.5;
+const TAKE_PROFIT_MULTIPLIER = 1.1;
+const STOP_LOSS_MULTIPLIER = 0.97;
 const RUNTIME = 10; //mins
-const USE_TIMEOUT = true;
+const USE_TIMEOUT = false;
 const SELL_LOCAL_MAX = true;
+const BUY_LOCAL_MIN = true;
 const QUEUE_SIZE = 101; // USE ODD NUMBER
+const POLL_INTERVAL = 1000;
+const LOOP = true;
 
 dump_count = 0;
 latestPrice = 0;
 
 balances = {};
+coinInfo = null;
 
 if (!process.argv[2]) {
 	console.log("Usage: node main.js COINPAIR");
@@ -42,23 +50,28 @@ async function init() {
 	}
 	await binance.useServerTime();
 	await getBalanceAsync();
-	while (Object.keys(balances).length == 0) {
+	//await getExchangeInfo(coinpair);
+	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
+	while (Object.keys(balances).length == 0 || coinInfo == null) {
 		await sleep(100);
 	}
-	latestPrice = await getLatestPriceAsync(coinpair);
-	console.log(latestPrice)
-
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
-	await pump();
+	pump();
 }
 
 async function pump() {
 	//buy code here
 	console.log("pump");
+	if (BUY_LOCAL_MIN) {
+		latestPrice = await waitUntilTimeToBuy();
+	} else {
+		latestPrice = await getLatestPriceAsync(coinpair);
+	}
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
-	let quantity = (MAX_OVERRIDE > 0 ? MAX_OVERRIDE : PCT_BUY * getBalance(baseCurrency)) / latestPrice;
-	quantity = quantity.toPrecision(2);
-	console.log(quantity)
+	override = baseCurrency == "USDT" ? MAX_OVERRIDE_USDT : MAX_OVERRIDE_BTC
+	let quantity = (override > 0 ? override : PCT_BUY * getBalance(baseCurrency)) / latestPrice;
+	quantity = quantity - quantity % coinInfo.stepSize
+	console.log(`Buying ${quantity} ${coin}`);
 	binance.marketBuy(coinpair, quantity, async (error, response) => {
 		if (error) {
 			console.log(`PUMP ERROR: ${error.body}`);
@@ -70,7 +83,7 @@ async function pump() {
 
 		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		actualquantity = response.executedQty // replace with bought quantity
-		await ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(8), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(8), actualquantity);
+		ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
 }
 
@@ -87,24 +100,49 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		console.log("market dump is successful")
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
+		if (LOOP) {
+			pump()
+			return;
+		}
 		process.exit(0); // kill kill kill
 	});
 	return;
 }
 
+async function waitUntilTimeToBuy() {
+	q = new Array(QUEUE_SIZE);
+	count = 0;
+	while (true) {
+		await sleep(POLL_INTERVAL);
+		latestPrice = await getLatestPriceAsync(coinpair)
+		q.push(latestPrice);
+		if (BUY_LOCAL_MIN && q.shift() != null) {
+			middle = q[QUEUE_SIZE/2 - 0.5]
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length == 0 && q.slice(q.length/2 + 0.5).filter(v => v < middle).length == 0) {
+				console.log(`Local min reached at ${middle}`);
+				return latestPrice;
+			}
+		}
+		if (++count%10 == 0) {
+			//dont spam
+			console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
+		}
+	}
+}
+
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
-	end = Date.now() + RUNTIME * 60000
+	end = Date.now() + RUNTIME * 60000;
 	q = new Array(QUEUE_SIZE);
-	count = 0
+	count = 0;
 	while (latestPrice > stop_loss && (latestPrice < take_profit || SELL_LOCAL_MAX)) {
-		await sleep(100);
+		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
 		q.push(latestPrice);
 		if (SELL_LOCAL_MAX && q.shift() != null) {
 			middle = q[QUEUE_SIZE/2 - 0.5]
 			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length == 0 && q.slice(q.length/2 + 0.5).filter(v => v > middle).length == 0) {
-				console.log("Local max reached");
+				console.log(`Local max reached at ${middle}`);
 				return latestPrice;
 			}
 		}
@@ -141,6 +179,45 @@ function getCoin(coinpair) {
 		return "BTC"; // the one exception
 	}
 	return coinpair.split("BTC").join("").split("USDT").join("")
+}
+
+function readCoinInfo() {
+	fs.readFile("minimums.json", function(err, data){
+		if (err) {
+			console.log("minimums.json read error");
+			process.exit(1);
+		}
+		coinInfo = JSON.parse(data)[coinpair]
+		console.log(coinInfo);
+	});
+}
+
+async function getExchangeInfo() {
+	await binance.exchangeInfo(function(error, data) {
+		let minimums = {};
+		for ( let obj of data.symbols ) {
+			let filters = {status: obj.status};
+			for ( let filter of obj.filters ) {
+				if ( filter.filterType == "MIN_NOTIONAL" ) {
+					filters.minNotional = filter.minNotional;
+				} else if ( filter.filterType == "PRICE_FILTER" ) {
+					filters.minPrice = filter.minPrice;
+					filters.maxPrice = filter.maxPrice;
+					filters.tickSize = filter.tickSize;
+				} else if ( filter.filterType == "LOT_SIZE" ) {
+					filters.stepSize = filter.stepSize;
+					filters.minQty = filter.minQty;
+					filters.maxQty = filter.maxQty;
+				}
+			}
+			//filters.baseAssetPrecision = obj.baseAssetPrecision;
+			//filters.quoteAssetPrecision = obj.quoteAssetPrecision;
+			filters.orderTypes = obj.orderTypes;
+			filters.icebergAllowed = obj.icebergAllowed;
+			minimums[obj.symbol] = filters;
+		}
+		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), function(err){});
+	});
 }
 
 function sleep(ms) {
