@@ -30,9 +30,10 @@ const POLL_INTERVAL = 1000;
 const CONSOLE_UPDATE_INTERVAL = 10000
 const LOOP = true;
 const EPSILON = 0.00069420;
-const APPROX_LOCAL_MIN_MAX_BUFFER = 2;
+const APPROX_LOCAL_MIN_MAX_BUFFER = 5;
 const GRAPH_PADDING = '            ';
 const SHOW_GRAPH = true;
+const BUY_SELL_STRATEGY = 2; // 1 = Min/max in middle, 2 = Min/max at start
 
 dump_count = 0;
 latestPrice = 0;
@@ -64,7 +65,7 @@ async function init() {
 		await sleep(100);
 	}
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
-	pump().catch(e);
+	pump();
 }
 
 async function pump() {
@@ -127,12 +128,27 @@ async function waitUntilTimeToBuy() {
 		console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
 		q.push(latestPrice);
 		if (BUY_LOCAL_MIN && q.shift() != 0) {
-			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
-				&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
-				&& q.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
-				console.log(`Local min reached at ${middle}`);
-				return latestPrice;
+			switch (BUY_SELL_STRATEGY) {
+				case 1:
+					middle = q[QUEUE_SIZE/2 - 0.5]
+					if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
+						&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
+						&& q.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
+						console.log(`Local min reached at ${middle}`);
+						return latestPrice;
+					}
+					break;
+				case 2:
+					last = q[q.length-1];
+					first = q[0];
+					if (q.slice(0, q.length-1).filter(v => v > last).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q.slice(1-q.length).filter(v => v < first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+						console.log(`Incline reached at ${first} -> ${last}`);
+						return latestPrice;
+					}
+					break;
+				default:
+					break;
 			}
 		}
 		if (SHOW_GRAPH) {
@@ -146,19 +162,42 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	end = Date.now() + RUNTIME * 60000;
 	var q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
 	count = 0;
-	while (latestPrice > stop_loss && (latestPrice < take_profit || SELL_LOCAL_MAX)) {
+	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		await sleep(POLL_INTERVAL);
-		latestPrice = await getLatestPriceAsync(coinpair)
+		latestPrice = await getLatestPriceAsync(coinpair);
 		console.clear();
 		console.log(`Waiting to sell at local maximum. Current price: ${latestPrice} Buy Price: ${buy_price} Stop Loss Price: ${stop_loss}`);
 		q.push(latestPrice);
 		if (SELL_LOCAL_MAX && q.shift() != 0) {
-			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
-				&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
-				&& q.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
-				console.log(`Local max reached at ${middle}`);
-				return latestPrice;
+			switch (BUY_SELL_STRATEGY) {
+				case 1:
+					middle = q[QUEUE_SIZE/2 - 0.5]
+					if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
+						if (latestPrice > buy_price) {
+							stop_loss = latestPrice;
+							console.log ("hit local maximum, setting new stop loss at " + latestPrice);
+							sleep(POLL_INTERVAL);
+							latestPrice = await getLatestPriceAsync(coinpair);
+						} else {
+							return latestPrice;
+						}
+					}
+					break;
+				case 2:
+					last = q[q.length-1];
+					first = q[0];
+					if (q.slice(0, q.length-1).filter(v => v < last).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q.slice(1-q.length).filter(v => v > first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+						console.log(`Decline reached at ${first} -> ${last}`);
+						return latestPrice;
+					}
+					break;
+				default:
+					// do nothing
+					break;
+
 			}
 		}
 		if (Date.now() > end && USE_TIMEOUT) {
@@ -169,6 +208,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			console.log (asciichart.plot([q], {format: formatGraph, padding: GRAPH_PADDING, height: 30}));
 		}
 	}
+	return latestPrice
 }
 
 async function getLatestPriceAsync(coinpair) {
