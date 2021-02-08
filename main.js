@@ -4,6 +4,7 @@ const {
 } = require("./secrets.js")
 
 const fs = require('fs');
+const asciichart = require ('asciichart')
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const binance = new Binance().options({
@@ -28,10 +29,15 @@ const QUEUE_SIZE = 101; // USE ODD NUMBER
 const POLL_INTERVAL = 1000;
 const CONSOLE_UPDATE_INTERVAL = 10000
 const LOOP = true;
-const EPSILON = 0.000069420;
+const EPSILON = 0.00069420;
+const APPROX_LOCAL_MIN_MAX_BUFFER = 2;
+const GRAPH_PADDING = '            ';
+const SHOW_GRAPH = true;
 
 dump_count = 0;
 latestPrice = 0;
+
+fail_counter = 0;
 
 balances = {};
 coinInfo = null;
@@ -58,7 +64,7 @@ async function init() {
 		await sleep(100);
 	}
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
-	pump();
+	pump().catch(e);
 }
 
 async function pump() {
@@ -112,24 +118,25 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 }
 
 async function waitUntilTimeToBuy() {
-	q = new Array(QUEUE_SIZE);
+	var q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair) * 1.05); // for graph visualization
 	count = 0;
 	while (true) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
+		console.clear();
+		console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
 		q.push(latestPrice);
-		if (BUY_LOCAL_MIN && q.shift() != null) {
+		if (BUY_LOCAL_MIN && q.shift() != 0) {
 			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length == 0 
-				&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length == 0 
-				&& arr.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
+				&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
+				&& q.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
 				console.log(`Local min reached at ${middle}`);
 				return latestPrice;
 			}
 		}
-		if (++count%(CONSOLE_UPDATE_INTERVAL/POLL_INTERVAL) == 0) {
-			//dont spam
-			console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
+		if (SHOW_GRAPH) {
+			console.log (asciichart.plot([q], {format: formatGraph, padding: GRAPH_PADDING, height: 30}));
 		}
 	}
 }
@@ -137,35 +144,45 @@ async function waitUntilTimeToBuy() {
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
 	end = Date.now() + RUNTIME * 60000;
-	q = new Array(QUEUE_SIZE);
+	var q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
 	count = 0;
 	while (latestPrice > stop_loss && (latestPrice < take_profit || SELL_LOCAL_MAX)) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
+		console.clear();
+		console.log(`Waiting to sell at local maximum. Current price: ${latestPrice} Buy Price: ${buy_price} Stop Loss Price: ${stop_loss}`);
 		q.push(latestPrice);
-		if (SELL_LOCAL_MAX && q.shift() != null) {
+		if (SELL_LOCAL_MAX && q.shift() != 0) {
 			middle = q[QUEUE_SIZE/2 - 0.5]
-			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length == 0 
-				&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length == 0
-				&& arr.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
+				&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
+				&& q.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
 				console.log(`Local max reached at ${middle}`);
 				return latestPrice;
 			}
-		}
-		if (++count%(CONSOLE_UPDATE_INTERVAL/POLL_INTERVAL) == 0) {
-			//dont spam
-			console.log(`buy: ${buy_price}, profit: ${take_profit}, price: ${latestPrice}, loss: ${stop_loss}`);
 		}
 		if (Date.now() > end && USE_TIMEOUT) {
 			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
 			return latestPrice;
 		}
+		if (SHOW_GRAPH) {
+			console.log (asciichart.plot([q], {format: formatGraph, padding: GRAPH_PADDING, height: 30}));
+		}
 	}
 }
 
 async function getLatestPriceAsync(coinpair) {
-	let ticker = await binance.prices(coinpair);
-	return ticker[coinpair];
+	try {
+		let ticker = await binance.prices(coinpair);
+		fail_counter = 0;
+		return ticker[coinpair];
+	} catch (e) {
+		if (++fail_counter == 5) {
+			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
+			process.exit(1);
+		}
+		return await getLatestPriceAsync(coinpair);
+	}
 }
 
 async function getBalanceAsync(coin) {
@@ -224,6 +241,10 @@ async function getExchangeInfo() {
 		}
 		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), function(err){});
 	});
+}
+
+function formatGraph(x, i) {
+	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
 }
 
 function sleep(ms) {
