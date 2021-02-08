@@ -26,6 +26,7 @@ const USE_TIMEOUT = false;
 const SELL_LOCAL_MAX = true;
 const BUY_LOCAL_MIN = true;
 const QUEUE_SIZE = 101; // USE ODD NUMBER
+
 const POLL_INTERVAL = 1000;
 const CONSOLE_UPDATE_INTERVAL = 10000
 const LOOP = true;
@@ -33,10 +34,17 @@ const EPSILON = 0.00069420;
 const APPROX_LOCAL_MIN_MAX_BUFFER = 5;
 const GRAPH_PADDING = '            ';
 const SHOW_GRAPH = true;
+const UPDATE_BUY_SELL_WINDOW = true;
+const MIN_QUEUE_SIZE = 20;
 const BUY_SELL_STRATEGY = 2; // 1 = Min/max in middle, 2 = Min/max at start
+
+var SELL_ALT_QUEUE_SIZE = 40;
+var BUY_ALT_QUEUE_SIZE = 80;
+var QUEUE_ADJ = 5;
 
 dump_count = 0;
 latestPrice = 0;
+q = [];
 
 fail_counter = 0;
 
@@ -106,10 +114,20 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 			console.log("we're screwed");
 			return;
 		}
+		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		console.log("market dump is successful")
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		if (LOOP) {
+			if (UPDATE_BUY_SELL_WINDOW) {
+				if (price < buy_price) {
+					BUY_ALT_QUEUE_SIZE = Math.min(BUY_ALT_QUEUE_SIZE + QUEUE_ADJ, QUEUE_SIZE);
+					SELL_ALT_QUEUE_SIZE = Math.max(SELL_ALT_QUEUE_SIZE - QUEUE_ADJ, MIN_QUEUE_SIZE);
+				} else {
+					SELL_ALT_QUEUE_SIZE = Math.min(SELL_ALT_QUEUE_SIZE + QUEUE_ADJ, QUEUE_SIZE);
+					BUY_ALT_QUEUE_SIZE = Math.max(BUY_ALT_QUEUE_SIZE - QUEUE_ADJ, MIN_QUEUE_SIZE);
+				}
+			}
 			pump()
 			return;
 		}
@@ -119,7 +137,9 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 }
 
 async function waitUntilTimeToBuy() {
-	var q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair) * 1.05); // for graph visualization
+	if (q.length == 0) {
+		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair) * 1.05); // for graph visualization
+	}
 	count = 0;
 	while (true) {
 		await sleep(POLL_INTERVAL);
@@ -139,10 +159,11 @@ async function waitUntilTimeToBuy() {
 					}
 					break;
 				case 2:
-					last = q[q.length-1];
-					first = q[0];
-					if (q.slice(0, q.length-1).filter(v => v > last).length < APPROX_LOCAL_MIN_MAX_BUFFER
-						&& q.slice(1-q.length).filter(v => v < first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+					q2 = q.slice(-BUY_ALT_QUEUE_SIZE);
+					last = q2[q2.length-1];
+					first = q2[0];
+					if (q2.slice(0, q2.length-1).filter(v => v > last).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q2.slice(1-q2.length).filter(v => v < first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
 						console.log(`Incline reached at ${first} -> ${last}`);
 						return latestPrice;
 					}
@@ -160,7 +181,10 @@ async function waitUntilTimeToBuy() {
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
 	end = Date.now() + RUNTIME * 60000;
-	var q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
+	if (q.length == 0) {
+		// This should never be the case
+		q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
+	}
 	count = 0;
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		await sleep(POLL_INTERVAL);
@@ -186,10 +210,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 2:
-					last = q[q.length-1];
-					first = q[0];
-					if (q.slice(0, q.length-1).filter(v => v < last).length < APPROX_LOCAL_MIN_MAX_BUFFER
-						&& q.slice(1-q.length).filter(v => v > first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+					q2 = q.slice(-SELL_ALT_QUEUE_SIZE);
+					last = q2[q2.length-1];
+					first = q2[0];
+					if (//Math.abs(latestPrice-buy_price)/buy_price > 0.005 && // don't sell if its too close to buy price
+						q2.slice(0, q2.length-1).filter(v => v < last).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& q2.slice(1-q2.length).filter(v => v > first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
 						console.log(`Decline reached at ${first} -> ${last}`);
 						return latestPrice;
 					}
