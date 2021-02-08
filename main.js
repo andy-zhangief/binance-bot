@@ -17,6 +17,9 @@ const PCT_BUY = 0.2;
 const TAKE_PROFIT_MULTIPLIER = 1.05;
 const STOP_LOSS_MULTIPLIER = 0.98;
 const RUNTIME = 10; //mins
+const USE_TIMEOUT = true;
+const SELL_LOCAL_MAX = true;
+const QUEUE_SIZE = 101; // USE ODD NUMBER
 
 dump_count = 0;
 latestPrice = 0;
@@ -71,20 +74,9 @@ async function pump() {
 	});
 }
 
-async function ndump(take_profit, buy_price, stop_loss_price, quantity) {
+async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	waiting = true;
-	await sleep(2000);
-	start = Date.now();
-	end = Date.now() + RUNTIME * 60000
-	while (latestPrice > stop_loss_price && latestPrice < take_profit) {
-		latestPrice = await getLatestPriceAsync(coinpair)
-		console.log(`buy: ${buy_price}, profit: ${take_profit}, price: ${latestPrice}, loss: ${stop_loss_price}`);
-		await sleep(100);
-		if (Date.now() > end) {
-			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
-			break;
-		}
-	}
+	latestPrice = await waitUntilTimeToSell(take_profit, stop_loss, buy_price);
 	console.log(latestPrice > take_profit ? "taking profit" : "stopping loss");
 	binance.marketSell(coinpair, quantity, (error, response) => {
 		if (error) {
@@ -98,6 +90,33 @@ async function ndump(take_profit, buy_price, stop_loss_price, quantity) {
 		process.exit(0); // kill kill kill
 	});
 	return;
+}
+
+async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
+	start = Date.now();
+	end = Date.now() + RUNTIME * 60000
+	q = new Array(QUEUE_SIZE);
+	count = 0
+	while (latestPrice > stop_loss && (latestPrice < take_profit || SELL_LOCAL_MAX)) {
+		await sleep(100);
+		latestPrice = await getLatestPriceAsync(coinpair)
+		q.push(latestPrice);
+		if (SELL_LOCAL_MAX && q.shift() != null) {
+			middle = q[QUEUE_SIZE/2 - 0.5]
+			if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length == 0 && q.slice(q.length/2 + 0.5).filter(v => v > middle).length == 0) {
+				console.log("Local max reached");
+				return latestPrice;
+			}
+		}
+		if (++count%10 == 0) {
+			//dont spam
+			console.log(`buy: ${buy_price}, profit: ${take_profit}, price: ${latestPrice}, loss: ${stop_loss}`);
+		}
+		if (Date.now() > end && USE_TIMEOUT) {
+			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
+			return latestPrice;
+		}
+	}
 }
 
 async function getLatestPriceAsync(coinpair) {
