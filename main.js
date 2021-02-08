@@ -31,15 +31,15 @@ const POLL_INTERVAL = 100;
 const CONSOLE_UPDATE_INTERVAL = 10000;
 const LOOP = true;
 const EPSILON = 0.00069420;
-const APPROX_LOCAL_MIN_MAX_BUFFER = 5;
+const APPROX_LOCAL_MIN_MAX_BUFFER = 2;
 const GRAPH_PADDING = '            ';
 const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
-const MIN_QUEUE_SIZE = 20;
+const MIN_QUEUE_SIZE = 30;
 const BUY_SELL_STRATEGY = 2; // 1 = Min/max in middle, 2 = Min/max at start
 
-var SELL_ALT_QUEUE_SIZE = 40;
-var BUY_ALT_QUEUE_SIZE = 80;
+var SELL_ALT_QUEUE_SIZE = 60;
+var BUY_ALT_QUEUE_SIZE = 60;
 var QUEUE_ADJ = 5;
 
 dump_count = 0;
@@ -164,9 +164,12 @@ async function waitUntilTimeToBuy() {
 				case 2:
 					q2 = q.slice(-BUY_ALT_QUEUE_SIZE);
 					last = q2[q2.length-1];
+					secondLast = q2[q2.length-2];
 					first = q2[0];
 					if (q2.slice(0, q2.length-1).filter(v => v > last).length < APPROX_LOCAL_MIN_MAX_BUFFER
-						&& q2.slice(1-q2.length).filter(v => v < first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+						&& q2.slice(1-q2.length).filter(v => v < first).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& Math.abs(last - secondLast) < getStandardDeviation(q2)*1.3 // ignore outliers
+						) {
 						console.log(`Incline reached at ${first} -> ${last}`);
 						return latestPrice;
 					}
@@ -215,10 +218,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				case 2:
 					q2 = q.slice(-SELL_ALT_QUEUE_SIZE);
 					last = q2[q2.length-1];
+					secondLast = q2[q2.length-2];
 					first = q2[0];
 					if (//Math.abs(latestPrice-buy_price)/buy_price > 0.005 && // don't sell if its too close to buy price
 						q2.slice(0, q2.length-1).filter(v => v < last).length < APPROX_LOCAL_MIN_MAX_BUFFER
-						&& q2.slice(1-q2.length).filter(v => v > first).length < APPROX_LOCAL_MIN_MAX_BUFFER) {
+						&& q2.slice(1-q2.length).filter(v => v > first).length < APPROX_LOCAL_MIN_MAX_BUFFER
+						&& Math.abs(secondLast - last) < getStandardDeviation(q2)*1.3 // ignore outliers
+						) {
 						console.log(`Decline reached at ${first} -> ${last}`);
 						return latestPrice;
 					}
@@ -312,6 +318,30 @@ async function getExchangeInfo() {
 		}
 		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), function(err){});
 	});
+}
+
+function getStandardDeviation(values){
+  var avg = average(values);
+  
+  var squareDiffs = values.map(function(value){
+    var diff = value - avg;
+    var sqrDiff = diff * diff;
+    return sqrDiff;
+  });
+  
+  var avgSquareDiff = average(squareDiffs);
+
+  var stdDev = Math.sqrt(avgSquareDiff);
+  return stdDev;
+}
+
+function average(data){
+  var sum = data.reduce(function(sum, value){
+    return sum + parseFloat(value);
+  }, 0);
+
+  var avg = sum / data.length;
+  return avg;
 }
 
 function formatGraph(x, i) {
