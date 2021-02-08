@@ -70,6 +70,9 @@ async function init() {
 	//await getExchangeInfo(coinpair);
 	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
 	while (Object.keys(balances).length == 0 || coinInfo == null) {
+		if (coinInfo == null) {
+			readCoinInfo();
+		}
 		await sleep(100);
 	}
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
@@ -145,7 +148,7 @@ async function waitUntilTimeToBuy() {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
 		console.clear();
-		console.log(`Waiting to buy at local minimum. Current price: ${latestPrice}`);
+		console.log(`Waiting to buy at local minimum. Current price: \x1b[32m${latestPrice}\x1b[0m Queue size: ${BUY_ALT_QUEUE_SIZE}`);
 		q.push(latestPrice);
 		if (BUY_LOCAL_MIN && q.shift() != 0) {
 			switch (BUY_SELL_STRATEGY) {
@@ -190,7 +193,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair);
 		console.clear();
-		console.log(`Waiting to sell at local maximum. Current price: ${latestPrice} Buy Price: ${buy_price} Stop Loss Price: ${stop_loss}`);
+		console.log(`Waiting to sell at local maximum. Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Queue Size: ${SELL_ALT_QUEUE_SIZE}`);
 		q.push(latestPrice);
 		if (SELL_LOCAL_MAX && q.shift() != 0) {
 			switch (BUY_SELL_STRATEGY) {
@@ -277,7 +280,9 @@ function readCoinInfo() {
 			process.exit(1);
 		}
 		coinInfo = JSON.parse(data)[coinpair]
-		console.log(coinInfo);
+		if (coinInfo != null) {
+			console.log(coinInfo);
+		}
 	});
 }
 
