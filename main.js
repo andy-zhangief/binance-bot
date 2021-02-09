@@ -221,10 +221,14 @@ async function waitUntilTimeToBuy() {
 						&& latestPrice > mean - 2*stdev 
 						&& meanRev 
 						&& !outlier(latestPrice, q[q.length-2]) 
+						&& !isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
 						&& isUptrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
-					}  else if (latestPrice < mean - 0.5*stdev && latestPrice > mean - 1.5*stdev && meanRev) {
+					}  else if (latestPrice < mean - 0.5*stdev 
+						&& latestPrice > mean - 1.5*stdev 
+						&& meanRev
+						&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
 					} else if (latestPrice > mean - 0.5*stdev && meanRev) {
@@ -264,7 +268,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		means.push(mean);
 		lowstd.push(mean - 2*stdev);
 		highstd.push(mean + 2*stdev);
-		if (SELL_LOCAL_MAX && q.shift() != 0) {
+		if (SELL_LOCAL_MAX && q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0) {
 			switch (BUY_SELL_STRATEGY) {
 				case 1:
 					middle = q[QUEUE_SIZE/2 - 0.5]
@@ -316,9 +320,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					} else if (latestPrice > mean + 1.5*stdev 
 						&& latestPrice < mean + 2*stdev 
 						&& meanRev 
+						&& !isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
 						&& isDowntrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						return latestPrice
-					} else if (latestPrice < mean + 1.5*stdev && latestPrice > mean + 0.5 * stdev && meanRev) {
+					} else if (latestPrice < mean + 1.5*stdev 
+						&& latestPrice > mean + 0.5 * stdev 
+						&& isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
+						&& meanRev) {
 						return latestPrice
 					} else if (Math.abs(latestPrice - mean) < 0.5 * stdev 
 						&& isDowntrend(q.slice(-BB_TREND_BUFFER), BB_TREND_BUFFER * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
