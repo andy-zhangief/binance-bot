@@ -217,7 +217,14 @@ async function waitUntilTimeToBuy() {
 						} else if (meanRevStart < Date.now() - 0.5 * ONE_MIN){
 							dont_buy_before = Date.now() + 5 * ONE_MIN; // wait until things calm down a bit
 						}
-					} else if (latestPrice < mean - 0.5*stdev && latestPrice > mean - 1.5*stdev && meanRev && !outlier(latestPrice, q[q.length-2])) {
+					} else if (latestPrice < mean - 1.5*stdev 
+						&& latestPrice > mean - 2*stdev 
+						&& meanRev 
+						&& !outlier(latestPrice, q[q.length-2]) 
+						&& isUptrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						console.log(`Buying the Boulinger Bounce`);
+						return latestPrice
+					}  else if (latestPrice < mean - 0.5*stdev && latestPrice > mean - 1.5*stdev && meanRev) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
 					} else if (latestPrice > mean - 0.5*stdev && meanRev) {
@@ -309,7 +316,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					} else if (latestPrice > mean + 1.5*stdev 
 						&& latestPrice < mean + 2*stdev 
 						&& meanRev 
-						&& downtrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						&& isDowntrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						return latestPrice
 					} else if (latestPrice < mean + 1.5*stdev && latestPrice > mean + 0.5 * stdev && meanRev) {
 						return latestPrice
