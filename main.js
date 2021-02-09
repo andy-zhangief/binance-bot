@@ -18,39 +18,44 @@ const binance = new Binance().options({
 // Using override to test
 const MAX_OVERRIDE_BTC = 0.001;
 const MAX_OVERRIDE_USDT = 0;
-const PCT_BUY = 0.5;
+const PCT_BUY = 0.2;
 const TAKE_PROFIT_MULTIPLIER = 1.06;
 const STOP_LOSS_MULTIPLIER = 0.97;
 const RUNTIME = 10; //mins
 const USE_TIMEOUT = false;
 const SELL_LOCAL_MAX = true;
 const BUY_LOCAL_MIN = true;
-const QUEUE_SIZE = 151; // USE ODD NUMBER
+const QUEUE_SIZE = 121; // USE ODD NUMBER
 
-const POLL_INTERVAL = 100;
+const POLL_INTERVAL = 1000;
 const CONSOLE_UPDATE_INTERVAL = 10000;
 const LOOP = true;
 const EPSILON = 0.00069420;
-const APPROX_LOCAL_MIN_MAX_BUFFER = 2;
-const GRAPH_PADDING = '            ';
+const ONE_MIN = 60000;
+const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.1;
+const GRAPH_PADDING = '                  ';
 const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
 const MIN_QUEUE_SIZE = 50;
-const BUY_SELL_STRATEGY = 2; // 1 = Min/max in middle, 2 = Min/max at start
-const TIME_BEFORE_NEW_BUY = 1;// mins
+const BUY_SELL_STRATEGY = 3; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce
+const TIME_BEFORE_NEW_BUY = 2;// mins
 const BUFFER_AFTER_FAIL = true;
 const LOOKBACK_SIZE = 10000;
-const LOOKBACK_TREND_LIMIT = 3000;
-const LOOKBACK_BUFFER = 300;
+const LOOKBACK_TREND_LIMIT = 500;
+const LOOKBACK_BUFFER = 50;
+const BB_TREND_BUFFER = 10
 
-var SELL_ALT_QUEUE_SIZE = 100;
-var BUY_ALT_QUEUE_SIZE = 100;
+var SELL_ALT_QUEUE_SIZE = 50;
+var BUY_ALT_QUEUE_SIZE = 50;
 var QUEUE_ADJ = 5;
 
 dump_count = 0;
 latestPrice = 0;
 q = [];
+lowstd = [];
+highstd = [];
 lookback = [];
+means = [];
 
 fail_counter = 0;
 dont_buy_before = 0;
@@ -131,15 +136,16 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		if (LOOP) {
 			if (UPDATE_BUY_SELL_WINDOW) {
 				if (price < buy_price) {
-					BUY_ALT_QUEUE_SIZE = Math.max(BUY_ALT_QUEUE_SIZE - QUEUE_ADJ, QUEUE_SIZE);
+					BUY_ALT_QUEUE_SIZE = Math.max(BUY_ALT_QUEUE_SIZE - QUEUE_ADJ, MIN_QUEUE_SIZE);
 					SELL_ALT_QUEUE_SIZE = Math.max(SELL_ALT_QUEUE_SIZE - QUEUE_ADJ, MIN_QUEUE_SIZE);
-					if (BUFFER_AFTER_FAIL) {
-						dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * 60000;
-					}
+					
 				} else {
 					SELL_ALT_QUEUE_SIZE = Math.min(SELL_ALT_QUEUE_SIZE + QUEUE_ADJ, QUEUE_SIZE);
-					BUY_ALT_QUEUE_SIZE = Math.min(BUY_ALT_QUEUE_SIZE + QUEUE_ADJ, MIN_QUEUE_SIZE);
+					BUY_ALT_QUEUE_SIZE = Math.min(BUY_ALT_QUEUE_SIZE + QUEUE_ADJ, QUEUE_SIZE);
 				}
+			}
+			if (BUFFER_AFTER_FAIL) {
+				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * ONE_MIN;
 			}
 			pump()
 			return;
@@ -151,21 +157,31 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 
 async function waitUntilTimeToBuy() {
 	if (q.length == 0) {
-		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair) * 1.05); // for graph visualization
+		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair)); // for graph visualization
+		means = new Array(QUEUE_SIZE).fill(q[0]);
+		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
+		highstd = new Array(QUEUE_SIZE).fill(q[0]);
 	}
 	count = 0;
+	meanRev = false;
+	meanRevStart = 0;
 	while (true) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
 		console.clear();
-		console.log(`Waiting to buy at local minimum. Current price: \x1b[32m${latestPrice}\x1b[0m Queue size: ${BUY_ALT_QUEUE_SIZE}`);
-		q.push(latestPrice);
-		if (BUY_LOCAL_MIN && q.shift() != 0 && Date.now() > dont_buy_before) {
+		console.log(`Waiting to buy at local minimum. Current price: \x1b[32m${latestPrice}\x1b[0m Queue size: ${BUY_ALT_QUEUE_SIZE}, ${meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		q.push(parseFloat(latestPrice));
+		stdev = getStandardDeviation(q);
+		mean = average(q);
+		means.push(mean);
+		lowstd.push(parseFloat(mean - 2*stdev));
+		highstd.push(parseFloat(mean + 2*stdev));
+		if (BUY_LOCAL_MIN && q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && Date.now() > dont_buy_before) {
 			switch (BUY_SELL_STRATEGY) {
 				case 1:
 					middle = q[QUEUE_SIZE/2 - 0.5]
-					if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
-						&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER 
+					if (q.slice(0, q.length/2 - 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER_PCT * q.length 
+						&& q.slice(q.length/2 + 0.5).filter(v => v < middle).length < APPROX_LOCAL_MIN_MAX_BUFFER_PCT * q.length
 						&& q.slice(-1).pop()/Math.max(...q) > 1 - EPSILON) {
 						console.log(`Local min reached at ${middle}`);
 						return latestPrice;
@@ -174,16 +190,39 @@ async function waitUntilTimeToBuy() {
 				case 2:
 					q2 = q.slice(-BUY_ALT_QUEUE_SIZE);
 					last = q2[q2.length-1];
+					first = q2[0];
 					secondLast = q2[q2.length-2];
-					uptrend = isUptrend(q2, APPROX_LOCAL_MIN_MAX_BUFFER);
-					lookbackDowntrend = isDowntrend(lookback.slice(-LOOKBACK_TREND_LIMIT, -BUY_ALT_QUEUE_SIZE), LOOKBACK_BUFFER);
-					console.log(`currently \x1b[31m${!uptrend ? "NOT " : ""}\x1b[0m uptrend, previously \x1b[32m${lookbackDowntrend ? "DOWN " : "no "}\x1b[0m trend`)
+					q2buffer = Math.round(APPROX_LOCAL_MIN_MAX_BUFFER_PCT * q2.length);
+					uptrend = isUptrend(q2, q2buffer);
+					outlier = average(q2.slice(-q2buffer)) > average(q2.slice(0, -q2buffer)) + q2buffer * getStandardDeviation(q2.slice(0, -q2buffer));
+					lookbackDowntrend = lookback.length < LOOKBACK_TREND_LIMIT ? true : isDowntrend(lookback.slice(-LOOKBACK_TREND_LIMIT, -BUY_ALT_QUEUE_SIZE), LOOKBACK_BUFFER);
+					console.log(`currently \x1b[31m${!uptrend ? "NOT" : ""}\x1b[0m uptrend, previously \x1b[32m${lookbackDowntrend ? "DOWN" : "no"}\x1b[0m trend, lookback size: ${lookback.length}`)
 					if (uptrend &&
 						!lookbackDowntrend
-						//&& Math.abs(last - secondLast) < getStandardDeviation(q2)*1.3 // ignore outliers
+						&& !outlier// ignore outliers
 						) {
 						console.log(`Incline reached at ${first} -> ${last}`);
 						return latestPrice;
+					}
+					break;
+				case 3:
+					if (lookback.length < 2 * QUEUE_SIZE + 20) {
+						console.log("NOT READY");
+						break; // dont buy before we populate some values first
+					}
+					if (latestPrice < mean - 2*stdev) {
+						if (!meanRev) {
+							meanRev = true;
+							meanRevStart = Date.now();
+						} else if (meanRevStart < Date.now() - 0.5 * ONE_MIN){
+							dont_buy_before = Date.now() + 5 * ONE_MIN; // wait until things calm down a bit
+						}
+					} else if (latestPrice < mean - 0.5*stdev && latestPrice > mean - 1.5*stdev && meanRev && !outlier(latestPrice, q[q.length-2])) {
+						console.log(`Buying the Boulinger Bounce`);
+						return latestPrice
+					} else if (latestPrice > mean - 0.5*stdev && meanRev) {
+						meanRev = false;
+						meanRevStart = 0;
 					}
 					break;
 				default:
@@ -191,7 +230,7 @@ async function waitUntilTimeToBuy() {
 			}
 		}
 		if (SHOW_GRAPH) {
-			console.log (asciichart.plot([q], {format: formatGraph, padding: GRAPH_PADDING, height: 30}));
+			plot();
 		}
 	}
 }
@@ -204,18 +243,26 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
 	}
 	count = 0;
+	meanRev = false;
+	meanRevStart = 0;
+	timeBeforeSale = Date.now() + ONE_MIN * 0.25;
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair);
 		console.clear();
 		console.log(`Waiting to sell at local maximum. Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Queue Size: ${SELL_ALT_QUEUE_SIZE}`);
 		q.push(latestPrice);
+		stdev = getStandardDeviation(q);
+		mean = average(q);
+		means.push(mean);
+		lowstd.push(mean - 2*stdev);
+		highstd.push(mean + 2*stdev);
 		if (SELL_LOCAL_MAX && q.shift() != 0) {
 			switch (BUY_SELL_STRATEGY) {
 				case 1:
 					middle = q[QUEUE_SIZE/2 - 0.5]
-					if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
-						&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER
+					if (q.slice(0, q.length/2 - 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER_PCT * q.length
+						&& q.slice(q.length/2 + 0.5).filter(v => v > middle).length < APPROX_LOCAL_MIN_MAX_BUFFER_PCT * q.length
 						&& q.slice(-1).pop()/Math.min(...q) < 1 + EPSILON) {
 						if (latestPrice > buy_price) {
 							stop_loss = latestPrice;
@@ -230,17 +277,46 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				case 2:
 					q2 = q.slice(-SELL_ALT_QUEUE_SIZE);
 					last = q2[q2.length-1];
+					first = q2[0];
 					secondLast = q2[q2.length-2];
-					downtrend = isDowntrend(q2, APPROX_LOCAL_MIN_MAX_BUFFER);
-					lookbackUptrend = isUptrend(lookback.slice(-LOOKBACK_TREND_LIMIT, -SELL_ALT_QUEUE_SIZE), LOOKBACK_BUFFER)
-					console.log(`currently \x1b[31m${!downtrend ? "NOT " : ""}\x1b[0m downtrend, previously \x1b[32m${lookbackUptrend ? "UP " : "no "}\x1b[0m trend`)
+					downtrend = isDowntrend(q2, APPROX_LOCAL_MIN_MAX_BUFFER_PCT*q2.length);
+					lookbackUptrend = lookback.length < LOOKBACK_TREND_LIMIT ? true : isUptrend(lookback.slice(-LOOKBACK_TREND_LIMIT, -SELL_ALT_QUEUE_SIZE), LOOKBACK_BUFFER)
+					console.log(`currently \x1b[31m${!downtrend ? "NOT" : ""}\x1b[0m downtrend, previously \x1b[32m${lookbackUptrend ? "UP" : "no"}\x1b[0m trend, lookback size: ${lookback.length}`)
 					if (//Math.abs(latestPrice-buy_price)/buy_price > 0.005 && // don't sell if its too close to buy price
 						downtrend
 						&& !lookbackUptrend
-						//&& Math.abs(secondLast - last) < getStandardDeviation(q2)*1.3 // ignore outliers
+						&& Math.abs(latestPrice - buy_price)/buy_price > 0.005 // Don't sell if it's too close to buy price
+						&& Math.abs(secondLast - last) < getStandardDeviation(q2)*1.3 // ignore outliers
 						) {
 						console.log(`Decline reached at ${first} -> ${last}`);
 						return latestPrice;
+					}
+					break;
+				case 3:
+					if (Date.now() < timeBeforeSale) {
+						break;
+					}
+					if (latestPrice < buy_price * 0.99) {
+						return latestPrice // think about what you did...
+					}
+					if (latestPrice > mean + 2*stdev) {
+						if (!meanRev) {
+							meanRev = true;
+							meanRevStart = Date.now();
+						} else if (meanRevStart < Date.now() - ONE_MIN){
+							// This is a good thing
+						}
+					} else if (latestPrice > mean + 1.5*stdev 
+						&& latestPrice < mean + 2*stdev 
+						&& meanRev 
+						&& downtrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						return latestPrice
+					} else if (latestPrice < mean + 1.5*stdev && latestPrice > mean + 0.5 * stdev && meanRev) {
+						return latestPrice
+					} else if (Math.abs(latestPrice - mean) < 0.5 * stdev 
+						&& isDowntrend(q.slice(-BB_TREND_BUFFER), BB_TREND_BUFFER * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						// Sell mean bounce
+						return latestPrice
 					}
 					break;
 				default:
@@ -254,7 +330,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			return latestPrice;
 		}
 		if (SHOW_GRAPH) {
-			console.log (asciichart.plot([q], {format: formatGraph, padding: GRAPH_PADDING, height: 30}));
+			plot();
 		}
 	}
 	return latestPrice
@@ -267,7 +343,7 @@ async function getLatestPriceAsync(coinpair) {
 		pushToLookback(ticker[coinpair]);
 		return ticker[coinpair];
 	} catch (e) {
-		if (++fail_counter == 5) {
+		if (++fail_counter == 100) {
 			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
 			process.exit(1);
 		}
@@ -284,13 +360,13 @@ async function getBalanceAsync(coin) {
 
 // HELPER FUNCTIONS
 function isUptrend(q2, buffer) {
-	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < buffer
+	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer
 }
 
 function isDowntrend(q2, buffer) {
-	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer
+	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < buffer
 }
 
 function getBalance(coin) {
@@ -352,6 +428,11 @@ async function getExchangeInfo() {
 	});
 }
 
+function outlier(value, previous) {
+	stdev = highstd[highstd.length-1] - means[means.length-1];
+	return Math.abs(value - previous) > 2 * stdev;
+}
+
 function getStandardDeviation(values){
   var avg = average(values);
   
@@ -378,6 +459,22 @@ function average(data){
 
 function formatGraph(x, i) {
 	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
+}
+
+function plot() {
+	console.log (
+		asciichart.plot([q, highstd, lowstd, means], 
+		{
+			format: formatGraph, 
+			colors: [
+		        asciichart.default,
+		        asciichart.red,
+		        asciichart.green,
+		        asciichart.yellow,
+		    ],
+    		padding: GRAPH_PADDING, 
+    		height: 50
+    	}));
 }
 
 function sleep(ms) {
