@@ -223,21 +223,21 @@ async function waitUntilTimeToBuy() {
 						} else if (meanRevStart < Date.now() - 0.5 * ONE_MIN){
 							dont_buy_before = Date.now() + 5 * ONE_MIN; // wait until things calm down a bit
 						}
-					} else if (latestPrice < mean - 1*stdev 
+					} else if (latestPrice < mean - stdev 
 						&& latestPrice > mean - 2*stdev 
 						&& meanRev 
 						&& !isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
 						&& isUptrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
-					}  else if (latestPrice < mean + 0.5*stdev
-						&& latestPrice > mean - 1*stdev 
+					}  else if (latestPrice < mean + stdev
+						&& latestPrice > mean - stdev 
 						&& meanRev
 						&& !lastValueIsOutlier()
 						&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
-					} else if (latestPrice > mean + 0.5*stdev && meanRev) {
+					} else if (latestPrice > mean + stdev && meanRev) {
 						meanRev = false;
 						meanRevStart = 0;
 					}
@@ -262,7 +262,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	count = 0;
 	meanRev = false;
 	meanRevStart = 0;
-	timeBeforeSale = Date.now() + ONE_MIN * 0.5;
+	timeBeforeSale = Date.now() + ONE_MIN * 0.25;
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair);
@@ -313,9 +313,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 3:
-					if (Date.now() < timeBeforeSale) {
-						break;
-					}
 					if (latestPrice > mean + 2*stdev) {
 						if (!meanRev) {
 							meanRev = true;
@@ -323,7 +320,9 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						} else if (meanRevStart < Date.now() - ONE_MIN){
 							// This is a good thing
 						}
-					} else if (latestPrice > mean + 1*stdev 
+					} else if (Date.now() < timeBeforeSale) {
+						break;
+					} else if (latestPrice > mean + stdev 
 						&& latestPrice < mean + 2*stdev 
 						&& meanRev 
 						&& !isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
