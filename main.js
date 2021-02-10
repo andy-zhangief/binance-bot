@@ -165,6 +165,7 @@ async function waitUntilTimeToBuy() {
 	count = 0;
 	meanRev = false;
 	meanRevStart = 0;
+	outlierReversion = 0;
 	while (true) {
 		await sleep(POLL_INTERVAL);
 		latestPrice = await getLatestPriceAsync(coinpair)
@@ -181,7 +182,7 @@ async function waitUntilTimeToBuy() {
 		qTrend = isDowntrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER) ? "Down" 
 			: isUptrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER) ? "Up" 
 			: "None";
-		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, q Trend: ${qTrend}, ${Date.now() < dont_buy_before ? ("NOT BUYING UNTIL " + msToTime(Date.now() - dont_buy_before)) : lookback.length < 2 * QUEUE_SIZE ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, q Trend: ${qTrend}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : lookback.length < 2 * QUEUE_SIZE ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
 		if (BUY_LOCAL_MIN && q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && Date.now() > dont_buy_before) {
 			switch (BUY_SELL_STRATEGY) {
 				case 1:
@@ -214,7 +215,7 @@ async function waitUntilTimeToBuy() {
 				case 3:
 					if (lookback.length < 2 * QUEUE_SIZE) {
 						break; // dont buy before we populate some values first
-					}
+					} 
 					if (latestPrice < lowstd[lowstd.length-1]) {
 						if (!meanRev) {
 							meanRev = true;
@@ -224,19 +225,26 @@ async function waitUntilTimeToBuy() {
 							meanRev = false;
 							meanRevStart = 0;
 						}
-					// } else if (latestPrice < mean
-					// 	&& latestPrice > lowstd[lowstd.length-1]
-					// 	&& meanRev 
-					// 	&& !isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
-					// 	&& isUptrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
-					// 	console.log(`Buying the Boulinger Bounce`);
-					// 	return latestPrice
-					}  else if (latestPrice < highstd[highstd.length-1]
+					}
+					if (outlierReversion > 0 && --outlierReversion > 0) {
+						break;
+					}
+					if (lastValueIsOutlier()) {
+						outlierReversion += 2; // Don't care as much when buying
+						break;
+					}
+					if (latestPrice < mean + stdev
+						&& latestPrice > lowstd[lowstd.length-1]
 						&& meanRev
-						&& !lastValueIsOutlier()
 						&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
+					// could be missing some value but better safe than sorry
+					// } else if (latestPrice > mean 
+					// 	&& latestPrice < highstd[highstd.length-1] 
+					// 	&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+					// 	console.log(`Buying the Boulinger Bounce`);
+					// 	return latestPrice
 					}
 					break;
 				default:
@@ -259,6 +267,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	count = 0;
 	meanRev = false;
 	meanRevStart = 0;
+	outlierReversion = 0;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		await sleep(POLL_INTERVAL);
@@ -319,16 +328,19 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						}
 					} else if (Date.now() < timeBeforeSale) {
 						break;
-					// } else if (latestPrice > mean
-					// 	&& latestPrice < highstd[highstd.length-1]
-					// 	&& meanRev 
-					// 	&& !isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
-					// 	&& isDowntrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
-					// 	return latestPrice;
+					} else if (outlierReversion > 0 && --outlierReversion > 0) {
+						break;
+					} else if (lastValueIsOutlier()) {
+						outlierReversion += 10;
+						break;
+					} else if (latestPrice > mean
+						&& latestPrice < highstd[highstd.length-1]
+						&& meanRev 
+						&& isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						return latestPrice;
 					} else if (latestPrice > lowstd[lowstd.length-1]
-						&& !lastValueIsOutlier()
-						&& isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER) // Try and let profits ride
-						&& meanRev) {
+						&& isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						// Try and let profits ride
 						return latestPrice;
 					} else if (latestPrice < lowstd[lowstd.length-1]) {
 						return latestPrice;
@@ -444,10 +456,10 @@ async function getExchangeInfo() {
 }
 
 function lastValueIsOutlier() {
-	twostdev = highstd[highstd.length-1] - means[means.length-1];
+	stdev = (highstd[highstd.length-1] - means[means.length-1])/2;
 	value = q[q.length-1];
 	previous = q[q.length-2];
-	return Math.abs(value - previous) > twostdev/2; // I have no idea why, but I'm using 1stdev to determine if val is outlier
+	return (Math.abs(value - previous) >= stdev); // I have no idea why, but I'm using 1stdev to determine if val is outlier
 }
 
 function getStandardDeviation(values){
