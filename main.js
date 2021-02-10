@@ -308,7 +308,7 @@ function analyzeDecision() {
 	BUY_LOOKBACK = lookback.slice(-LB_BUY_TS - ANALYSIS_TIME, -LB_BUY_TS + ANALYSIS_TIME + 1);
 	SELL_LOOKBACK = lookback.slice(-LB_SELL_TS - ANALYSIS_TIME, -LB_SELL_TS + ANALYSIS_TIME + 1);
 	buy_min, sell_max, buy_min_idx, sell_max_idx = Infinity,-Infinity,0,0;
-	for (i = 0; i < BUY_LOOKBACK.length, i++) {
+	for (i = 0; i < BUY_LOOKBACK.length; i++) {
 		if (BUY_LOOKBACK[i] < buy_min) {
 			buy_min = BUY_LOOKBACK[i];
 			buy_min_idx = i;
