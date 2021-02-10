@@ -233,7 +233,7 @@ async function waitUntilTimeToBuy() {
 					}  else if (latestPrice < mean + 0.5*stdev
 						&& latestPrice > mean - 1*stdev 
 						&& meanRev
-						&& !lastValueIsOutlier()) {
+						&& !lastValueIsOutlier()
 						&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
