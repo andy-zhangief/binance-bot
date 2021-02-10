@@ -223,7 +223,7 @@ async function waitUntilTimeToBuy() {
 						} else if (meanRevStart < Date.now() - 0.5 * ONE_MIN){
 							dont_buy_before = Date.now() + 5 * ONE_MIN; // wait until things calm down a bit
 						}
-					} else if (latestPrice < mean - 1.5*stdev 
+					} else if (latestPrice < mean - 1*stdev 
 						&& latestPrice > mean - 2*stdev 
 						&& meanRev 
 						&& !isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
@@ -231,9 +231,9 @@ async function waitUntilTimeToBuy() {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
 					}  else if (latestPrice < mean
-						&& latestPrice > mean - 1.5*stdev 
+						&& latestPrice > mean - 1*stdev 
 						&& meanRev
-						&& isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
+						&& !isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
 					} else if (latestPrice > mean && meanRev) {
@@ -319,19 +319,18 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						} else if (meanRevStart < Date.now() - ONE_MIN){
 							// This is a good thing
 						}
-					} else if (latestPrice > mean + 1.5*stdev 
+					} else if (latestPrice > mean + 1*stdev 
 						&& latestPrice < mean + 2*stdev 
 						&& meanRev 
 						&& !isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
 						&& isDowntrend(q.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)) {
 						return latestPrice
-					} else if (latestPrice < mean + 1.5*stdev 
-						&& isDowntrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
+					} else if (latestPrice < mean + 1*stdev 
+						&& !isUptrend(means.slice(-BB_TREND_BUFFER), APPROX_LOCAL_MIN_MAX_BUFFER_PCT * BB_TREND_BUFFER)
 						&& meanRev) {
 						return latestPrice
-					} else if (latestPrice < mean + 0.5*stdev && meanRev) {
-						meanRev = false;
-						meanRevStart = 0;
+					} else if (latestPrice < mean - 0.2*stdev && meanRev) {
+						return latestPrice
 					} else if (latestPrice < mean
 						&& isDowntrend(means.slice(-BB_TREND_BUFFER), BB_TREND_BUFFER * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)
 						&& !meanRev) {
@@ -483,17 +482,17 @@ function formatGraph(x, i) {
 
 function plot() {
 	console.log (
-		asciichart.plot([q, highstd, lowstd, means], 
+		asciichart.plot([highstd, lowstd, means, q], 
 		{
 			format: formatGraph, 
 			colors: [
-		        asciichart.default,
 		        asciichart.red,
 		        asciichart.green,
 		        asciichart.yellow,
+		        asciichart.default,
 		    ],
     		padding: GRAPH_PADDING, 
-    		height: 50
+    		height: 40
     	}));
 }
 
