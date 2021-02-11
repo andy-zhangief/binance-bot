@@ -38,7 +38,7 @@ const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
 const MIN_QUEUE_SIZE = 50;
 const BUY_SELL_STRATEGY = 3; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce
-const TIME_BEFORE_NEW_BUY = 3;// mins
+const TIME_BEFORE_NEW_BUY = 1;// mins
 const BUFFER_AFTER_FAIL = true;
 const LOOKBACK_SIZE = 10000;
 const LOOKBACK_TREND_LIMIT = 500;
@@ -184,7 +184,7 @@ async function waitUntilTimeToBuy() {
 		meanTrend = isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? "Down" 
 			: isUptrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
-		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : lookback.length < 2 * QUEUE_SIZE ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : lookback.length < 2 * QUEUE_SIZE ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
 		if (BUY_LOCAL_MIN && q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && Date.now() > dont_buy_before) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -197,8 +197,8 @@ async function waitUntilTimeToBuy() {
 							meanRevStart = Date.now();
 						} else if (meanRevStart < Date.now() - ONE_MIN){
 							// not sure about this
-							dont_buy_before = Date.now() + 2 * ONE_MIN; // wait until things calm down a bit
-							meanRevStart = dont_buy_before;
+							// dont_buy_before = Date.now() + 0.5 * ONE_MIN; // wait until things calm down a bit
+							//meanRevStart = dont_buy_before;
 						}
 					}
 					if (outlierReversion > 0 && --outlierReversion > 0) {
@@ -254,7 +254,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		meanTrend = isDowntrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
 			: isUptrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
-		console.log(`Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Queue Size: ${SELL_ALT_QUEUE_SIZE}`);
+		console.log(`Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
 		if (SELL_LOCAL_MAX && q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -307,7 +307,10 @@ function analyzeDecision() {
 	sell_val = lookback.slice(LB_SELL_TS)[0];
 	BUY_LOOKBACK = lookback.slice(-LB_BUY_TS - ANALYSIS_TIME, -LB_BUY_TS + ANALYSIS_TIME + 1);
 	SELL_LOOKBACK = lookback.slice(-LB_SELL_TS - ANALYSIS_TIME, -LB_SELL_TS + ANALYSIS_TIME + 1);
-	buy_min, sell_max, buy_min_idx, sell_max_idx = Infinity,-Infinity,0,0;
+	buy_min = Infinity;
+	sell_max = 0;
+	buy_min_idx = 0;
+	sell_max_idx = 0;
 	for (i = 0; i < BUY_LOOKBACK.length; i++) {
 		if (BUY_LOOKBACK[i] < buy_min) {
 			buy_min = BUY_LOOKBACK[i];
@@ -323,16 +326,20 @@ function analyzeDecision() {
 	if (buy_min_idx < bot_idx - BB_BUY - ANALYSIS_BUFFER) {
 		// it means we bought too late
 		BB_BUY = Math.max(BB_BUY - BUY_SELL_INC, MIN_BUY_SELL_BUF);
-	} else if (bb_min_idx > bot_idx) {
+	} else if (buy_min_idx > bot_idx) {
 		// it means we made a bad buy
 		BB_BUY = Math.min(BB_BUY + BUY_SELL_INC, MAX_BUY_SELL_BUF);
 	}
 	if (sell_max_idx < sold_idx - BB_SELL - ANALYSIS_BUFFER) {
 		// it means we sold too late
-		BB_SELL = Math.max(BB_SELL - BB_SELL_INC, MIN_BUY_SELL_BUF);
-	} else {
+		BB_SELL = Math.max(BB_SELL - BUY_SELL_INC, MIN_BUY_SELL_BUF);
+	} else if (sell_max_idx > sold_idx) {
 		// it means we made a bad sell
 		BB_SELL = Math.min(BB_SELL + BUY_SELL_INC, MAX_BUY_SELL_BUF);
+	}
+	if (SELL_TS - BUY_TS < ANALYSIS_TIME && buy_val > sell_val) {
+		// We made a bad buy
+		BB_BUY = Math.min(BB_BUY + 2 * BUY_SELL_INC, MAX_BUY_SELL_BUF);
 	}
 }
 
