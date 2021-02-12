@@ -7,6 +7,7 @@ const fs = require('fs');
 const asciichart = require ('asciichart')
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
+const readline = require('readline');
 const binance = new Binance().options({
   APIKEY: API_KEY,
   APISECRET: API_SECRET,
@@ -25,9 +26,10 @@ const RUNTIME = 10; //mins
 const USE_TIMEOUT = false;
 const SELL_LOCAL_MAX = true;
 const BUY_LOCAL_MIN = true;
-const QUEUE_SIZE = 151; // USE ODD NUMBER
+const QUEUE_SIZE = 960; // 16m BB
 
-const POLL_INTERVAL = 700; // roughly 1 second?
+const POLL_INTERVAL = 720; // roughly 1 second?
+const PLOT_DATA_POINTS = 150;
 const CONSOLE_UPDATE_INTERVAL = 10000;
 const LOOP = true;
 const EPSILON = 0.00069420;
@@ -37,22 +39,21 @@ const GRAPH_PADDING = '                  ';
 const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
 const MIN_QUEUE_SIZE = 50;
-const BUY_SELL_STRATEGY = 4; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce
+const BUY_SELL_STRATEGY = 3; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce, 4 = ma7vma15
 const TIME_BEFORE_NEW_BUY = 1;// mins
 const BUFFER_AFTER_FAIL = true;
 const LOOKBACK_SIZE = 10000;
 const LOOKBACK_TREND_LIMIT = 500;
-const ANALYSIS_TIME = 50;
+const ANALYSIS_TIME = TIME_BEFORE_NEW_BUY * 60;
 const BUY_SELL_INC = 2;
 const MIN_BUY_SELL_BUF = 10;
-const MAX_BUY_SELL_BUF = 30;
+const MAX_BUY_SELL_BUF = 60;
 const ANALYSIS_BUFFER = 5;
 const MA_7_VAL = 420; // Ayy
 const MA_15_VAL = 900;
 
-
-var BB_SELL = 20;
-var BB_BUY = 20;
+var BB_SELL = 15;
+var BB_BUY = 15;
 
 var SELL_ALT_QUEUE_SIZE = 50;
 var BUY_ALT_QUEUE_SIZE = 50;
@@ -67,10 +68,15 @@ lookback = [];
 means = [];
 ma7 = [];
 ma15 = [];
+mabuy = [];
+masell = [];
 
+lastBuy = 0;
+lastSell = 0;
 BUY_TS = 0;
 SELL_TS = 0;
 ANALYZE = false;
+last_keypress = "";
 
 fail_counter = 0;
 dont_buy_before = 0;
@@ -82,6 +88,17 @@ if (!process.argv[2]) {
 	console.log("Usage: node main.js COINPAIR");
 	process.exit(1);
 }
+
+readline.emitKeypressEvents(process.stdin);
+process.stdin.setRawMode(true);
+
+process.stdin.on('keypress', (str, key) => {
+  if (key.ctrl && key.name === 'c') {
+    process.exit(); // eslint-disable-line no-process-exit
+  } else {
+    last_keypress = str
+  }
+});
 
 coinpair = process.argv[2].toUpperCase();
 
@@ -130,6 +147,7 @@ async function pump() {
 		console.info("order id: " + response.orderId);
 		BUY_TS = 0;
 		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		lastBuy = price;
 		actualquantity = response.executedQty // replace with bought quantity
 		ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
@@ -151,6 +169,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
 		ANALYZE = true;
+		lastSell = price;
 		if (LOOP) {
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * ONE_MIN;
@@ -171,24 +190,32 @@ async function waitUntilTimeToBuy() {
 		highstd = new Array(QUEUE_SIZE).fill(q[0]);
 		ma7 = new Array(QUEUE_SIZE).fill(q[0]);
 		ma15 = new Array(QUEUE_SIZE).fill(q[0]);
+		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
+		masell = new Array(QUEUE_SIZE).fill(q[0]);
 	}
 	count = 0;
 	meanRev = false;
+	meanBounce = false;
 	meanRevStart = 0;
 	outlierReversion = 0;
 	ready = false;
 	while (true) {
 		var [mean, stdev] = await tick();
 		console.clear();
-		meanTrend = isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? "\x1b[31mDown\x1b[0m" 
-			: isUptrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
+		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? "\x1b[31mDown\x1b[0m" 
+			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? "\x1b[32mBULL\x1b[0m" : "\x1b[31mBEAR\x1b[0m";
 		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		if (last_keypress == "b") {
+			// Manual override
+			last_keypress = "";
+			return latestPrice;
+		}
 		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
-					if (lookback.length < MA_15_VAL) {
+					if (lookback.length < QUEUE_SIZE) {
 						break; // dont buy before we populate some values first
 					} 
 					ready = true;
@@ -202,19 +229,31 @@ async function waitUntilTimeToBuy() {
 							//meanRevStart = dont_buy_before;
 						}
 					}
-					if (outlierReversion > 0 && --outlierReversion > 0) {
-						break;
+					if (lastBuy <= lastSell 
+						&& Math.abs(mean - latestPrice) < 0.2 * stdev 
+						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						meanBounce = true;
 					}
-					if (lastValueIsOutlier()) {
-						outlierReversion += 2; // Don't care as much when buying
-						break;
-					}
+					// if (outlierReversion > 0 && --outlierReversion > 0) {
+					// 	break;
+					// }
+					// if (lastValueIsOutlier()) {
+					// 	outlierReversion += 2; // Don't care as much when buying
+					// 	break;
+					// }
 					if (latestPrice < highstd[highstd.length-1]
 						&& latestPrice > lowstd[lowstd.length-1]
-						&& ma7.slice(-1).pop() > ma15.slice(-1).pop()
-						&& isUptrend(q.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						console.log(`Buying the Boulinger Bounce`);
 						return latestPrice
+					}
+					if (latestPrice > mean + 0.2*stdev 
+						&& meanBounce 
+						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						return latestPrice
+					}
+					if (latestPrice < mean - 0.5*stdev) {
+						meanBounce = false;
 					}
 					break;
 				case 4:
@@ -223,12 +262,9 @@ async function waitUntilTimeToBuy() {
 					} 
 					ready = true;
 					ma7last = ma7.slice(-1).pop();
-					ma15last = ma15.slice(-1).pop();
-					if (ma7last > ma15last
-						&& ma7last > mean
-						&& mean > ma15last
+					if (ma7last > mean
 						&& isUptrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)
-						&& ma7last - mean < stdev) {
+						&& ma7last - mean < 0.5 * stdev) {
 						return latestPrice;
 					}
 					break;
@@ -240,7 +276,7 @@ async function waitUntilTimeToBuy() {
 			analyzeDecision();
 		}
 		if (SHOW_GRAPH) {
-			plot();
+			plot(true);
 		}
 	}
 }
@@ -256,14 +292,19 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	meanRev = false;
 	meanRevStart = 0;
 	outlierReversion = 0;
-	timeBeforeSale = Date.now() + 0.5 * ONE_MIN; // Believe in yourself!
+	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		var [mean, stdev] = await tick();
 		console.clear();
-		meanTrend = isDowntrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
-			: isUptrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
+		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
+			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
 		console.log(`Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
+		if (last_keypress == "s") {
+			// Manual override
+			last_keypress = "";
+			return latestPrice;
+		}
 		if (SELL_LOCAL_MAX) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -273,26 +314,26 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 							meanRevStart = Date.now();
 						} else if (meanRevStart < Date.now() - ONE_MIN){
 							// This is a good thing
-							return latestPrice;
+							// return latestPrice;
 						}
 					} else if (Date.now() < timeBeforeSale) {
 						break;
-					} 
+					}
+					// if (Math.abs(latestPrice - buy_price) < stdev) {
+					// 	// don't buy or sell too small amounts
+					// 	break;
+					// }
 					if (latestPrice > mean
-						&& isDowntrend(q.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)
-						&& !isUptrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& meanRev
+						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						return latestPrice;
-					} else if (latestPrice < mean
-						&& !isUptrend(means.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+					} else if ((latestPrice < mean || Math.abs(buy_price - mean) < 0.2 * stdev)
+						&& isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						return latestPrice;
 					}
 					break;
 				case 4:
-					ma7last = ma7.slice(-1).pop();
-					meansLast = means.slice(-1).pop();
-					if (isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)
-						&& ma7last < meansLast 
-						&& meansLast - ma7last < stdev) {
+					if (isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						return latestPrice;
 					}
 					break;
@@ -307,7 +348,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			return latestPrice;
 		}
 		if (SHOW_GRAPH) {
-			plot();
+			plot(false);
 		}
 	}
 	return latestPrice
@@ -369,7 +410,9 @@ async function tick() {
 	highstd.push(mean + 2*stdev);
 	ma7.push(average(lookback.slice(-MA_7_VAL)));
 	ma15.push(average(lookback.slice(-MA_15_VAL)));
-	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && ma7.shift() != 0 && ma15.shift() != 0;
+	mabuy.push(average(lookback.slice(-BB_BUY)));
+	masell.push(average(lookback.slice(-BB_SELL)));
+	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && ma7.shift() != 0 && ma15.shift() != 0 && mabuy.shift() != 0 && masell.shift() != 0;
 	return [mean, stdev]
 }
 
@@ -502,9 +545,10 @@ function formatGraph(x, i) {
 	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
 }
 
-function plot() {
+function plot(buying) {
+	//ma7.slice(-PLOT_DATA_POINTS), ma15.slice(-PLOT_DATA_POINTS),
 	console.log (
-		asciichart.plot([highstd, lowstd, means, ma7, ma15, q], 
+		asciichart.plot([highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)], 
 		{
 			format: formatGraph, 
 			colors: [
@@ -512,7 +556,6 @@ function plot() {
 		        asciichart.green,
 		        asciichart.yellow,
 		        asciichart.lightmagenta,
-		        asciichart.magenta,
 		        asciichart.default,
 		    ],
     		padding: GRAPH_PADDING, 
