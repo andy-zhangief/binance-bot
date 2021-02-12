@@ -51,6 +51,7 @@ const MAX_BUY_SELL_BUF = 60;
 const ANALYSIS_BUFFER = 5;
 const MA_7_VAL = 420; // Ayy
 const MA_15_VAL = 900;
+const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 
 var BB_SELL = 30;
 var BB_BUY = 30;
@@ -74,6 +75,7 @@ masell = [];
 lastBuy = 0;
 lastSell = 0;
 lastBuyReason = "";
+lastSellReason = "";
 BUY_TS = 0;
 SELL_TS = 0;
 ANALYZE = false;
@@ -203,12 +205,12 @@ async function waitUntilTimeToBuy() {
 	while (true) {
 		var [mean, stdev] = await tick();
 		console.clear();
-		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? "\x1b[31mDown\x1b[0m" 
-			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
+		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)? "\x1b[31mDown\x1b[0m" 
+			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev) ? "\x1b[32mUp\x1b[0m" 
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? "\x1b[32mBULL\x1b[0m" : "\x1b[31mBEAR\x1b[0m";
 		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m Press b to buy, any key to stop" : "\x1b[31mMANUAL\x1b[0m Press a for auto, b to buy"
-		console.log(`${autoText}, Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY},${outlierReversion > 0 ? "\x1b[31mOUTLIER\x1b[0m,": ""} Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? "\x1b[31mGATHERING DATA\x1b[0m" : ""}`);
+		console.log(`${autoText}, Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, ${outlierReversion > 0 ? "\x1b[31mOUTLIER\x1b[0m,": ""} Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? "\x1b[31mGATHERING DATA\x1b[0m" : ""}`);
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
 			last_keypress = "";
@@ -234,7 +236,7 @@ async function waitUntilTimeToBuy() {
 					}
 					if (lastBuy <= lastSell 
 						&& Math.abs(mean - latestPrice) < 0.2 * stdev 
-						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
 						meanBounce = true;
 						meanBounceExpired = Date.now() + ONE_MIN;
 					}
@@ -251,13 +253,13 @@ async function waitUntilTimeToBuy() {
 					if (latestPrice < highstd[highstd.length-1]
 						&& latestPrice > lowstd[lowstd.length-1]
 						&& meanRev
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
 						lastBuyReason = "boulingerbounce"
 						return latestPrice
 					}
 					if (latestPrice > mean + 0.2*stdev 
 						&& meanBounce 
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
 						lastBuyReason = "meanbounce"
 						return latestPrice
 					}
@@ -272,7 +274,7 @@ async function waitUntilTimeToBuy() {
 					ready = true;
 					ma7last = ma7.slice(-1).pop();
 					if (ma7last > mean
-						&& isUptrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)
+						&& isUptrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)
 						&& ma7last - mean < 0.5 * stdev) {
 						return latestPrice;
 					}
@@ -305,14 +307,15 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	while (latestPrice > stop_loss && latestPrice < take_profit) {
 		var [mean, stdev] = await tick();
 		console.clear();
-		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
-			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
+		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev) ? "Down" 
+			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev) ? "Up" 
 			: "None";
 		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m Press s to sell, any key to stop" : "\x1b[31mMANUAL\x1b[0m Press a for auto, s to sell"
-		console.log(`${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price.toPrecision(4)}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
+		console.log(`${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price.toPrecision(4)}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}, ${outlierReversion > 0 ? "\x1b[31mOUTLIER\x1b[0m": ""}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
+			lastSellReason = "Sold bcuz manual override";
 			return latestPrice;
 		}
 		if (SELL_LOCAL_MAX && last_keypress == "a") {
@@ -329,21 +332,31 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					} else if (Date.now() < timeBeforeSale) {
 						break;
 					}
+					if (outlierReversion > 0 && --outlierReversion > 0) {
+						break;
+					}
+					if (lastValueIsOutlier()) {
+						outlierReversion += 10; // We want to buy before the outlier happens, not after
+						break;
+					}
 					if (Math.abs(latestPrice - buy_price) < 0.3 * stdev) {
 						// don't buy or sell too small amounts
 						break;
 					}
 					if (latestPrice > mean
 						&& meanRev
-						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
+						lastSellReason = "Sold bcuz after bb not uptrend";
 						return latestPrice;
 					} else if ((latestPrice < mean || Math.abs(buy_price - mean) < 0.2 * stdev)
-						&& isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						&& isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
+						lastSellReason = "Sold bcuz mean is down";
 						return latestPrice;
 					}
 					break;
 				case 4:
-					if (isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+					if (isDowntrend(means.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, stdev)) {
+						lastSellReason = "Sold bcuz mean is down";
 						return latestPrice;
 					}
 					break;
@@ -355,12 +368,14 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		}
 		if (Date.now() > end && USE_TIMEOUT) {
 			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
+			lastSellReason = "Sold bcuz timeout";
 			return latestPrice;
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
 		}
 	}
+	lastSellReason = "Sold bcuz take profit or stop loss hit,";
 	return latestPrice
 }
 
@@ -447,14 +462,16 @@ async function getBalanceAsync(coin) {
 }
 
 // HELPER FUNCTIONS
-function isUptrend(q2, buffer) {
+function isUptrend(q2, buffer, stdev = 0) {
 	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
 		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer
+		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev
 }
 
-function isDowntrend(q2, buffer) {
+function isDowntrend(q2, buffer, stdev = 0) {
 	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
 		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < buffer
+		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev
 }
 
 function getBalance(coin) {
@@ -520,7 +537,7 @@ function lastValueIsOutlier() {
 	stdev = (highstd[highstd.length-1] - means[means.length-1])/2;
 	value = q[q.length-1];
 	previous = q[q.length-2];
-	return (Math.abs(value - previous) >= stdev); // I have no idea why, but I'm using 1stdev to determine if val is outlier
+	return (Math.abs(value - previous) >= 0.5*stdev); // I have no idea why, but I'm using 0.5stdev to determine if val is outlier
 }
 
 function getStandardDeviation(values){
