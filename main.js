@@ -207,8 +207,8 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? "\x1b[32mBULL\x1b[0m" : "\x1b[31mBEAR\x1b[0m";
-		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto"
-		console.log(`${autoText} Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto, Press b to buy"
+		console.log(`${autoText} Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : "READY"}`);
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
 			lastBuyReason = "input"
@@ -303,7 +303,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
-		console.log(`Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
+		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto, Press s to sell"
+		console.log(`${autoText} Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
