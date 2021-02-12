@@ -73,6 +73,7 @@ masell = [];
 
 lastBuy = 0;
 lastSell = 0;
+lastBuyReason = "";
 BUY_TS = 0;
 SELL_TS = 0;
 ANALYZE = false;
@@ -206,13 +207,14 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? "\x1b[32mBULL\x1b[0m" : "\x1b[31mBEAR\x1b[0m";
-		console.log(`Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
+		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto"
+		console.log(`${autoText} Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : meanRev ? "waiting 4 bounce" : "waiting 4 Boulinger"}`);
 		if (last_keypress == "b") {
-			// Manual override
-			last_keypress = "";
+			// Manual override, disable auto sell
+			lastBuyReason = "input"
 			return latestPrice;
 		}
-		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before) {
+		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before && last_keypress == "a") {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
 					if (lookback.length < QUEUE_SIZE) {
@@ -234,22 +236,24 @@ async function waitUntilTimeToBuy() {
 						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						meanBounce = true;
 					}
-					// if (outlierReversion > 0 && --outlierReversion > 0) {
-					// 	break;
-					// }
-					// if (lastValueIsOutlier()) {
-					// 	outlierReversion += 2; // Don't care as much when buying
-					// 	break;
-					// }
+					if (outlierReversion > 0 && --outlierReversion > 0) {
+						break;
+					}
+					if (lastValueIsOutlier()) {
+						outlierReversion += 10; // We want to buy before the outlier happens, not after
+						break;
+					}
 					if (latestPrice < highstd[highstd.length-1]
 						&& latestPrice > lowstd[lowstd.length-1]
+						&& meanRev
 						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						console.log(`Buying the Boulinger Bounce`);
+						lastBuyReason = "boulingerbounce"
 						return latestPrice
 					}
 					if (latestPrice > mean + 0.2*stdev 
 						&& meanBounce 
 						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
+						lastBuyReason = "meanbounce"
 						return latestPrice
 					}
 					if (latestPrice < mean - 0.5*stdev) {
@@ -299,13 +303,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
-		console.log(`Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
+		console.log(`Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
 			return latestPrice;
 		}
-		if (SELL_LOCAL_MAX) {
+		if (SELL_LOCAL_MAX && last_keypress == "a") {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
 					if (latestPrice > highstd[highstd.length-1]) {
