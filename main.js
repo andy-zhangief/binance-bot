@@ -52,8 +52,8 @@ const ANALYSIS_BUFFER = 5;
 const MA_7_VAL = 420; // Ayy
 const MA_15_VAL = 900;
 
-var BB_SELL = 15;
-var BB_BUY = 15;
+var BB_SELL = 30;
+var BB_BUY = 30;
 
 var SELL_ALT_QUEUE_SIZE = 50;
 var BUY_ALT_QUEUE_SIZE = 50;
@@ -207,11 +207,12 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "\x1b[32mUp\x1b[0m" 
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? "\x1b[32mBULL\x1b[0m" : "\x1b[31mBEAR\x1b[0m";
-		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto, Press b to buy"
-		console.log(`${autoText} Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last value is ${lastValueIsOutlier() ? "" : "NOT"} outlier, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("NOT BUYING for " + msToTime(dont_buy_before-Date.now())) : !ready ? "NOT READY" : "READY"}`);
+		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m Press b to buy, any key to stop" : "\x1b[31mMANUAL\x1b[0m Press a for auto, b to buy"
+		console.log(`${autoText}, Current price: \x1b[32m${latestPrice}\x1b[0m, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY},${outlierReversion > 0 ? "\x1b[31mOUTLIER\x1b[0m,": ""} Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? "\x1b[31mGATHERING DATA\x1b[0m" : ""}`);
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
-			lastBuyReason = "input"
+			last_keypress = "";
+			lastBuyReason = "input";
 			return latestPrice;
 		}
 		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before && last_keypress == "a") {
@@ -235,6 +236,7 @@ async function waitUntilTimeToBuy() {
 						&& Math.abs(mean - latestPrice) < 0.2 * stdev 
 						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
 						meanBounce = true;
+						meanBounceExpired = Date.now() + ONE_MIN;
 					}
 					if (outlierReversion > 0 && --outlierReversion > 0) {
 						break;
@@ -242,6 +244,9 @@ async function waitUntilTimeToBuy() {
 					if (lastValueIsOutlier()) {
 						outlierReversion += 10; // We want to buy before the outlier happens, not after
 						break;
+					}
+					if (meanBounce && Date.now() > meanBounceExpired) {
+						meanBounce = false;
 					}
 					if (latestPrice < highstd[highstd.length-1]
 						&& latestPrice > lowstd[lowstd.length-1]
@@ -303,8 +308,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Down" 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? "Up" 
 			: "None";
-		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m" : "\x1b[31mMANUAL\x1b[0m Press a for auto, Press s to sell"
-		console.log(`${autoText} Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
+		autoText = last_keypress == "a" ? "\x1b[32mAUTO\x1b[0m Press s to sell, any key to stop" : "\x1b[31mMANUAL\x1b[0m Press a for auto, s to sell"
+		console.log(`${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: \x1b[32m${latestPrice}\x1b[0m Buy Price: \x1b[33m${buy_price.toPrecision(4)}\x1b[0m Stop Loss Price: \x1b[31m${stop_loss}\x1b[0m Sell Buffer: ${BB_SELL}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
@@ -324,10 +329,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					} else if (Date.now() < timeBeforeSale) {
 						break;
 					}
-					// if (Math.abs(latestPrice - buy_price) < stdev) {
-					// 	// don't buy or sell too small amounts
-					// 	break;
-					// }
+					if (Math.abs(latestPrice - buy_price) < 0.3 * stdev) {
+						// don't buy or sell too small amounts
+						break;
+					}
 					if (latestPrice > mean
 						&& meanRev
 						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
@@ -397,10 +402,6 @@ function analyzeDecision() {
 	} else if (sell_max_idx > sold_idx) {
 		// it means we made a bad sell
 		BB_SELL = Math.min(BB_SELL + BUY_SELL_INC, MAX_BUY_SELL_BUF);
-	}
-	if (SELL_TS - BUY_TS < ANALYSIS_TIME && buy_val > sell_val) {
-		// We made a bad buy
-		BB_BUY = Math.min(BB_BUY + 2 * BUY_SELL_INC, MAX_BUY_SELL_BUF);
 	}
 }
 
@@ -564,7 +565,7 @@ function plot(buying) {
 		        asciichart.default,
 		    ],
     		padding: GRAPH_PADDING, 
-    		height: 40
+    		height: 45
     	}));
 }
 
