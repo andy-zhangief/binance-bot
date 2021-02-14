@@ -27,8 +27,7 @@ const USE_TIMEOUT = false;
 const SELL_LOCAL_MAX = true;
 const BUY_LOCAL_MIN = true;
 const QUEUE_SIZE = 960; // 16m BB
-
-const POLL_INTERVAL = 100;//720; // roughly 1 second?
+const POLL_INTERVAL = 720;//720; // roughly 1 second?
 const PLOT_DATA_POINTS = 150;
 const CONSOLE_UPDATE_INTERVAL = 10000;
 const LOOP = true;
@@ -36,7 +35,7 @@ const EPSILON = 0.00069420;
 const ONE_MIN = 60000;
 const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.1;
 const GRAPH_PADDING = '                  ';
-const GRAPH_HEIGHT = 45
+const GRAPH_HEIGHT = 45;
 const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
 const MIN_QUEUE_SIZE = 50;
@@ -228,6 +227,7 @@ async function waitUntilTimeToBuy() {
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? colorText("green", "BULL") : colorText("red","BEAR");
 		autoText = auto ? colorText("green", "AUTO") + " Press b to buy, a to stop" : colorText("red", "MANUAL") + " Press a for auto, b to buy"
 		console.log(`${autoText} Current price: ${colorText("green", latestPrice)}, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? colorText("red", "GATHERING DATA") : ""}`);
+		lookback.length > 30 && getPrediction();
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
 			last_keypress = "";
@@ -464,6 +464,36 @@ async function tick(buying) {
 	return [mean, stdev]
 }
 
+prediction = "";
+laprice = 0;
+predictionTime = 0;
+right = 0;
+total = 0;
+
+function getPrediction(buying = true) {
+	supportVal = parseFloat(Object.keys(supports)[0]);
+	resistanceVal = parseFloat(Object.keys(resistances)[0]);
+	firstRed = parseFloat(resistances[resistanceVal]);
+	firstGreen = parseFloat(supports[supportVal]);
+	if (predictionTime != 0 && Date.now() > predictionTime + 5000) {
+		if ((latestPrice > laprice && prediction.includes("UP")) || (latestPrice < laprice && prediction.includes("DOWN"))) {
+			right += 1;
+		}
+		total += 1;
+		predictionTime = 0;
+		prediction = "???";
+	}
+	if (predictionTime == 0 && last_keypress == "p") {
+		prediction = (firstRed * 5 < firstGreen) ? colorText("red", "DOWN") 
+			: (firstGreen * 5 < firstRed) ? colorText("green", "UP") 
+			: "???";
+		last_keypress = !prediction.includes("???") ? "" : last_keypress;
+		predictionTime = !prediction.includes("???") ? Date.now() : 0; // color header
+		laprice = !prediction.includes("???") ? latestPrice : 0;
+	}
+	console.log(`Support at ${supportVal}: ${colorText("green", firstGreen)}, Resistance at ${resistanceVal}: ${colorText("red", firstRed)}, Predicted price will go ${prediction}, PCT Correct: ${right/total * 100}\% Count: ${total}`);
+}
+
 
 // The old function
 async function getLatestPriceAsync(coinpair) {
@@ -519,15 +549,21 @@ function parseDepth(depth) {
 
 // HELPER FUNCTIONS
 function isUptrend(q2, buffer, stdev = 0) {
+	if (stdev == 0) {
+		stdev = getLastStdev();
+	}
 	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
 		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer
-		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * getLastStdev();
+		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
 function isDowntrend(q2, buffer, stdev = 0) {
+	if (stdev == 0) {
+		stdev = getLastStdev();
+	}
 	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
 		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < buffer
-		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * getLastStdev();
+		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
 function getBalance(coin) {
@@ -628,29 +664,10 @@ function formatGraph(x, i) {
 	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
 }
 
-// delete me
-prediction = "";
-laprice = 0;
-right = 0;
-total = 0;
-
 function plot(buying) {
 	//ma7.slice(-PLOT_DATA_POINTS), ma15.slice(-PLOT_DATA_POINTS),
-	if (histogram) {
-		var [histogramGreen, histogramRed, firstGreen, firstRed] = getHistogramData();
-		if (laprice == 0) {
-			laprice = latestPrice;
-		} else {
-			if ((latestPrice > laprice && prediction.includes("UP")) || (latestPrice < laprice && prediction.includes("DOWN"))) {
-				right += 1;
-			}
-			if (!prediction.includes("???") && laprice != latestPrice) {
-				total += 1;
-			}
-			laprice = latestPrice;
-		}
-		prediction = firstGreen * 5 < firstRed ? colorText("red", "DOWN") : firstRed * 5 < firstGreen ? colorText("green", "UP") : "???";
-		console.log(`Support : ${colorText("green", firstGreen)}, Resistance : ${colorText("red", firstRed)}, Predicted price will go ${prediction}, PCT Correct: ${right/total * 100}\%`);
+	var [histogramGreen, histogramRed, firstGreen, firstRed] = getHistogramData();
+	if (histogram) {	
 		console.log(
 		asciichart.plot([histogramRed, histogramGreen], 
 		{
