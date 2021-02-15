@@ -25,65 +25,11 @@ prices = {};
 serverPrices = [];
 
 async function init() {
-	waitUntilPrepump();
+	a = await binance.bookTickers('BNBBTC');
+	console.log(a.askPrice);
 }
 
-async function waitUntilPrepump() {
-	while (true) {
-		priceFetch = true;
-		await getAllPrices();
-		while (priceFetch) {
-			await sleep(100);
-		}
-		anomolies = parseServerPrices();
-		maxAnomoly = "";
-		maxPct = 0;
-		anomolies.forEach(([k,v]) => {
-			console.log(k,v)
-			if (v > maxPct) {
-				maxPct = v;
-				maxAnomoly = k;
-			}
-		})
-		console.log(`Coin: ${maxAnomoly}, increase: ${maxPct}`);
-		await sleep(CHECK_TIME)
-	}
-}
 
-function parseServerPrices() {
-	anomolies = [];
-	serverPrices.forEach(v => {
-		if (!v.symbol.endsWith("BTC")) {
-			return;
-		}
-		if (prices[v.symbol] == null) {
-			prices[v.symbol] = v.askPrice;
-		} else {
-			previousPrice = prices[v.symbol];
-			prices[v.symbol] = v.askPrice;
-			pctGain = v.askPrice/previousPrice;
-			if (pctGain > ANOMOLY_PCT) {
-				anomolies.push([v.symbol, pctGain]);
-			}
-		}
-	});
-	return anomolies;
-}
-
-async function getAllPrices() {
-	binance.bookTickers((error, ticker) => {
-		if (error) {
-			while (++failures >= FAIL_EXIT) {
-				console.log("TOO MANY FAILS GETTING PRICES");
-				process.exit(1);
-			}
-			return;
-		}
-		failures = 0;
-		priceFetch = false;
-		serverPrices = ticker;
-	});
-}
 
 function sleep(ms) {
   return new Promise((resolve) => {
