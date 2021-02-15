@@ -53,14 +53,16 @@ const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
 const ANOMOLY_CHECK_TIME = 60 * 1000;
-const ANOMOLY_PCT = 1.025;
+const ANOMOLY_PCT = 1.02;
+const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
+const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 var SELL_FINISHED = false;
 
 var SELL_LOCAL_MAX = true;
 var BUY_LOCAL_MIN = true;
 
-var BB_SELL = 30;
-var BB_BUY = 30;
+var BB_SELL = 10;
+var BB_BUY = 20;
 
 var SELL_ALT_QUEUE_SIZE = 50;
 var BUY_ALT_QUEUE_SIZE = 50;
@@ -188,13 +190,14 @@ async function waitUntilPrepump() {
 				await sleep(100);
 			}
 			beep();
-			TAKE_PROFIT_MULTIPLIER = (maxPct-1)*3 + 1;
-			STOP_LOSS_MULTIPLIER = 1/maxPct;
+			TAKE_PROFIT_MULTIPLIER = (maxPct-1)*PREPUMP_TAKE_PROFIT_MULTIPLIER + 1;
+			STOP_LOSS_MULTIPLIER = (1/maxPct-1)*PREPUMP_STOP_LOSS_MULTIPLIER + 1;
 			opportunity_expired = Date.now() + 3 * ONE_MIN;
 			pump();
 			while (!SELL_FINISHED) {
-				await sleep(5 * ONE_MIN);
+				await sleep(ONE_MIN * 0.5);
 			}
+			prices = {};
 		}
 		
 		await sleep(ANOMOLY_CHECK_TIME)
@@ -204,7 +207,7 @@ async function waitUntilPrepump() {
 function parseServerPrices() {
 	anomolies = [];
 	serverPrices.forEach(v => {
-		if (!v.symbol.endsWith("BTC")) {
+		if (!v.symbol.endsWith("USDT")) {
 			return;
 		}
 		if (prices[v.symbol] == null) {
@@ -246,6 +249,7 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
+		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		return;
 	}
@@ -295,7 +299,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * ONE_MIN;
 			}
-			if (process.argv[2].toUpperCase().includes("prepump")) {
+			if (BUY_SELL_STRATEGY == 6) {
 				return;
 			}
 			pump()
@@ -325,6 +329,7 @@ async function waitUntilTimeToBuy() {
 	localMin = Infinity;
 	localMinTicks = 0;
 	ready = false;
+	prevTrend = "None"
 	while (true) {
 		var [mean, stdev] = await tick(true);
 		console.clear();
@@ -340,6 +345,11 @@ async function waitUntilTimeToBuy() {
 			last_keypress = "";
 			lastBuyReason = "input";
 			return latestPrice;
+		}
+		if (last_keypress == "q") {
+			// q to quit early when looking for prepumps
+			last_keypress = "";
+			return 0;
 		}
 		if (localMin)
 		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before && auto) {
@@ -407,16 +417,24 @@ async function waitUntilTimeToBuy() {
 				case 5:
 					break;
 				case 6:
-					if (lookback.length < 2 * BB_BUY) {
+					var now = new Date(Date.now());
+					if (now.getMinutes() == 29 || now.getMinutes() == 59) {
+						// just buy it. YOLO
+						return latestPrice;
+					}
+					if (lookback.length < BB_BUY) {
 						break;
+					}
+					if (!ready && isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
+						return latestPrice;
 					}
 					ready = true;
 					if (Date.now() > opportunity_expired) {
 						return 0;
 					}
-					if (isDowntrend(mabuy.slice(-2*BB_BUY, -BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0) 
-						&& !isDowntrend(mabuy.slice(-BB_BUY, -BB_BUY+5), (BB_BUY-5) * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0) 
-						&& isUptrend(mabuy.slice(-5), 0, 0)) {
+					if (isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
+						previousTrend = "Down";
+					} else if (previousTrend == "Down" && !isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
 						return latestPrice;
 					}
 					// buy at min
@@ -454,7 +472,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") + " Press s to sell, a to stop" : colorText("red", "MANUAL") + " Press a for auto, s to sell"
-		console.log(`${coinpair}, ${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: ${colorText("green", latestPrice)} Buy Price: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss Price: ${colorText("red", stop_loss)} Sell Buffer: ${BB_SELL}`);
+		console.log(`${coinpair}, ${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: ${colorText("green", latestPrice)} Take Profit: ${colorText("green", take_profit)}, Buy Price: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss Price: ${colorText("red", stop_loss)}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
@@ -506,7 +524,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				case 5:
 					break;
 				case 6:
-					ready = true;
 					// do nothing for now
 					break;
 				default:
