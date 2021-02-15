@@ -20,17 +20,15 @@ const binance = new Binance().options({
 const MAX_OVERRIDE_BTC = 0.001;
 const MAX_OVERRIDE_USDT = 0;
 const PCT_BUY = 0.2;
-const TAKE_PROFIT_MULTIPLIER = 1.05;
-const STOP_LOSS_MULTIPLIER = 0.985;
+var TAKE_PROFIT_MULTIPLIER = 1.05;
+var STOP_LOSS_MULTIPLIER = 0.985;
 const RUNTIME = 10; //mins
 const USE_TIMEOUT = false;
-const SELL_LOCAL_MAX = true;
-const BUY_LOCAL_MIN = true;
-const QUEUE_SIZE = 960; // 16m BB
-const POLL_INTERVAL = 720;//720; // roughly 1 second?
+var QUEUE_SIZE = 960; // 16m BB
+var POLL_INTERVAL = 720;//720; // roughly 1 second?
 const PLOT_DATA_POINTS = 150;
 const CONSOLE_UPDATE_INTERVAL = 10000;
-const LOOP = true;
+var LOOP = true;
 const EPSILON = 0.00069420;
 const ONE_MIN = 60000;
 const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.1;
@@ -39,7 +37,7 @@ const GRAPH_HEIGHT = 45;
 const SHOW_GRAPH = true;
 const UPDATE_BUY_SELL_WINDOW = true;
 const MIN_QUEUE_SIZE = 50;
-const BUY_SELL_STRATEGY = 5; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce, 4 = ma7vma15, 5 = resistances and supports
+var BUY_SELL_STRATEGY = 5; // 1 = Min/max in middle, 2 = Min/max at start, 3 = buy boulinger bounce, 4 = ma7vma15, 5 = resistances and supports
 const TIME_BEFORE_NEW_BUY = 1;// mins
 const BUFFER_AFTER_FAIL = true;
 const LOOKBACK_SIZE = 10000;
@@ -54,6 +52,12 @@ const MA_15_VAL = 900;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
+const ANOMOLY_CHECK_TIME = 60 * 1000;
+const ANOMOLY_PCT = 1.025;
+var SELL_FINISHED = false;
+
+var SELL_LOCAL_MAX = true;
+var BUY_LOCAL_MIN = true;
 
 var BB_SELL = 30;
 var BB_BUY = 30;
@@ -88,15 +92,19 @@ histogram = false;
 last_keypress = ""
 lastTrend = "";
 lastDepth = {};
-
 fail_counter = 0;
 dont_buy_before = 0;
+opportunity_expired = 0;
+
+priceFetch = false;
+prices = {};
+serverPrices = [];
 
 balances = {};
 coinInfo = null;
 
 if (!process.argv[2]) {
-	console.log("Usage: node main.js COINPAIR");
+	console.log("Usage: node main.js COINPAIR/prepump");
 	process.exit(1);
 }
 
@@ -119,26 +127,115 @@ process.stdin.on('keypress', (str, key) => {
 
 coinpair = process.argv[2].toUpperCase();
 
-coin = getCoin(coinpair);
-baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-
 async function init() {
 	if (binance.getOption("test")) {
 		console.log("testing");
 	}
 	await binance.useServerTime();
 	await getBalanceAsync();
+
+	if (coinpair == "PREPUMP") {
+		waitUntilPrepump();
+		return;
+		// will not execute any more code after this
+	}
+	coin = getCoin(coinpair);
+	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
+
 	//await getExchangeInfo(coinpair);
 	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
 	while (Object.keys(balances).length == 0 || coinInfo == null) {
-		if (coinInfo == null) {
-			readCoinInfo();
-		}
 		await sleep(100);
 	}
 	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
 }
+
+async function waitUntilPrepump() {
+	BUY_LOCAL_MIN = true;
+	SELL_LOCAL_MAX = false;
+	LOOP = true;
+	BUY_SELL_STRATEGY = 6;
+	auto = true;
+	while (true) {
+		console.clear();
+		console.log("Waiting for anomoly");
+		coinpair = "";
+		priceFetch = true;
+		await getAllPrices();
+		while (priceFetch) {
+			await sleep(100);
+		}
+		anomolies = parseServerPrices();
+		maxAnomoly = "";
+		maxPct = 0;
+		anomolies.forEach(([k,v]) => {
+			console.log(k,v)
+			if (v > maxPct) {
+				maxPct = v;
+				maxAnomoly = k;
+			}
+		})
+		if (maxAnomoly.length > 0) {
+			coinpair = maxAnomoly;
+			coin = getCoin(coinpair);
+			baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
+			readCoinInfo();
+			SELL_FINISHED = false;
+			lookback = [];
+			q = [];
+			while (coinInfo == null) {
+				await sleep(100);
+			}
+			beep();
+			TAKE_PROFIT_MULTIPLIER = (maxPct-1)*3 + 1;
+			STOP_LOSS_MULTIPLIER = 1/maxPct;
+			opportunity_expired = Date.now() + 3 * ONE_MIN;
+			pump();
+			while (!SELL_FINISHED) {
+				await sleep(5 * ONE_MIN);
+			}
+		}
+		
+		await sleep(ANOMOLY_CHECK_TIME)
+	}
+}
+
+function parseServerPrices() {
+	anomolies = [];
+	serverPrices.forEach(v => {
+		if (!v.symbol.endsWith("BTC")) {
+			return;
+		}
+		if (prices[v.symbol] == null) {
+			prices[v.symbol] = v.askPrice;
+		} else {
+			previousPrice = prices[v.symbol];
+			prices[v.symbol] = v.askPrice;
+			pctGain = v.askPrice/previousPrice;
+			if (pctGain > ANOMOLY_PCT) {
+				anomolies.push([v.symbol, pctGain]);
+			}
+		}
+	});
+	return anomolies;
+}
+
+async function getAllPrices() {
+	binance.bookTickers((error, ticker) => {
+		if (error) {
+			while (++fail_counter >= FAIL_EXIT) {
+				console.log("TOO MANY FAILS GETTING PRICES");
+				process.exit(1);
+			}
+			return;
+		}
+		fail_counter = 0;
+		priceFetch = false;
+		serverPrices = ticker;
+	});
+}
+
 
 async function pump() {
 	//buy code here
@@ -147,6 +244,10 @@ async function pump() {
 		latestPrice = await waitUntilTimeToBuy();
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
+	}
+	if (latestPrice == 0) {
+		SELL_FINISHED = true; // never bought
+		return;
 	}
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
 	override = baseCurrency == "USDT" ? MAX_OVERRIDE_USDT : MAX_OVERRIDE_BTC
@@ -159,6 +260,7 @@ async function pump() {
 			console.log(`PUMP ERROR: ${error.body}`);
 			process.exit(1);
 		}
+		beep();
 		console.log("pump is successful")
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
@@ -166,7 +268,7 @@ async function pump() {
 		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		lastBuy = price;
 		actualquantity = response.executedQty // replace with bought quantity
-		ndump((price * TAKE_PROFIT_MULTIPLIER).toFixed(4), price, (price * STOP_LOSS_MULTIPLIER).toFixed(4), actualquantity);
+		ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
 }
 
@@ -185,11 +287,16 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
+		SELL_FINISHED = true;
 		ANALYZE = true;
 		lastSell = price;
 		if (LOOP) {
+			beep();
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * ONE_MIN;
+			}
+			if (process.argv[2].toUpperCase().includes("prepump")) {
+				return;
 			}
 			pump()
 			return;
@@ -226,8 +333,8 @@ async function waitUntilTimeToBuy() {
 			: "None";
 		maTrend = ma7.slice(-1).pop() > ma15.slice(-1).pop() ? colorText("green", "BULL") : colorText("red","BEAR");
 		autoText = auto ? colorText("green", "AUTO") + " Press b to buy, a to stop" : colorText("red", "MANUAL") + " Press a for auto, b to buy"
-		console.log(`${autoText} Current price: ${colorText("green", latestPrice)}, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? colorText("red", "GATHERING DATA") : ""}`);
-		lookback.length > 30 && getPrediction();
+		console.log(`${coinpair} ${autoText} Current price: ${colorText("green", latestPrice)}, Mean trend : ${meanTrend}, MA Trend: ${maTrend}, Buy Buffer: ${BB_BUY}, Last transaction: ${(lastSell - lastBuy).toPrecision(4)}, Data points: ${lookback.length}, ${Date.now() < dont_buy_before ? ("WAITING FOR: " + msToTime(dont_buy_before-Date.now())) : !ready ? colorText("red", "GATHERING DATA") : ""}`);
+		//lookback.length > 30 && getPrediction();
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
 			last_keypress = "";
@@ -299,6 +406,21 @@ async function waitUntilTimeToBuy() {
 					break;
 				case 5:
 					break;
+				case 6:
+					if (lookback.length < 2 * BB_BUY) {
+						break;
+					}
+					ready = true;
+					if (Date.now() > opportunity_expired) {
+						return 0;
+					}
+					if (isDowntrend(mabuy.slice(-2*BB_BUY, -BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0) 
+						&& !isDowntrend(mabuy.slice(-BB_BUY, -BB_BUY+5), (BB_BUY-5) * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0) 
+						&& isUptrend(mabuy.slice(-5), 0, 0)) {
+						return latestPrice;
+					}
+					// buy at min
+					break;
 				default:
 					break;
 			}
@@ -332,7 +454,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") + " Press s to sell, a to stop" : colorText("red", "MANUAL") + " Press a for auto, s to sell"
-		console.log(`${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: ${colorText("green", latestPrice)} Buy Price: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss Price: ${colorText("red", stop_loss)} Sell Buffer: ${BB_SELL}`);
+		console.log(`${coinpair}, ${autoText}, Bought Reason: ${lastBuyReason}, Mean trend is ${meanTrend}, Current price: ${colorText("green", latestPrice)} Buy Price: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss Price: ${colorText("red", stop_loss)} Sell Buffer: ${BB_SELL}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
@@ -382,6 +504,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 5:
+					break;
+				case 6:
+					ready = true;
+					// do nothing for now
 					break;
 				default:
 					// do nothing
@@ -720,6 +846,10 @@ function msToTime(duration) {
   seconds = (seconds < 10) ? "0" + seconds : seconds;
 
   return minutes + ":" + seconds;
+}
+
+function beep() {
+	console.log("\007");
 }
 
 function sleep(ms) {
