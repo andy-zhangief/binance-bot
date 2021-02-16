@@ -53,12 +53,13 @@ const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
 const ANOMOLY_CHECK_TIME = 45 * 1000;
-const ANOMOLY_PCT = 1.0175;
-const PREPUMP_TAKE_PROFIT_MULTIPLIER = 1;
-const PREPUMP_STOP_LOSS_MULTIPLIER = 0.5;
+var ANOMOLY_PCT = 1.03;
+const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
+const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const ANOMOLY_EXPIRE_TIME = 5 * ONE_MIN;
 const PREPUMP_MAX_PROFIT = 1.1;
 const PREPUMP_MAX_LOSS = 0.97;
+var PRICE_CHECK_TIME = 3;
 var SELL_FINISHED = false;
 
 var SELL_LOCAL_MAX = true;
@@ -101,9 +102,11 @@ fail_counter = 0;
 dont_buy_before = 0;
 opportunity_expired = 0;
 yolobuy = false;
+useMaxAnomoly = false;
+neg = true;
 
 priceFetch = 0;
-prices = {};
+prices = [];
 prevDay = {};
 serverPrices = [];
 
@@ -164,6 +167,15 @@ async function waitUntilPrepump() {
 	BUY_SELL_STRATEGY = 6;
 	auto = true;
 	yolobuy = process.argv[3] == "d"; 
+	if (yolobuy) {
+		// dont change this
+		neg = false;
+		useMaxAnomoly = true;
+		// Ok to change this
+		PRICE_CHECK_TIME = 2; // min
+		ANOMOLY_PCT = 1.02;
+	}
+	prices = new Array(PRICE_CHECK_TIME).fill({});
 	while (true) {
 		console.clear();
 		console.log("Waiting for anomoly");
@@ -176,20 +188,19 @@ async function waitUntilPrepump() {
 			await sleep(100);
 		}
 		var now = new Date(Date.now());
-		if (!yolobuy || now.getMinutes() % 60 > 58) {
-			neg = !yolobuy; //!((now.getMinutes() + 1)%30 < 2);
-			anomolies = parseServerPrices(neg);
-			console.log(anomolies);
-			maxAnomoly = "";
-			maxPct = 0;
+		anomolies = parseServerPrices(neg);
+		console.log(anomolies);
+		if (!yolobuy || now.getMinutes() % 30 > 28) {
+			anomolySym = "";
+			anomolyPct = useMaxAnomoly ? 0 : 100;
 			anomolies.forEach(([k,v]) => {
-				if (v > maxPct) {
-					maxPct = v;
-					maxAnomoly = k;
+				if ((useMaxAnomoly && v > anomolyPct) || (!useMaxAnomoly && v < anomolyPct)) {
+					anomolyPct = v;
+					anomolySym = k;
 				}
 			})
-			if (maxAnomoly.length > 0) {
-				coinpair = maxAnomoly;
+			if (anomolySym.length > 0) {
+				coinpair = anomolySym;
 				coin = getCoin(coinpair);
 				baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
 				readCoinInfo();
@@ -200,32 +211,32 @@ async function waitUntilPrepump() {
 					await sleep(100);
 				}
 				beep();
-				TAKE_PROFIT_MULTIPLIER = neg ? Math.min((maxPct-1)*PREPUMP_TAKE_PROFIT_MULTIPLIER + 1, PREPUMP_MAX_PROFIT) : PREPUMP_MAX_PROFIT;
-				STOP_LOSS_MULTIPLIER = neg ? Math.max((1/maxPct-1)*PREPUMP_STOP_LOSS_MULTIPLIER + 1, PREPUMP_MAX_LOSS) : PREPUMP_MAX_LOSS;
+				TAKE_PROFIT_MULTIPLIER = !yolobuy ? Math.min((anomolyPct-1)*PREPUMP_TAKE_PROFIT_MULTIPLIER + 1, PREPUMP_MAX_PROFIT) : PREPUMP_MAX_PROFIT;
+				STOP_LOSS_MULTIPLIER = !yolobuy ? Math.max((1/anomolyPct-1)*PREPUMP_STOP_LOSS_MULTIPLIER + 1, PREPUMP_MAX_LOSS) : PREPUMP_MAX_LOSS;
 				opportunity_expired = Date.now() + ANOMOLY_EXPIRE_TIME;
 				pump();
 				while (!SELL_FINISHED) {
 					await sleep(ONE_MIN * 0.5);
 				}
-				prices = {};
+				prices = new Array(PRICE_CHECK_TIME).fill({});
 			}
 		}
-		await sleep(ANOMOLY_CHECK_TIME + parseInt(15000 * Math.random(10)))
+		await sleep(ANOMOLY_CHECK_TIME + parseInt(30000 * Math.random()))
 	}
 }
 
 function parseServerPrices(neg) {
 	anomolies = [];
+	prevPrices = prices.shift();
+	newPrices = {};
 	serverPrices.forEach(v => {
 		// don't touch futures
 		if (!v.symbol.endsWith("USDT") || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
 			return;
 		}
-		if (prices[v.symbol] == null) {
-			prices[v.symbol] = v.askPrice;
-		} else {
-			previousPrice = prices[v.symbol];
-			prices[v.symbol] = v.askPrice;
+		newPrices[v.symbol] = v.askPrice;
+		if (prevPrices[v.symbol] != null) {
+			previousPrice = prevPrices[v.symbol];
 			pctGain = v.askPrice/previousPrice;
 			if (!neg && pctGain > ANOMOLY_PCT) {
 				anomolies.push([v.symbol, pctGain]);
@@ -234,6 +245,7 @@ function parseServerPrices(neg) {
 			}
 		}
 	});
+	prices.push(newPrices);
 	return anomolies;
 }
 
@@ -451,10 +463,9 @@ async function waitUntilTimeToBuy() {
 						return latestPrice;
 					}
 					if (latestPrice < starting_price * STOP_LOSS_MULTIPLIER) {
-						lastBuyReason = "BOTTOMS UP";
-						return latestPrice;
+						return 0;
 					}
- 					if (lookback.length < 30) {
+ 					if (lookback.length < BB_BUY + 60) {
 						break;
 					}
 					if (!ready && isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
