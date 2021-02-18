@@ -31,7 +31,7 @@ const CONSOLE_UPDATE_INTERVAL = 10000;
 var LOOP = true;
 const EPSILON = 0.00069420;
 const ONE_MIN = 60000;
-const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.1;
+const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069;
 const GRAPH_PADDING = '               ';
 const GRAPH_HEIGHT = 20;
 const SHOW_GRAPH = true;
@@ -54,11 +54,12 @@ const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
 var SYMBOLS_PRICE_CHECK_TIME = 40000; // Uniform distribution of avg 1.5x this value
 var ANOMOLY_PCT = 1.03;
-const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
-const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
+const PREPUMP_TAKE_PROFIT_MULTIPLIER = 1;
+const PREPUMP_STOP_LOSS_MULTIPLIER = 0.5;
 const PREPUMP_MAX_PROFIT = 1.1;
 const PREPUMP_MAX_LOSS = 0.97;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
+const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
 
 const RALLY_TIME = 22;
 const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
@@ -221,8 +222,8 @@ async function waitUntilPrepump() {
 				await sleep(100);
 			}
 			beep();
-			opportunity_expired_time = Date.now() + RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME;
-			rally_inc_pct = rally.last/rally.first - 1
+			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
+			rally_inc_pct = rally.gain - 1
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
 			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
 			pump();
@@ -528,13 +529,13 @@ async function waitUntilTimeToBuy() {
 					if (Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY + 5) {
+ 					if (lookback.length < BB_BUY * 1.5) {
 						break;
 					}
-					if (!ready && isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
-						lastBuyReason = "PUMP";
-						return latestPrice;
-					}
+					// if (!ready && isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
+					// 	lastBuyReason = "PUMP";
+					// 	return latestPrice;
+					// }
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up")) {
 						buy_indicator_reached = true;
@@ -545,7 +546,9 @@ async function waitUntilTimeToBuy() {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						}
-						buy_indicator_reached = false;
+						if (meanTrend.includes("Down")) {
+							buy_indicator_reached = false;
+						}
 					}
 					break;
 				default:
