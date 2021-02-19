@@ -114,6 +114,9 @@ serverPrices = [];
 blacklist = [];
 balances = {};
 coinInfo = null;
+manual_buy = false;
+manual_sell = false;
+quit_buy = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -122,22 +125,38 @@ if (!process.argv[2]) {
 	process.exit(1);
 }
 
+// Read Keystrokes
 readline.emitKeypressEvents(process.stdin);
 process.stdin.setRawMode(true);
-
 process.stdin.on('keypress', (str, key) => {
-  if (key.ctrl && key.name === 'c') {
-  	// I should write log data to file for analytics
-    process.exit(); // eslint-disable-line no-process-exit
-  } else {
-  	if (str == "a") {
-  		auto = !auto;
-  	// } else if (str == "h") {
-  	// 	histogram = !histogram;
-  	} else {
-  		last_keypress = str
-  	}
-  }
+	if (key.ctrl && key.name === 'c') {
+		// I should write log data to file for analytics
+		process.exit(0); // eslint-disable-line no-process-exit
+	}
+	switch (str) {
+		case "a":
+			// a is to toggle auto
+			auto = !auto;
+			break;
+		case "b":
+			// b is for buy
+			manual_buy = true;
+			break;
+		case "e":
+			// e to extend the opportunity window
+			opportunity_expired_time += 5 * ONE_MIN;
+			break;
+		case "q":
+			// q to quit early when looking for prepumps
+			quit_buy = true;
+			break;
+		case "s":
+			// s is for sell
+			manual_sell = true;
+			break;
+		default:
+			break;
+	}
 });
 
 coinpair = process.argv[2].toUpperCase();
@@ -324,6 +343,8 @@ async function pump() {
 	console.log("pump");
 	if (BUY_LOCAL_MIN) {
 		latestPrice = await waitUntilTimeToBuy();
+		manual_buy = false;
+		quit_buy = false;
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
@@ -359,6 +380,7 @@ async function pump() {
 async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	waiting = true;
 	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
+	manual_sell = false;
 	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
 	binance.marketSell(coinpair, quantity, (error, response) => {
 		if (error) {
@@ -415,35 +437,22 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_check_time = 0;
 	while (true) {
 		var [mean, stdev] = await tick(true);
+		console.clear();
+		if (manual_buy) {
+			return latestPrice;
+		}
+		if (quit_buy) {
+			return 0;
+		}
 		if(starting_price == 0) {
 			starting_price = latestPrice;
 		}
-		console.clear();
 		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		
-		switch (last_keypress) {
-			case "b":
-				// b is for buy
-				last_keypress = "";
-				lastBuyReason = "input";
-				return latestPrice;
-			case "q":
-				// q to quit early when looking for prepumps
-				last_keypress = "";
-				return 0;
-			case "e":
-				// e to extend the opportunity window
-				last_keypress = "";
-				opportunity_expired_time += 5 * ONE_MIN;
-				break;
-			default:
-				break;
-		}
-
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -553,20 +562,17 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	take_profit_reached = false;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	stop_loss_check = 0;
-	while ((latestPrice > stop_loss || Date.now() < stop_loss_check) && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
+	while (!auto || (latestPrice > stop_loss || Date.now() < stop_loss_check) && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
+		if (manual_sell) {
+			return latestPrice;
+		}
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
-		if (last_keypress == "s") {
-			// Manual override
-			last_keypress = "";
-			lastSellReason = "Sold bcuz manual override";
-			return latestPrice;
-		}
 		if (auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -611,24 +617,24 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					break;
 
 			}
+			// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
+			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
+			if (latestPrice > take_profit && !take_profit_reached) {
+				take_profit_reached = true;
+			} else if (take_profit_reached && latestPrice < take_profit) {
+				return latestPrice;
+			}
+			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
+			if (latestPrice < stop_loss && stop_loss_check == 0) {
+				stop_loss_check = Date.now() + 0.5 * ONE_MIN;
+			} else if (latestPrice > stop_loss) {
+				stop_loss_check = 0;
+			}
 		}
 		if (Date.now() > end && USE_TIMEOUT) {
 			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
 			lastSellReason = "Sold bcuz timeout";
 			return latestPrice;
-		}
-		// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
-		// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
-		if (latestPrice > take_profit && !take_profit_reached) {
-			take_profit_reached = true;
-		} else if (take_profit_reached && latestPrice < take_profit) {
-			return latestPrice;
-		}
-		// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
-		if (latestPrice < stop_loss && stop_loss_check == 0) {
-			stop_loss_check = Date.now() + 0.5 * ONE_MIN;
-		} else if (latestPrice > stop_loss) {
-			stop_loss_check = 0;
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
