@@ -48,6 +48,7 @@ const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
 const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 30 * ONE_MIN;
 const TAKE_PROFIT_REDUCTION_PCT = 0.99;
 const STOP_LOSS_INCREASE_PCT = 1.01;
+const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
 
 // ANALYSIS SETTINS
 var ANALYZE = false;
@@ -625,13 +626,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
 			if (latestPrice > take_profit && !take_profit_reached) {
 				take_profit_reached = true;
-				take_profit_check_time = Date.now() + 0.5 * ONE_MIN;
+				take_profit_check_time = Date.now() + PROFIT_LOSS_CHECK_TIME;
 			} else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
 				return latestPrice;
 			}
 			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
 			if (latestPrice < stop_loss && stop_loss_check == 0) {
-				stop_loss_check = Date.now() + 0.5 * ONE_MIN;
+				stop_loss_check = Date.now() + PROFIT_LOSS_CHECK_TIME;
 			} else if (latestPrice > stop_loss) {
 				stop_loss_check = 0;
 			}
