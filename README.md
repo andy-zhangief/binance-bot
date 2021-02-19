@@ -12,6 +12,8 @@ Before you run the program, make sure to rename `secrettemplate.js` to `secret.j
 
 Feel free to play around with the constants and variables at the top of `main.js`. Make sure to set `MAX_OVERRIDE_BTC` and `MAX_OVERRIDE_USDT` to numbers you are comfortable with testing. 
 
+You should have BNB in your account (around 1/10 the amount you are trading should be fine) to prevent Binance from docking transaction fees and messing up the algorithm
+
 It is best to run several instances of this bot at once to reduce variance. It has protections to make sure the same coin is not purchased by multiple bots.
 
 To run: `node main.js prepump [optional price check timeframe in seconds]` e.g `node main.js prepump 20` or `node main.js prepump` (I find 20 works best but feel free to play around with this value) or `node main.js [COINPAIR]` e.g `node main.js BTCUSDT` (NOT RECOMMENDED).
