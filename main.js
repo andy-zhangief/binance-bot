@@ -355,6 +355,7 @@ async function pump() {
 	if (latestPrice == 0 || blacklist.includes(coin)) {
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
+		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 		return;
 	}
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
