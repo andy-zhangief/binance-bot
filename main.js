@@ -60,7 +60,7 @@ const LOOKBACK_TREND_LIMIT = 500;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
-var BB_SELL = 3;
+var BB_SELL = 5;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
@@ -174,7 +174,7 @@ async function waitUntilPrepump() {
 	while (true) {
 		console.clear();
 		console.log("Waiting for rallies");
-		console.log(`PNL: ${pnl}`);
+		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}`);
 		console.log(`Blacklist: ${blacklist}`);
 		//console.log(prices.slice(-1).pop()["BTCUSDT"]);
 		coinpair = "";
@@ -424,7 +424,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${pnl}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
 			// Manual override, disable auto sell
 			last_keypress = "";
@@ -554,7 +554,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${pnl}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
+		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
