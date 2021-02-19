@@ -2,7 +2,7 @@
 
 # Install:
 
-Figure out how to get node working on your computer. On Mac: install homebrew and run `brew install node` and `brew install npm`
+Figure out how to get node working on your computer. On Mac: install homebrew and run `brew install nodejs` and `brew install npm`
 On Windows: https://www.youtube.com/watch?v=AuCuHvgOeBY
 
 Download code by clicking code dropdown and selecting Download Zip (or use git clone if you know how to do so). Extract zip to destination folder.
