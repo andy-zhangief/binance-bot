@@ -60,7 +60,7 @@ const LOOKBACK_TREND_LIMIT = 500;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
-var BB_SELL = 10;
+var BB_SELL = 3;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
@@ -374,7 +374,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		SELL_TS = 0;
 		SELL_FINISHED = true;
 		lastSell = price * response.executedQty;
-		pnl += parseFloat((lastSell - lastBuy).toPrecision(4));
+		pnl += Math.round((lastSell - lastBuy)*10000)/10000;
 		if (LOOP) {
 			beep();
 			if (BUFFER_AFTER_FAIL) {
@@ -544,9 +544,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	meanRev = false;
 	meanRevStart = 0;
 	outlierReversion = 0;
-	previousTrend = "None"
+	previousTrend = "None";
+	meanTrend = "None";
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
-	while (latestPrice > stop_loss && latestPrice < take_profit) {
+	while (latestPrice > stop_loss && (latestPrice < take_profit && !meanTrend.includes("Up"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
