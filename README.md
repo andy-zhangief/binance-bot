@@ -12,7 +12,9 @@ Before you run the program, make sure to rename `rename_to_secrets_dot_js.js` to
 
 Feel free to play around with the constants and variables at the top of `main.js`. Make sure to set `MAX_OVERRIDE_BTC` and `MAX_OVERRIDE_USDT` to numbers you are comfortable with testing. 
 
-You should have BNB in your account (around 1/10 the amount you are trading should be fine) to prevent Binance from docking transaction fees and messing up the algorithm
+You should have BNB in your account (around 1/10 the amount you are trading should be fine) to prevent Binance from docking transaction fees and messing up the algorithm.
+
+It's best to use USDT as the base currency since if a coin is too little, then one satoshi difference could mean fluctuating up to 1.5%, which will mess up the rally detection algorithm.
 
 It is best to run several instances of this bot at once to reduce variance. It has protections to make sure the same coin is not purchased by multiple bots.
 
