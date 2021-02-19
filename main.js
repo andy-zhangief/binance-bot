@@ -42,9 +42,9 @@ const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high 
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
 const BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
+const OPPORTUNITY_EXPIRE_WINDOW = 12 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
+const BUY_INDICATOR_INC = 0.2 * ONE_MIN;
 
 // ANALYSIS SETTINS
 var ANALYZE = false;
@@ -62,7 +62,7 @@ const LOOKBACK_TREND_LIMIT = 500;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
-var BB_SELL = 10;
+var BB_SELL = 15;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
@@ -70,8 +70,8 @@ var SYMBOLS_PRICE_CHECK_TIME = 13333; // Uniform distribution of avg 1.5x this v
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
-const PRICES_HISTORY_LENGTH = 60;
-const RALLY_TIME = 22;
+const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
+const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.02;
 const RALLY_GREEN_RED_RATIO = 2.5;
@@ -423,7 +423,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText("red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
 			last_keypress = "";
 			lastBuyReason = "input";
@@ -495,12 +495,12 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up")) {
+					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
 						buy_indicator_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && latestPrice < mean) {
+						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
