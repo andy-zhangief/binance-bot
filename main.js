@@ -424,16 +424,26 @@ async function waitUntilTimeToBuy() {
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
-		if (last_keypress == "b") {
-			last_keypress = "";
-			lastBuyReason = "input";
-			return latestPrice;
+		
+		switch (last_keypress) {
+			case "b":
+				// b is for buy
+				last_keypress = "";
+				lastBuyReason = "input";
+				return latestPrice;
+			case "q":
+				// q to quit early when looking for prepumps
+				last_keypress = "";
+				return 0;
+			case "e":
+				// e to extend the opportunity window
+				last_keypress = "";
+				opportunity_expired_time += 5 * ONE_MIN;
+				break;
+			default:
+				break;
 		}
-		if (last_keypress == "q") {
-			// q to quit early when looking for prepumps
-			last_keypress = "";
-			return 0;
-		}
+
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:

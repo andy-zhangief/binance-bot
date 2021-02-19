@@ -20,4 +20,4 @@ To run: `node main.js prepump [optional price check timeframe in seconds]` e.g `
 
 The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press `b` or `s` respectively.
 
-Depth view is not currently supported as the API is too error prone.
+Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
