@@ -18,7 +18,7 @@ const binance = new Binance().options({
 // MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 20;
+const MAX_OVERRIDE_USDT = 30;
 const PCT_BUY = 0.2; // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 var TAKE_PROFIT_MULTIPLIER = 1.05; // Only for single coinpair trading
 var STOP_LOSS_MULTIPLIER = 0.985; // Only for single coinpair trading
@@ -34,8 +34,8 @@ const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069;
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
 const GRAPH_PADDING = '               ';
-const GRAPH_HEIGHT = 20;
-const PLOT_DATA_POINTS = 80; // Play around with this value. It can be as high as POLL_INTERVAL
+const GRAPH_HEIGHT = 32;
+const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as POLL_INTERVAL
 
 // BUY SELL SETTINGS
 var BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
@@ -174,7 +174,7 @@ async function waitUntilPrepump() {
 	while (true) {
 		console.clear();
 		console.log("Waiting for rallies");
-		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 		console.log(`Blacklist: ${blacklist}`);
 		//console.log(prices.slice(-1).pop()["BTCUSDT"]);
 		coinpair = "";
@@ -424,7 +424,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
 			last_keypress = "";
 			lastBuyReason = "input";
@@ -548,7 +548,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
 		if (last_keypress == "s") {
 			// Manual override
 			last_keypress = "";
