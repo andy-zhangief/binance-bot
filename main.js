@@ -14,22 +14,23 @@ const binance = new Binance().options({
   //test: true // comment out when running for real
 });
 
+// DO NOT CHANGE THESE
+const ONE_MIN = 60000;
+const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069;
 
+// TODO: Move const to new file
+// TODO: Create web interface
 // MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
 const MAX_OVERRIDE_USDT = 30;
 const PCT_BUY = 0.2; // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
-var TAKE_PROFIT_MULTIPLIER = 1.05; // Only for single coinpair trading
-var STOP_LOSS_MULTIPLIER = 0.985; // Only for single coinpair trading
-const RUNTIME = 10; //mins
+var TAKE_PROFIT_MULTIPLIER = 1.05; // Only change for single coinpair trading, will be unset if prepump is enabled
+var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, will be unset if prepump is enabled
+const RUNTIME = 10 * ONE_MIN; //mins
 const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
 const POLL_INTERVAL = 720;// roughly 1 second
 var LOOP = true; // false for single buy and quit
-
-// DO NOT CHANGE THESE
-const ONE_MIN = 60000;
-const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069;
 
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
@@ -38,22 +39,23 @@ const GRAPH_HEIGHT = 32;
 const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as POLL_INTERVAL
 
 // BUY SELL SETTINGS
-var BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
-const TIME_BEFORE_NEW_BUY = 1;// mins
+const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
+const TIME_BEFORE_NEW_BUY = ONE_MIN;
 const BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
+const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
 
 // ANALYSIS SETTINS
 var ANALYZE = false;
-const ANALYSIS_TIME = TIME_BEFORE_NEW_BUY * 60;
+const ANALYSIS_TIME = 60; //Seconds
 const ANALYSIS_BUFFER = 5;
 const BUY_SELL_INC = 2;
 const MIN_BUY_SELL_BUF = 10;
 const MAX_BUY_SELL_BUF = 60;
 
 // QUEUE SETTINGS
-var QUEUE_SIZE = 960; // 16m BB
+const QUEUE_SIZE = 960; // 16m
 const MIN_QUEUE_SIZE = 50;
 const LOOKBACK_SIZE = 10000;
 const LOOKBACK_TREND_LIMIT = 500;
@@ -74,7 +76,7 @@ const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.02;
 const RALLY_GREEN_RED_RATIO = 2.5;
 
-// DONT TOUCH THESE
+// DONT TOUCH THESE GLOBALS
 dump_count = 0;
 latestPrice = 0;
 q = [];
@@ -84,7 +86,6 @@ lookback = [];
 means = [];
 mabuy = [];
 masell = [];
-
 fetchMarketDataTime = Date.now();
 lastBuy = 0;
 lastSell = 0;
@@ -96,7 +97,7 @@ BUY_TS = 0;
 SELL_TS = 0;
 auto = false;
 histogram = false;
-last_keypress = ""
+last_keypress = "";
 lastTrend = "";
 lastDepth = {};
 fail_counter = 0;
@@ -106,15 +107,15 @@ pnl = 0;
 clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 opportunity_expired_time = 0;
 SELL_FINISHED = false;
-
 priceFetch = 0;
 prices = [];
 prevDay = {};
 serverPrices = [];
 blacklist = [];
-
 balances = {};
 coinInfo = null;
+
+////////////////////////// CODE STARTS ////////////////////////
 
 if (!process.argv[2]) {
 	console.log("Usage: node main.js COINPAIR/prepump []");
@@ -166,7 +167,6 @@ async function init() {
 
 async function waitUntilPrepump() {
 	LOOP = true;
-	BUY_SELL_STRATEGY = 6;
 	auto = true;
 	prepump = true;
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
@@ -377,7 +377,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		if (LOOP) {
 			beep();
 			if (BUFFER_AFTER_FAIL) {
-				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY * ONE_MIN;
+				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
 			if (prepump) {
 				return;
@@ -414,7 +414,6 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
 	while (true) {
-		var now = new Date(Date.now());
 		var [mean, stdev] = await tick(true);
 		if(starting_price == 0) {
 			starting_price = latestPrice;
@@ -424,7 +423,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires in ${colorText("red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
 			last_keypress = "";
 			lastBuyReason = "input";
@@ -498,15 +497,16 @@ async function waitUntilTimeToBuy() {
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up")) {
 						buy_indicator_reached = true;
-						buy_indicator_check_time = Date.now() + 0.5 * ONE_MIN;
+						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (meanTrend.includes("Up")) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
-						}
-						if (meanTrend.includes("Down")) {
+						} else if (meanTrend.includes("Down")) {
 							buy_indicator_reached = false;
+						} else {
+							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
 					}
 					break;
@@ -529,7 +529,7 @@ async function waitUntilTimeToBuy() {
 
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
-	end = Date.now() + RUNTIME * 60000;
+	end = Date.now() + RUNTIME;
 	if (q.length == 0) {
 		// This should never be the case
 		q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
