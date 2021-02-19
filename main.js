@@ -36,7 +36,7 @@ var LOOP = true; // false for single buy and quit
 const SHOW_GRAPH = true;
 const GRAPH_PADDING = '               ';
 const GRAPH_HEIGHT = 32;
-const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as POLL_INTERVAL
+const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
 
 // BUY SELL SETTINGS
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
@@ -423,7 +423,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires in ${colorText("red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText("red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
 			last_keypress = "";
 			lastBuyReason = "input";
@@ -500,7 +500,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up")) {
+						if (meanTrend.includes("Up") && latestPrice < mean) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -668,8 +668,8 @@ async function tick(buying) {
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
-	stdev = getStandardDeviation(q);
-	mean = average(q);
+	stdev = getStandardDeviation(q.slice(-lookback.length));
+	mean = average(q.slice(-lookback.length));
 	means.push(mean);
 	lowstd.push(mean - 2*stdev);
 	highstd.push(mean + 2*stdev);
