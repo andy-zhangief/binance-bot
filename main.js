@@ -16,7 +16,7 @@ const binance = new Binance().options({
 
 // DO NOT CHANGE THESE
 const ONE_MIN = 60000;
-const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069;
+const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
 
 // TODO: Move const to new file
 // TODO: Create web interface
@@ -42,9 +42,12 @@ const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high 
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
 const BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 12 * ONE_MIN;
+const OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.2 * ONE_MIN;
+const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
+const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 30 * ONE_MIN;
+const TAKE_PROFIT_REDUCTION_PCT = 0.99;
+const STOP_LOSS_INCREASE_PCT = 1.01;
 
 // ANALYSIS SETTINS
 var ANALYZE = false;
@@ -55,14 +58,14 @@ const MIN_BUY_SELL_BUF = 10;
 const MAX_BUY_SELL_BUF = 60;
 
 // QUEUE SETTINGS
-const QUEUE_SIZE = 960; // 16m
+const QUEUE_SIZE = 1200; // 20m
 const MIN_QUEUE_SIZE = 50;
 const LOOKBACK_SIZE = 10000;
 const LOOKBACK_TREND_LIMIT = 500;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
-var BB_SELL = 15;
+var BB_SELL = 10;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
@@ -395,7 +398,8 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		SELL_TS = 0;
 		SELL_FINISHED = true;
 		lastSell = price * response.executedQty;
-		pnl += Math.round((lastSell - lastBuy)*10000)/10000;
+		pnl += lastSell - lastBuy;
+		pnl = Math.round(pnl*10000)/10000;
 		if (LOOP) {
 			beep();
 			if (BUFFER_AFTER_FAIL) {
@@ -451,8 +455,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
-		
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -504,13 +507,10 @@ async function waitUntilTimeToBuy() {
 					}
 					break;
 				case 6:
-					if (latestPrice < starting_price * STOP_LOSS_MULTIPLIER) {
-						return 0;
-					}
 					if (Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY * 1.5) {
+ 					if (lookback.length < BB_BUY) {
 						break;
 					}
 					ready = true;
@@ -532,9 +532,6 @@ async function waitUntilTimeToBuy() {
 				default:
 					break;
 			}
-		}
-		if (ANALYZE && SELL_TS > ANALYSIS_TIME + ANALYSIS_BUFFER) {
-			analyzeDecision();
 		}
 		if (SHOW_GRAPH) {
 			plot(true);
@@ -562,6 +559,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	take_profit_reached = false;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	stop_loss_check = 0;
+	timeout_count = 0;
+	take_profit_check_time = 0;
 	while (!auto || (latestPrice > stop_loss || Date.now() < stop_loss_check) && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
@@ -610,6 +609,11 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 6:
+					if (Math.floor((Date.now() - start) / TIME_TO_INC_LOSS_AND_DEC_PROFIT) > timeout_count) {
+						timeout_count++;
+						take_profit *= TAKE_PROFIT_REDUCTION_PCT;
+						stop_loss *= STOP_LOSS_INCREASE_PCT;
+					}
 					// do nothing for now
 					break;
 				default:
@@ -621,7 +625,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
 			if (latestPrice > take_profit && !take_profit_reached) {
 				take_profit_reached = true;
-			} else if (take_profit_reached && latestPrice < take_profit) {
+				take_profit_check_time = Date.now() + 0.5 * ONE_MIN;
+			} else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
 				return latestPrice;
 			}
 			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
@@ -920,8 +925,9 @@ function plot(buying) {
  //    		height: GRAPH_HEIGHT
  //    	}));
 	// } else {
+	points = [highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)];
 	console.log (
-	asciichart.plot([highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)], 
+	asciichart.plot(points, 
 	{
 		format: formatGraph, 
 		colors: [
@@ -954,12 +960,12 @@ function colorText(color, str) {
 }
 
 function msToTime(duration) {
-  var seconds = Math.floor((duration / 1000) % 60),
-    minutes = Math.floor((duration / (1000 * 60)) % 60),
-
-  seconds = (seconds < 10) ? "0" + seconds : seconds;
-
-  return minutes + ":" + seconds;
+	if (duration < 0) {
+		return 0;
+	}
+	var seconds = Math.floor((duration / 1000) % 60), minutes = Math.floor((duration / (1000 * 60))),
+	seconds = (seconds < 10) ? "0" + seconds : seconds;
+	return minutes + ":" + seconds;
 }
 
 function beep() {
