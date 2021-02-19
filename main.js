@@ -542,7 +542,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	meanTrend = "None";
 	take_profit_reached = false;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
-	while (latestPrice > stop_loss && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
+	stop_loss_check = 0;
+	while ((latestPrice > stop_loss || Date.now() < stop_loss_check) && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
@@ -608,11 +609,16 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		}
 		// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
 		// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
-		if (latestPrice > take_profit) {
+		if (latestPrice > take_profit && !take_profit_reached) {
 			take_profit_reached = true;
-		}
-		if (take_profit_reached && latestPrice < take_profit) {
+		} else if (take_profit_reached && latestPrice < take_profit) {
 			return latestPrice;
+		}
+		// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
+		if (latestPrice < stop_loss && stop_loss_check == 0) {
+			stop_loss_check = Date.now() + 0.5 * ONE_MIN;
+		} else if (latestPrice > stop_loss) {
+			stop_loss_check = 0;
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
