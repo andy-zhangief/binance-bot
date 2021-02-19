@@ -8,7 +8,7 @@ On Windows: https://www.youtube.com/watch?v=AuCuHvgOeBY
 Download code by clicking code dropdown and selecting Download Zip (or use git clone if you know how to do so). Extract zip to destination folder.
 
 # Use:
-Before you run the program, make sure to rename `secrettemplate.js` to `secrets.js` and add your API key and secret from Binance. To do so, log into binance and go to https://www.binance.com/en/my/settings/api-management and click `Create API`.
+Before you run the program, make sure to rename `rename_to_secrets_dot_js.js` to `secrets.js` and add your API key and secret from Binance. To do so, log into binance and go to https://www.binance.com/en/my/settings/api-management and click `Create API`.
 
 Feel free to play around with the constants and variables at the top of `main.js`. Make sure to set `MAX_OVERRIDE_BTC` and `MAX_OVERRIDE_USDT` to numbers you are comfortable with testing. 
 
