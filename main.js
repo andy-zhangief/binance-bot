@@ -62,7 +62,7 @@ const LOOKBACK_TREND_LIMIT = 500;
 const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
-var BB_SELL = 5;
+var BB_SELL = 10;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
@@ -540,8 +540,9 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	outlierReversion = 0;
 	previousTrend = "None";
 	meanTrend = "None";
+	take_profit_reached = false;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
-	while (latestPrice > stop_loss && (latestPrice < take_profit || meanTrend.includes("Up"))) {
+	while (latestPrice > stop_loss && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
@@ -603,6 +604,14 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		if (Date.now() > end && USE_TIMEOUT) {
 			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
 			lastSellReason = "Sold bcuz timeout";
+			return latestPrice;
+		}
+		// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
+		// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
+		if (latestPrice > take_profit) {
+			take_profit_reached = true;
+		}
+		if (take_profit_reached && latestPrice < take_profit) {
 			return latestPrice;
 		}
 		if (SHOW_GRAPH) {
