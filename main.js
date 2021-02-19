@@ -41,7 +41,7 @@ const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high 
 // BUY SELL SETTINGS
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
-const BUFFER_AFTER_FAIL = true;
+var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
@@ -192,6 +192,7 @@ async function waitUntilPrepump() {
 	LOOP = true;
 	auto = true;
 	prepump = true;
+	BUFFER_AFTER_FAIL = true;
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
@@ -199,7 +200,6 @@ async function waitUntilPrepump() {
 		console.log("Waiting for rallies");
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 		console.log(`Blacklist: ${blacklist}`);
-		//console.log(prices.slice(-1).pop()["BTCUSDT"]);
 		coinpair = "";
 		if (Date.now() > clearBlacklistTime) {
 			blacklist = [];
@@ -215,7 +215,7 @@ async function waitUntilPrepump() {
 				rally = null;
 			}
 		}
-		if (rally != null) {
+		if (rally != null && Date.now() > dont_buy_before) {
 			coinpair = rally.sym;
 			coin = getCoin(coinpair);
 			baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
