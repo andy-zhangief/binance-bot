@@ -279,6 +279,7 @@ async function fetchAllPricesAsyncIfReady() {
 	if (Date.now() < fetchMarketDataTime) {
 		return false;
 	}
+	getBalanceAsync();
 	fetchAllPricesAsync();
 	return true;
 }
@@ -327,7 +328,7 @@ async function pump() {
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
-	if (latestPrice == 0) {
+	if (latestPrice == 0 || blacklist.includes(coin)) {
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		return;
