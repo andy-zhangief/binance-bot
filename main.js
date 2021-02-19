@@ -178,11 +178,11 @@ async function waitUntilPrepump() {
 		console.log(`Blacklist: ${blacklist}`);
 		//console.log(prices.slice(-1).pop()["BTCUSDT"]);
 		coinpair = "";
-		await getBalanceAsync();
 		if (Date.now() > clearBlacklistTime) {
 			blacklist = [];
 			clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 		}
+		await getBalanceAsync();
 		rallies = await waitUntilFetchPricesAsync();
 		var now = new Date(Date.now());
 		rally = null;
@@ -205,7 +205,7 @@ async function waitUntilPrepump() {
 			}
 			beep();
 			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
-			rally_inc_pct = rally.gain - 1
+			rally_inc_pct = rally.gain - 1;
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
 			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
 			pump();
@@ -217,7 +217,6 @@ async function waitUntilPrepump() {
 }
 
 function parseServerPrices() {
-	anomolies = [];
 	prevPrices = prices.shift();
 	newPrices = {};
 	serverPrices.forEach(v => {
@@ -401,6 +400,7 @@ async function waitUntilTimeToBuy() {
 		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
 		masell = new Array(QUEUE_SIZE).fill(q[0]);
 	}
+	//TODO: clean this up
 	count = 0;
 	meanRev = false;
 	meanBounce = false;
@@ -426,7 +426,6 @@ async function waitUntilTimeToBuy() {
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
 		console.log(`PNL: ${colorText(pnl >= 0) ? "green" : "red", pnl}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (last_keypress == "b") {
-			// Manual override, disable auto sell
 			last_keypress = "";
 			lastBuyReason = "input";
 			return latestPrice;
@@ -436,8 +435,7 @@ async function waitUntilTimeToBuy() {
 			last_keypress = "";
 			return 0;
 		}
-		if (localMin)
-		if (BUY_LOCAL_MIN && Date.now() > dont_buy_before && auto) {
+		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
 					if (lookback.length < QUEUE_SIZE) {
@@ -497,10 +495,6 @@ async function waitUntilTimeToBuy() {
  					if (lookback.length < BB_BUY * 1.5) {
 						break;
 					}
-					// if (!ready && isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT, 0)) {
-					// 	lastBuyReason = "PUMP";
-					// 	return latestPrice;
-					// }
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up")) {
 						buy_indicator_reached = true;
@@ -547,7 +541,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	previousTrend = "None";
 	meanTrend = "None";
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
-	while (latestPrice > stop_loss && (latestPrice < take_profit && !meanTrend.includes("Up"))) {
+	while (latestPrice > stop_loss && (latestPrice < take_profit || meanTrend.includes("Up"))) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
@@ -728,6 +722,7 @@ async function getBidAsk(coinpair) {
 
 }
 
+//TODO: reimplement this + the related functions, fail_counter was set to 1.
 async function getMarketDepth(coinpair) {
 	try {
 		depth = await binance.depth(coinpair);
@@ -735,7 +730,7 @@ async function getMarketDepth(coinpair) {
 		fail_counter = 0;
 		return depth;
 	} catch (e) {
-		if (++fail_counter == 1) {
+		if (++fail_counter == 100) {
 			console.log(e);
 			console.log(`Too many fails fetching market depth of ${coinpair},`);
 			process.exit(1);
@@ -758,7 +753,6 @@ function parseDepth(depth) {
 	});
 }
 
-// HELPER FUNCTIONS
 function isUptrend(q2, buffer, stdev = 0) {
 	if (stdev == 0) {
 		stdev = getLastStdev();
