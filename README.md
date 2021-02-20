@@ -33,6 +33,8 @@ Run with option `--detect` to only detect rallying coins.
 If you would like to contribute:
 
 BTC: 3AWjCiHXhQGTC4aFJHnTGhhANhpyxiYdMz
+
 ETH: 0xA57F4C5966F5aBcd26A43AeB16F341B7437Fb587
+
 DOGE: DMzKeW3uQwC9m1hfmhqdkmV5Y6D57q7sn5
 
