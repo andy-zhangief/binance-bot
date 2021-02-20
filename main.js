@@ -133,7 +133,7 @@ quit_buy = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
-if (!process.argv[2] || process.argv[2] !== "prepump" || (!process.argv[2].endsWith("USDT") && !process.argv[2].endsWith("BTC"))) {
+if (!process.argv[2] || !(process.argv[2].trim() == "prepump" || process.argv[2].endsWith("USDT") || process.argv[2].endsWith("BTC"))) {
 	console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
 	console.log("Optional parameters:");
 	console.log("--base=BTC|USDT to select base trading currency");
