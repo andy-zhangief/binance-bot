@@ -4,6 +4,7 @@ const {
 } = require("./secrets.js")
 
 const fs = require('fs');
+const tty = require('tty');
 const asciichart = require ('asciichart')
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
@@ -18,6 +19,8 @@ const binance = new Binance().options({
 const ONE_MIN = 60000;
 const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
 const MIN_COIN_VAL_IN_BTC = 0.00000200;
+const TERMINAL_HEIGHT_BUFFER = 4;
+const TERMINAL_WIDTH_BUFFER = 17;
 
 // TODO: Move const to new file
 // TODO: Create web interface
@@ -36,9 +39,11 @@ var DEFAULT_BASE_CURRENCY = "USDT";
 
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
+const AUTO_ADJUST_GRAPH = true;
 const GRAPH_PADDING = '               ';
-const GRAPH_HEIGHT = 32;
-const PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
+var GRAPH_HEIGHT = 32;
+var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
+
 
 // BUY SELL SETTINGS
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
@@ -78,7 +83,7 @@ const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
 const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_MAX_DELTA = 1.03; // don't go for something thats too steep
+const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.01;
 const RALLY_GREEN_RED_RATIO = 2.5;
 
@@ -127,7 +132,7 @@ quit_buy = false;
 ////////////////////////// CODE STARTS ////////////////////////
 
 if (!process.argv[2]) {
-	console.log("Usage: node main.js COINPAIR/prepump []");
+	console.log("Usage: node main.js prepump poll_interval_in_ms --base=BTC|USDT or node main.js YOUR_COIN_PAIR (Not recommended)");
 	process.exit(1);
 }
 
@@ -290,7 +295,8 @@ function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		if ((red == 0 || green/red > RALLY_GREEN_RED_RATIO) && gain < RALLY_MAX_DELTA && gain > RALLY_MIN_DELTA && last > first) {
+		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().pop();
+		if ((red == 0 || green/red > RALLY_GREEN_RED_RATIO) && gain < RALLY_MAX_DELTA && gain > RALLY_MIN_DELTA && last > first && largest_historical > first && largest_historical < last) {
 			rallies.push({
 				min: min,
 				max: max,
@@ -926,21 +932,10 @@ function formatGraph(x, i) {
 }
 
 function plot(buying) {
-	//ma7.slice(-PLOT_DATA_POINTS), ma15.slice(-PLOT_DATA_POINTS),
-	// var [histogramGreen, histogramRed, firstGreen, firstRed] = getHistogramData();
-	// if (histogram) {	
-	// 	console.log(
-	// 	asciichart.plot([histogramRed, histogramGreen], 
-	// 	{
-	// 		format: formatGraph, 
-	// 		colors: [
-	// 	        asciichart.red,
-	// 	        asciichart.green,
-	// 	    ],
- //    		padding: GRAPH_PADDING, 
- //    		height: GRAPH_HEIGHT
- //    	}));
-	// } else {
+	if (AUTO_ADJUST_GRAPH) {
+		GRAPH_HEIGHT = process.stdout.rows - TERMINAL_HEIGHT_BUFFER;
+		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
+	}
 	points = [highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)];
 	console.log (
 	asciichart.plot(points, 
@@ -956,7 +951,6 @@ function plot(buying) {
 		padding: GRAPH_PADDING, 
 		height: GRAPH_HEIGHT
 	}));
-	// }
 }
 
 function getHistogramData() {
