@@ -79,7 +79,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -97,7 +97,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -115,7 +115,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -133,7 +133,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -187,7 +187,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -259,7 +259,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -277,7 +277,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -295,7 +295,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -313,7 +313,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -367,7 +367,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -403,7 +403,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -475,7 +475,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -511,7 +511,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -547,7 +547,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -583,7 +583,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -619,7 +619,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -655,7 +655,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -691,7 +691,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -727,7 +727,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -745,7 +745,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -781,7 +781,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -817,7 +817,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -853,7 +853,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -889,7 +889,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -925,7 +925,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -961,7 +961,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -997,7 +997,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1051,7 +1051,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1105,7 +1105,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1141,7 +1141,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1195,7 +1195,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1249,7 +1249,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1285,7 +1285,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1357,7 +1357,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1393,7 +1393,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1429,7 +1429,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1465,7 +1465,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1483,7 +1483,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1519,7 +1519,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1555,7 +1555,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1591,7 +1591,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1609,7 +1609,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1645,7 +1645,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1681,7 +1681,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1717,7 +1717,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1753,7 +1753,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1789,7 +1789,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1807,7 +1807,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1819,11 +1819,11 @@
     },
     "POWRBNB": {
         "status": "BREAK",
-        "minPrice": "0.00001000",
+        "minPrice": "0.00000100",
         "maxPrice": "1000.00000000",
-        "tickSize": "0.00001000",
-        "stepSize": "0.10000000",
-        "minQty": "0.10000000",
+        "tickSize": "0.00000100",
+        "stepSize": "1.00000000",
+        "minQty": "1.00000000",
         "maxQty": "900000.00000000",
         "minNotional": "0.10000000",
         "orderTypes": [
@@ -1861,7 +1861,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1897,7 +1897,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1915,7 +1915,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1951,7 +1951,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -1969,7 +1969,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2005,7 +2005,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2041,7 +2041,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2059,7 +2059,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2095,7 +2095,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2113,7 +2113,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2131,7 +2131,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2167,7 +2167,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2203,7 +2203,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2221,7 +2221,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2239,7 +2239,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2311,7 +2311,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2329,7 +2329,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2340,7 +2340,7 @@
         "icebergAllowed": true
     },
     "BCPTBTC": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
@@ -2365,7 +2365,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2383,7 +2383,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2419,7 +2419,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2455,7 +2455,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2491,7 +2491,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2527,7 +2527,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2563,7 +2563,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2599,7 +2599,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2635,7 +2635,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2653,7 +2653,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2689,7 +2689,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2707,7 +2707,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2743,7 +2743,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2761,7 +2761,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2797,7 +2797,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2815,7 +2815,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2851,7 +2851,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2887,7 +2887,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2923,7 +2923,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2959,7 +2959,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -2995,7 +2995,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3013,7 +3013,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3049,7 +3049,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3067,7 +3067,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3103,7 +3103,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3139,7 +3139,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3168,14 +3168,14 @@
         "icebergAllowed": true
     },
     "CMTETH": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3193,7 +3193,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3229,7 +3229,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3247,7 +3247,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3283,7 +3283,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3301,7 +3301,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3337,7 +3337,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3373,7 +3373,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3391,7 +3391,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3409,7 +3409,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3445,7 +3445,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3456,7 +3456,7 @@
         "icebergAllowed": true
     },
     "TNBBTC": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
@@ -3481,7 +3481,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3517,7 +3517,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3535,7 +3535,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3571,7 +3571,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3589,7 +3589,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3625,7 +3625,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3643,7 +3643,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3679,7 +3679,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3697,7 +3697,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3733,7 +3733,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3769,7 +3769,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3787,7 +3787,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3823,7 +3823,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3841,7 +3841,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3877,7 +3877,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3895,7 +3895,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3913,7 +3913,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3949,7 +3949,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -3985,7 +3985,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4021,7 +4021,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4039,7 +4039,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4075,7 +4075,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4111,7 +4111,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4129,7 +4129,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4165,7 +4165,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4183,7 +4183,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4194,7 +4194,7 @@
         "icebergAllowed": true
     },
     "VIBEBTC": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
@@ -4219,7 +4219,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4255,7 +4255,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4273,7 +4273,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4309,7 +4309,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4345,7 +4345,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4363,7 +4363,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4399,7 +4399,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4435,7 +4435,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4471,7 +4471,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4489,7 +4489,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4525,7 +4525,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4543,7 +4543,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4579,7 +4579,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4597,7 +4597,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4633,7 +4633,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4651,7 +4651,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4687,7 +4687,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4705,7 +4705,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4741,7 +4741,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4759,7 +4759,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4795,7 +4795,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4813,7 +4813,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4849,7 +4849,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4867,7 +4867,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4903,7 +4903,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4921,7 +4921,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4957,7 +4957,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -4975,7 +4975,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5011,7 +5011,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5029,7 +5029,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5047,7 +5047,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5101,7 +5101,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5119,7 +5119,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5155,7 +5155,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5173,7 +5173,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5209,7 +5209,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5245,7 +5245,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5281,7 +5281,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5299,7 +5299,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5317,7 +5317,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5353,7 +5353,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5389,7 +5389,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5425,7 +5425,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5461,7 +5461,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5515,7 +5515,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5533,7 +5533,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5587,7 +5587,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5605,7 +5605,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5641,7 +5641,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5659,7 +5659,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5731,7 +5731,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5749,7 +5749,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5785,7 +5785,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5803,7 +5803,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5839,7 +5839,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5857,7 +5857,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5893,7 +5893,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5929,7 +5929,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5947,7 +5947,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -5983,7 +5983,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6001,7 +6001,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6019,7 +6019,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6109,7 +6109,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6145,7 +6145,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6181,7 +6181,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6199,7 +6199,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6235,7 +6235,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6253,7 +6253,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6271,7 +6271,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6307,7 +6307,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6343,7 +6343,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6397,7 +6397,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6451,7 +6451,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6469,7 +6469,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6505,7 +6505,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6559,7 +6559,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6595,7 +6595,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6613,7 +6613,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6649,7 +6649,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6667,7 +6667,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6703,7 +6703,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6739,7 +6739,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6757,7 +6757,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6811,7 +6811,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6847,7 +6847,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6883,7 +6883,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6919,7 +6919,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6955,7 +6955,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -6991,7 +6991,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7009,7 +7009,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7045,7 +7045,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7081,7 +7081,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7117,7 +7117,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7153,7 +7153,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7189,7 +7189,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7225,7 +7225,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7243,7 +7243,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7279,7 +7279,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -7495,7 +7495,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8215,7 +8215,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8413,7 +8413,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8467,7 +8467,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8521,7 +8521,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8557,7 +8557,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8629,7 +8629,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8665,7 +8665,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8755,7 +8755,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8791,7 +8791,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8917,7 +8917,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -8971,7 +8971,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9061,7 +9061,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9115,7 +9115,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9331,7 +9331,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9421,7 +9421,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9529,7 +9529,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9637,7 +9637,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -9817,7 +9817,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10033,7 +10033,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10123,7 +10123,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10213,7 +10213,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10321,7 +10321,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10465,7 +10465,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10537,7 +10537,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10645,7 +10645,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10717,7 +10717,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -10789,7 +10789,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11041,7 +11041,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11095,7 +11095,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11203,7 +11203,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11257,7 +11257,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11365,7 +11365,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11419,7 +11419,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11581,7 +11581,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11635,7 +11635,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11682,7 +11682,7 @@
         "icebergAllowed": true
     },
     "BUSDNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.01000000",
         "maxPrice": "100000.00000000",
         "tickSize": "0.01000000",
@@ -11700,7 +11700,7 @@
         "icebergAllowed": true
     },
     "BNBNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00000000",
         "maxPrice": "1000000.00000000",
         "tickSize": "1.00000000",
@@ -11743,7 +11743,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11923,7 +11923,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -11977,7 +11977,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12175,7 +12175,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12283,7 +12283,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12337,7 +12337,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12625,7 +12625,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12679,7 +12679,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12877,7 +12877,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -12931,7 +12931,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -13093,7 +13093,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -13489,7 +13489,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -13561,7 +13561,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -13615,7 +13615,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -13831,7 +13831,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14101,7 +14101,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14116,8 +14116,8 @@
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
-        "stepSize": "1.00000000",
-        "minQty": "1.00000000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
         "maxQty": "90000000.00000000",
         "minNotional": "0.00010000",
         "orderTypes": [
@@ -14220,7 +14220,7 @@
         "icebergAllowed": true
     },
     "BUSDIDRT": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00",
         "maxPrice": "1000000.00",
         "tickSize": "1.00",
@@ -14281,7 +14281,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14317,7 +14317,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14371,7 +14371,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14419,8 +14419,8 @@
     },
     "BTCUPUSDT": {
         "status": "TRADING",
-        "minPrice": "12.22600000",
-        "maxPrice": "232.28700000",
+        "minPrice": "18.10100000",
+        "maxPrice": "343.91500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -14437,8 +14437,8 @@
     },
     "BTCDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.01190000",
-        "maxPrice": "0.22600000",
+        "minPrice": "0.00620000",
+        "maxPrice": "0.11640000",
         "tickSize": "0.00010000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -14605,7 +14605,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14659,7 +14659,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14695,7 +14695,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -14839,7 +14839,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15001,7 +15001,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15109,7 +15109,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15343,7 +15343,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15397,7 +15397,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15445,8 +15445,8 @@
     },
     "ETHUPUSDT": {
         "status": "TRADING",
-        "minPrice": "15.82200000",
-        "maxPrice": "300.61000000",
+        "minPrice": "19.60700000",
+        "maxPrice": "372.52900000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15463,12 +15463,12 @@
     },
     "ETHDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00095000",
-        "maxPrice": "0.01791000",
+        "minPrice": "0.00063000",
+        "maxPrice": "0.01190000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -15481,8 +15481,8 @@
     },
     "ADAUPUSDT": {
         "status": "TRADING",
-        "minPrice": "5.29700000",
-        "maxPrice": "100.62600000",
+        "minPrice": "9.00700000",
+        "maxPrice": "171.12100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15499,12 +15499,12 @@
     },
     "ADADOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00064000",
-        "maxPrice": "0.01204000",
+        "minPrice": "0.00017000",
+        "maxPrice": "0.00305000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -15517,8 +15517,8 @@
     },
     "LINKUPUSDT": {
         "status": "TRADING",
-        "minPrice": "1.81100000",
-        "maxPrice": "34.39300000",
+        "minPrice": "2.85000000",
+        "maxPrice": "54.14700000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15535,12 +15535,12 @@
     },
     "LINKDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00023600",
-        "maxPrice": "0.00448000",
+        "minPrice": "0.00008500",
+        "maxPrice": "0.00160100",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -15559,7 +15559,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15703,7 +15703,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15757,7 +15757,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15829,7 +15829,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -15901,7 +15901,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16153,7 +16153,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16201,8 +16201,8 @@
     },
     "BNBUPUSDT": {
         "status": "TRADING",
-        "minPrice": "9.84600000",
-        "maxPrice": "187.06700000",
+        "minPrice": "79.79900000",
+        "maxPrice": "1516.16400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16219,9 +16219,9 @@
     },
     "BNBDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00970000",
-        "maxPrice": "0.18390000",
-        "tickSize": "0.00010000",
+        "minPrice": "0.00027000",
+        "maxPrice": "0.00494000",
+        "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "920000.00000000",
@@ -16237,8 +16237,8 @@
     },
     "XTZUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.08900000",
-        "maxPrice": "1.68600000",
+        "minPrice": "0.12700000",
+        "maxPrice": "2.40000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16255,8 +16255,8 @@
     },
     "XTZDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.06200000",
-        "maxPrice": "1.15900000",
+        "minPrice": "0.01500000",
+        "maxPrice": "0.27000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16279,7 +16279,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16326,7 +16326,7 @@
         "icebergAllowed": true
     },
     "USDTBKRW": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.01000000",
         "maxPrice": "1000000.00000000",
         "tickSize": "0.01000000",
@@ -16459,7 +16459,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16513,7 +16513,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "10000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16783,7 +16783,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16855,7 +16855,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16927,7 +16927,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -16999,7 +16999,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17071,7 +17071,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17143,7 +17143,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17215,7 +17215,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17287,7 +17287,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17359,7 +17359,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17374,8 +17374,8 @@
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
-        "stepSize": "1.00000000",
-        "minQty": "1.00000000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
         "maxQty": "90000000.00000000",
         "minNotional": "0.00010000",
         "orderTypes": [
@@ -17467,7 +17467,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17539,7 +17539,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17611,7 +17611,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17683,7 +17683,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17748,7 +17748,7 @@
         "icebergAllowed": true
     },
     "ETHNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00000000",
         "maxPrice": "100000000.00000000",
         "tickSize": "1.00000000",
@@ -17827,7 +17827,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17917,7 +17917,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "100000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -17935,7 +17935,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18007,7 +18007,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "10000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18079,7 +18079,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18151,7 +18151,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18223,7 +18223,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18361,8 +18361,8 @@
     },
     "EOSUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.36700000",
-        "maxPrice": "6.95600000",
+        "minPrice": "0.63400000",
+        "maxPrice": "12.03800000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18379,8 +18379,8 @@
     },
     "EOSDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.10600000",
-        "maxPrice": "1.99500000",
+        "minPrice": "0.02100000",
+        "maxPrice": "0.38700000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18397,8 +18397,8 @@
     },
     "TRXUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.31300000",
-        "maxPrice": "5.94100000",
+        "minPrice": "0.60400000",
+        "maxPrice": "11.47500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18415,8 +18415,8 @@
     },
     "TRXDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.07100000",
-        "maxPrice": "1.33300000",
+        "minPrice": "0.01500000",
+        "maxPrice": "0.27400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18433,8 +18433,8 @@
     },
     "XRPUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.39800000",
-        "maxPrice": "7.55100000",
+        "minPrice": "0.49100000",
+        "maxPrice": "9.31300000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18451,12 +18451,12 @@
     },
     "XRPDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00041000",
-        "maxPrice": "0.00777600",
+        "minPrice": "0.00018700",
+        "maxPrice": "0.00354800",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -18469,8 +18469,8 @@
     },
     "DOTUPUSDT": {
         "status": "TRADING",
-        "minPrice": "7.85200000",
-        "maxPrice": "149.17700000",
+        "minPrice": "17.66300000",
+        "maxPrice": "335.59500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18487,12 +18487,12 @@
     },
     "DOTDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00059000",
-        "maxPrice": "0.01114000",
+        "minPrice": "0.00010000",
+        "maxPrice": "0.00187000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -18583,7 +18583,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18655,7 +18655,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18691,7 +18691,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18757,8 +18757,8 @@
     },
     "LTCUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.87500000",
-        "maxPrice": "54.62000000",
+        "minPrice": "6.03600000",
+        "maxPrice": "114.66800000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18775,8 +18775,8 @@
     },
     "LTCDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00340000",
-        "maxPrice": "0.06454000",
+        "minPrice": "0.00089000",
+        "maxPrice": "0.01690000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18835,7 +18835,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -18871,7 +18871,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19051,7 +19051,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19159,7 +19159,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19177,7 +19177,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19231,7 +19231,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19321,7 +19321,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19339,7 +19339,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19375,7 +19375,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19387,8 +19387,8 @@
     },
     "UNIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.78700000",
-        "maxPrice": "52.93500000",
+        "minPrice": "2.82200000",
+        "maxPrice": "53.60300000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19405,12 +19405,12 @@
     },
     "UNIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00192000",
-        "maxPrice": "0.03635000",
+        "minPrice": "0.00092000",
+        "maxPrice": "0.01731000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -19458,7 +19458,7 @@
         "icebergAllowed": true
     },
     "TRXNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.01000000",
         "maxPrice": "100000.00000000",
         "tickSize": "0.01000000",
@@ -19537,7 +19537,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19573,7 +19573,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19591,7 +19591,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19609,7 +19609,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19717,7 +19717,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19789,7 +19789,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19861,7 +19861,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -19927,8 +19927,8 @@
     },
     "SXPUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.18270000",
-        "maxPrice": "3.47070000",
+        "minPrice": "0.25060000",
+        "maxPrice": "4.76120000",
         "tickSize": "0.00010000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19945,12 +19945,12 @@
     },
     "SXPDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00002000",
-        "maxPrice": "0.00036300",
+        "minPrice": "0.00000300",
+        "maxPrice": "0.00004400",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -20005,7 +20005,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20071,8 +20071,8 @@
     },
     "FILUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.47100000",
-        "maxPrice": "8.93400000",
+        "minPrice": "0.86200000",
+        "maxPrice": "16.37000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20089,8 +20089,8 @@
     },
     "FILDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.17800000",
-        "maxPrice": "3.36400000",
+        "minPrice": "0.03500000",
+        "maxPrice": "0.66100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20107,8 +20107,8 @@
     },
     "YFIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.71500000",
-        "maxPrice": "13.58300000",
+        "minPrice": "1.29300000",
+        "maxPrice": "24.55000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20125,12 +20125,12 @@
     },
     "YFIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00229000",
-        "maxPrice": "0.04343000",
+        "minPrice": "0.00058000",
+        "maxPrice": "0.01094000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "999999999.99999999",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -20149,7 +20149,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20293,7 +20293,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20365,7 +20365,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20581,7 +20581,7 @@
         "stepSize": "0.00100000",
         "minQty": "0.00100000",
         "maxQty": "900000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20617,7 +20617,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20689,7 +20689,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20815,7 +20815,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "100000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20869,7 +20869,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20898,7 +20898,7 @@
         "icebergAllowed": true
     },
     "LTCNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00000000",
         "maxPrice": "100000000.00000000",
         "tickSize": "1.00000000",
@@ -20923,7 +20923,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -20977,7 +20977,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21067,7 +21067,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21139,7 +21139,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21337,7 +21337,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21367,8 +21367,8 @@
     },
     "AAVEUPUSDT": {
         "status": "TRADING",
-        "minPrice": "30.80600000",
-        "maxPrice": "585.30600000",
+        "minPrice": "16.22100000",
+        "maxPrice": "308.18400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21385,12 +21385,12 @@
     },
     "AAVEDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00008000",
-        "maxPrice": "0.00138000",
-        "tickSize": "0.00001000",
+        "minPrice": "0.00008200",
+        "maxPrice": "0.00155500",
+        "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -21409,7 +21409,7 @@
         "stepSize": "0.10000000",
         "minQty": "0.10000000",
         "maxQty": "9000000.00000000",
-        "minNotional": "0.10000000",
+        "minNotional": "0.05000000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21456,7 +21456,7 @@
         "icebergAllowed": true
     },
     "XRPNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.01000000",
         "maxPrice": "100000.00000000",
         "tickSize": "0.01000000",
@@ -21600,14 +21600,14 @@
         "icebergAllowed": true
     },
     "SUSDETH": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00000010",
         "maxPrice": "100000.00000000",
         "tickSize": "0.00000010",
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21643,7 +21643,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "100000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21697,7 +21697,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21715,7 +21715,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21745,8 +21745,8 @@
     },
     "SUSHIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "7.48700000",
-        "maxPrice": "142.23400000",
+        "minPrice": "6.63500000",
+        "maxPrice": "126.05400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21763,12 +21763,12 @@
     },
     "SUSHIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00009400",
-        "maxPrice": "0.00177400",
+        "minPrice": "0.00005000",
+        "maxPrice": "0.00094100",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
-        "maxQty": "920000.00000000",
+        "maxQty": "99999999.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",
@@ -21781,8 +21781,8 @@
     },
     "XLMUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.10700000",
-        "maxPrice": "40.01800000",
+        "minPrice": "2.96800000",
+        "maxPrice": "56.37600000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21799,9 +21799,9 @@
     },
     "XLMDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00290000",
-        "maxPrice": "0.05430000",
-        "tickSize": "0.00010000",
+        "minPrice": "0.00100000",
+        "maxPrice": "0.01890000",
+        "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "920000.00000000",
@@ -21834,7 +21834,7 @@
         "icebergAllowed": true
     },
     "LINKNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00000000",
         "maxPrice": "100000000.00000000",
         "tickSize": "1.00000000",
@@ -21913,7 +21913,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -21967,7 +21967,7 @@
         "stepSize": "1.00000000",
         "minQty": "1.00000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -22579,7 +22579,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -22831,7 +22831,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -22867,7 +22867,7 @@
         "stepSize": "0.00010000",
         "minQty": "0.00010000",
         "maxQty": "100000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -22950,7 +22950,7 @@
         "icebergAllowed": true
     },
     "DOTNGN": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "1.00000000",
         "maxPrice": "100000000.00000000",
         "tickSize": "1.00000000",
@@ -22975,7 +22975,7 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "90000000.00000000",
-        "minNotional": "0.01000000",
+        "minNotional": "0.00500000",
         "orderTypes": [
             "LIMIT",
             "LIMIT_MAKER",
@@ -22990,8 +22990,8 @@
         "minPrice": "0.00000001",
         "maxPrice": "1000.00000000",
         "tickSize": "0.00000001",
-        "stepSize": "1.00000000",
-        "minQty": "1.00000000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
         "maxQty": "90000000.00000000",
         "minNotional": "0.00010000",
         "orderTypes": [
@@ -23112,6 +23112,222 @@
         "icebergAllowed": true
     },
     "SFPUSDT": {
+        "status": "TRADING",
+        "minPrice": "0.00010000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00010000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "DOGEGBP": {
+        "status": "TRADING",
+        "minPrice": "0.00001000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00001000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
+        "maxQty": "9000000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "DOTTRY": {
+        "status": "TRADING",
+        "minPrice": "0.01000000",
+        "maxPrice": "100000.00000000",
+        "tickSize": "0.01000000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "FXSBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000010",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000010",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "FXSBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "DODOBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000001",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000001",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "DODOBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "DODOUSDT": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "FRONTBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000001",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000001",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "EASYBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000010",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000010",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "CAKEBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000010",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000010",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "CAKEUSDT": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "BAKEBUSD": {
         "status": "TRADING",
         "minPrice": "0.00010000",
         "maxPrice": "1000.00000000",

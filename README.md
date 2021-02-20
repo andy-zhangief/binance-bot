@@ -24,4 +24,6 @@ The bot starts in auto mode, which means it will automatically buy and sell when
 
 Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
 
+Run with option `--base=BTC` for BTC. e.g node main.js prepump --base=BTC
+
 ![alt text](https://i.imgur.com/L0sbmi7.png)

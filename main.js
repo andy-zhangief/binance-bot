@@ -17,6 +17,7 @@ const binance = new Binance().options({
 // DO NOT CHANGE THESE
 const ONE_MIN = 60000;
 const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
+const MIN_COIN_VAL_IN_BTC = 0.00000200;
 
 // TODO: Move const to new file
 // TODO: Create web interface
@@ -31,6 +32,7 @@ const RUNTIME = 10 * ONE_MIN; //mins
 const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
 const POLL_INTERVAL = 720;// roughly 1 second
 var LOOP = true; // false for single buy and quit
+var DEFAULT_BASE_CURRENCY = "USDT";
 
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
@@ -45,7 +47,7 @@ var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
-const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 30 * ONE_MIN;
+const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 90 * ONE_MIN;
 const TAKE_PROFIT_REDUCTION_PCT = 0.99;
 const STOP_LOSS_INCREASE_PCT = 1.01;
 const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
@@ -189,11 +191,13 @@ async function init() {
 }
 
 async function waitUntilPrepump() {
+	//await getExchangeInfo(coinpair);
 	LOOP = true;
 	auto = true;
 	prepump = true;
 	BUFFER_AFTER_FAIL = true;
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
+	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
 		console.clear();
@@ -244,7 +248,10 @@ function parseServerPrices() {
 	newPrices = {};
 	serverPrices.forEach(v => {
 		// don't touch futures
-		if (!v.symbol.endsWith("USDT") || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
+		if (!v.symbol.endsWith(DEFAULT_BASE_CURRENCY) || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
+			return;
+		}
+		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
 			return;
 		}
 		newPrices[v.symbol] = v.askPrice;
@@ -264,6 +271,9 @@ function detectCoinRallies() {
 		max = last;
 		for (i = 1; i < RALLY_TIME; i++) {
 			current = lastX[i][sym];
+			if (!current) {
+				break;
+			}
 			if (current >= last) {
 				green++;
 			} else {
@@ -272,6 +282,9 @@ function detectCoinRallies() {
 			min = Math.min(min, current);
 			max = Math.max(max, current);
 			last = current;
+		}
+		if (green + red != RALLY_TIME - 1) {
+			break;
 		}
 		gain = max/min;
 		first = lastX[0][sym];
@@ -447,7 +460,7 @@ async function waitUntilTimeToBuy() {
 		if (manual_buy) {
 			return latestPrice;
 		}
-		if (quit_buy) {
+		if (quit_buy || blacklist.includes(coin)) {
 			return 0;
 		}
 		if(starting_price == 0) {
