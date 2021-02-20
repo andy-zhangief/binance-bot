@@ -781,7 +781,10 @@ async function getLatestPriceAsync(coinpair) {
 
 async function getBalanceAsync() {
 	binance.balance((error, b) => {
-		if ( error ) return console.error(error);
+		if ( error ) {
+			console.log(error);
+			return;
+		}
 		balances = b;
 		Object.keys(b).forEach(key => {
 			if (key != "USDT" && parseFloat(b[key].available) > 0 && !blacklist.includes(key)) {
