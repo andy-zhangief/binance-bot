@@ -108,6 +108,7 @@ BUY_TS = 0;
 SELL_TS = 0;
 auto = false;
 histogram = false;
+detection_mode = false;
 last_keypress = "";
 lastTrend = "";
 lastDepth = {};
@@ -205,6 +206,7 @@ async function waitUntilPrepump() {
 	coinpair = "";
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
+	detection_mode = process.argv.includes("--detect") ? true : false;
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
 		console.clear();
@@ -219,6 +221,11 @@ async function waitUntilPrepump() {
 		await getBalanceAsync();
 		rallies = await waitUntilFetchPricesAsync();
 		if (Date.now() < gathering_data_time) {
+			continue;
+		}
+		if (detection_mode) {
+			console.log(`Rallies: ${rallies}`);
+			await sleep(SYMBOLS_PRICE_CHECK_TIME);
 			continue;
 		}
 		rally = null;
@@ -535,8 +542,11 @@ async function waitUntilTimeToBuy() {
 					if (Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY) {
+ 					if (lookback.length < BB_BUY * 1.5) {
 						break;
+					}
+					if (!ready && meanTrend.includes("Up")) {
+						//return latestPrice;
 					}
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean - stdev) {
@@ -747,10 +757,11 @@ async function getLatestPriceAsync(coinpair) {
 		fail_counter = 0;
 		return ticker[coinpair];
 	} catch (e) {
-		if (++fail_counter == 100) {
+		if (++fail_counter >= 100) {
 			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
 			process.exit(1);
 		}
+		await sleep(100);
 		return await getLatestPriceAsync(coinpair);
 	}
 }
@@ -773,10 +784,11 @@ async function getBidAsk(coinpair) {
 		fail_counter = 0;
 		return bidask
 	} catch (e) {
-		if (++fail_counter == 100) {
+		if (++fail_counter >= 100) {
 			console.log(`Too many fails fetching bid/ask prices of ${coinpair}, exiting`);
 			process.exit(1);
 		}
+		await sleep(100);
 		return await getBidAsk(coinpair);
 	}
 	
@@ -791,7 +803,7 @@ async function getMarketDepth(coinpair) {
 		fail_counter = 0;
 		return depth;
 	} catch (e) {
-		if (++fail_counter == 100) {
+		if (++fail_counter >= 100) {
 			console.log(e);
 			console.log(`Too many fails fetching market depth of ${coinpair},`);
 			process.exit(1);
