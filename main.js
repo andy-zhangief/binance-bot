@@ -305,8 +305,17 @@ function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().slice(-RALLY_TIME/2).shift();
-		if ((red == 0 || green/red > RALLY_GREEN_RED_RATIO) && gain < RALLY_MAX_DELTA && gain > RALLY_MIN_DELTA && last > first && largest_historical > first && largest_historical < last) {
+		sorted_historical_vals = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort();
+		high_median = sorted_historical_vals.slice(-RALLY_TIME/2).shift();
+		low_median = sorted_historical_vals.slice(0, RALLY_TIME).pop();
+		if ((red == 0
+			|| green/red > RALLY_GREEN_RED_RATIO)
+			&& gain < RALLY_MAX_DELTA
+			&& gain > RALLY_MIN_DELTA
+			&& last > first
+			&& high_median > first
+			&& high_median < last
+			&& low_median < first) {
 			rallies.push({
 				min: min,
 				max: max,
