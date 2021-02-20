@@ -85,7 +85,7 @@ const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.01;
-const RALLY_GREEN_RED_RATIO = 2.5;
+const RALLY_GREEN_RED_RATIO = 2;
 
 // DONT TOUCH THESE GLOBALS
 dump_count = 0;
@@ -305,7 +305,7 @@ function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().slice(-5).shift();
+		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().slice(-RALLY_TIME/2).shift();
 		if ((red == 0 || green/red > RALLY_GREEN_RED_RATIO) && gain < RALLY_MAX_DELTA && gain > RALLY_MIN_DELTA && last > first && largest_historical > first && largest_historical < last) {
 			rallies.push({
 				min: min,
@@ -382,7 +382,7 @@ async function pump() {
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
-	if (latestPrice == 0 || blacklist.includes(coin)) {
+	if (prepump && (latestPrice == 0 || blacklist.includes(coin))) {
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
