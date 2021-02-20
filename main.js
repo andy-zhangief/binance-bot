@@ -202,6 +202,7 @@ async function waitUntilPrepump() {
 	while (true) {
 		console.clear();
 		console.log("Waiting for rallies");
+		console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 		console.log(`Blacklist: ${blacklist}`);
 		coinpair = "";
