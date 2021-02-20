@@ -224,7 +224,7 @@ async function waitUntilPrepump() {
 			continue;
 		}
 		if (detection_mode) {
-			console.log(`Rallies: ${JSON.stringify(rallies)}`);
+			console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			await sleep(SYMBOLS_PRICE_CHECK_TIME);
 			continue;
 		}
