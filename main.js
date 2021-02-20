@@ -116,6 +116,7 @@ dont_buy_before = 0;
 prepump = false;
 pnl = 0;
 clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
+gathering_data_time = Date.now() + 5 * ONE_MIN;
 opportunity_expired_time = 0;
 SELL_FINISHED = false;
 priceFetch = 0;
@@ -217,7 +218,9 @@ async function waitUntilPrepump() {
 		}
 		await getBalanceAsync();
 		rallies = await waitUntilFetchPricesAsync();
-		var now = new Date(Date.now());
+		if (Date.now() < gathering_data_time) {
+			continue;
+		}
 		rally = null;
 		while (rallies.length) {
 			rally = rallies.shift();
