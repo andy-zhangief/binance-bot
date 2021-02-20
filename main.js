@@ -415,7 +415,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		SELL_FINISHED = true;
 		lastSell = price * response.executedQty;
 		pnl += lastSell - lastBuy;
-		pnl = Math.round(pnl*10000)/10000;
+		pnl = Math.round(pnl*10000000)/100000000;
 		if (LOOP) {
 			beep();
 			if (BUFFER_AFTER_FAIL) {
