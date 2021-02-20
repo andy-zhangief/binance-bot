@@ -305,7 +305,7 @@ function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().pop();
+		largest_historical = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort().slice(-5).shift();
 		if ((red == 0 || green/red > RALLY_GREEN_RED_RATIO) && gain < RALLY_MAX_DELTA && gain > RALLY_MIN_DELTA && last > first && largest_historical > first && largest_historical < last) {
 			rallies.push({
 				min: min,
@@ -549,7 +549,7 @@ async function waitUntilTimeToBuy() {
 						//return latestPrice;
 					}
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean - stdev) {
+					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
 						buy_indicator_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
