@@ -117,8 +117,8 @@ dont_buy_before = 0;
 prepump = false;
 pnl = 0;
 clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
-gathering_data_time = Date.now() + 5 * ONE_MIN;
 opportunity_expired_time = 0;
+prices_data_points_count = 0;
 SELL_FINISHED = false;
 priceFetch = 0;
 prices = [];
@@ -210,7 +210,7 @@ async function waitUntilPrepump() {
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
 		console.clear();
-		console.log("Waiting for rallies");
+		console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
 		console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 		console.log(`Blacklist: ${blacklist}`);
@@ -220,7 +220,7 @@ async function waitUntilPrepump() {
 		}
 		await getBalanceAsync();
 		rallies = await waitUntilFetchPricesAsync();
-		if (Date.now() < gathering_data_time) {
+		if (++prices_data_points_count < PRICES_HISTORY_LENGTH) {
 			continue;
 		}
 		if (detection_mode) {
@@ -306,6 +306,7 @@ function detectCoinRallies() {
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
 		sorted_historical_vals = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort();
+		highest = sorted_historical_vals.slice(-1).pop();
 		high_median = sorted_historical_vals.slice(-RALLY_TIME/2).shift();
 		low_median = sorted_historical_vals.slice(0, RALLY_TIME).pop();
 		if ((red == 0
@@ -314,7 +315,7 @@ function detectCoinRallies() {
 			&& gain > RALLY_MIN_DELTA
 			&& last > first
 			&& high_median > first
-			&& high_median < last
+			&& highest < last
 			&& low_median < first) {
 			rallies.push({
 				min: min,
