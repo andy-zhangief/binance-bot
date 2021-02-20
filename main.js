@@ -530,7 +530,7 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
+					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean - stdev) {
 						buy_indicator_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
