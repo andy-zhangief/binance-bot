@@ -133,8 +133,11 @@ quit_buy = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
-if (!process.argv[2]) {
-	console.log("Usage: node main.js prepump poll_interval_in_ms --base=BTC|USDT or node main.js YOUR_COIN_PAIR (Not recommended)");
+if (!process.argv[2] || process.argv[2] !== "prepump" || (!process.argv[2].endsWith("USDT") && !process.argv[2].endsWith("BTC"))) {
+	console.log("Usage: node main.js prepump poll_interval_in_s or node main.js YOUR_COIN_PAIR (Not recommended)");
+	console.log("Optional parameters:");
+	console.log("--base=BTC|USDT to select base trading currency");
+	console.log("--detect to only detect rallying coins");
 	process.exit(1);
 }
 
@@ -776,7 +779,7 @@ async function getLatestPriceAsync(coinpair) {
 	}
 }
 
-async function getBalanceAsync(coin) {
+async function getBalanceAsync() {
 	binance.balance((error, b) => {
 		if ( error ) return console.error(error);
 		balances = b;
