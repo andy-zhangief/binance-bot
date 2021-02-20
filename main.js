@@ -5,7 +5,7 @@ const {
 
 const fs = require('fs');
 const tty = require('tty');
-const asciichart = require ('asciichart')
+const asciichart = require ('asciichart');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
@@ -224,7 +224,7 @@ async function waitUntilPrepump() {
 			continue;
 		}
 		if (detection_mode) {
-			console.log(`Rallies: ${rallies}`);
+			console.log(`Rallies: ${JSON.stringify(rallies)}`);
 			await sleep(SYMBOLS_PRICE_CHECK_TIME);
 			continue;
 		}
