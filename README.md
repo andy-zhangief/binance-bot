@@ -29,3 +29,10 @@ Run with option `--base=BTC` for BTC. e.g node main prepump --base=BTC
 Run with option `--detect` to only detect rallying coins.
 
 ![alt text](https://i.imgur.com/L0sbmi7.png)
+
+If you would like to contribute:
+
+BTC: 3AWjCiHXhQGTC4aFJHnTGhhANhpyxiYdMz
+ETH: 0xA57F4C5966F5aBcd26A43AeB16F341B7437Fb587
+DOGE: DMzKeW3uQwC9m1hfmhqdkmV5Y6D57q7sn5
+
