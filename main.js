@@ -46,7 +46,7 @@ const TIME_BEFORE_NEW_BUY = ONE_MIN;
 var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.5 * ONE_MIN;
+const BUY_INDICATOR_INC = 0.75 * ONE_MIN;
 const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 90 * ONE_MIN;
 const TAKE_PROFIT_REDUCTION_PCT = 0.99;
 const STOP_LOSS_INCREASE_PCT = 1.01;
@@ -196,6 +196,7 @@ async function waitUntilPrepump() {
 	auto = true;
 	prepump = true;
 	BUFFER_AFTER_FAIL = true;
+	coinpair = "";
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
@@ -205,7 +206,6 @@ async function waitUntilPrepump() {
 		console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 		console.log(`Blacklist: ${blacklist}`);
-		coinpair = "";
 		if (Date.now() > clearBlacklistTime) {
 			blacklist = [];
 			clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
@@ -216,7 +216,7 @@ async function waitUntilPrepump() {
 		rally = null;
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym))) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym) {
 				rally = null;
 			}
 		}
@@ -275,7 +275,7 @@ function detectCoinRallies() {
 			if (!current) {
 				break;
 			}
-			if (current >= last) {
+			if (current > last) {
 				green++;
 			} else {
 				red++;
