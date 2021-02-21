@@ -618,7 +618,7 @@ async function waitUntilTimeToBuy() {
 					}
 					break;
 				case 6:
-					if (Date.now() > opportunity_expired_time) {
+					if (prepump && Date.now() > opportunity_expired_time) {
 						return 0;
 					}
  					if (lookback.length < BB_BUY * 1.5) {
