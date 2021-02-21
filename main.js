@@ -175,6 +175,9 @@ process.stdin.on('keypress', (str, key) => {
 			// s is for sell
 			manual_sell = true;
 			break;
+		// case "p":
+		// 	console.log(getPricesForCoin("BTCUSDT", 10));
+		// 	break;
 		default:
 			break;
 	}
@@ -286,6 +289,15 @@ function parseServerPrices() {
 	});
 	prices.push(newPrices);
 	return detectCoinRallies();
+}
+
+function getPricesForCoin(sym, timeframe) {
+	recent_prices = prices.slice(-timeframe);
+	res = [];
+	for (i = 0; i < timeframe; i++) {
+		res.push(recent_prices[i][sym]);
+	}
+	return res;
 }
 
 function detectCoinRallies() {
@@ -669,7 +681,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + (take_profit/buy_price - 1) * 100 + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + (1-stop_loss/buy_price) * 100 + "%)")}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + (take_profit/buy_price - 1).toFixed(3) * 100 + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + (1-stop_loss/buy_price).toFixed(3) * 100 + "%)")}`);
 		if (auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
