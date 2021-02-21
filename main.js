@@ -9,11 +9,6 @@ const asciichart = require ('asciichart');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
-const binance = new Binance().options({
-  APIKEY: API_KEY,
-  APISECRET: API_SECRET,
-  //test: true // comment out when running for real
-});
 
 // DO NOT CHANGE THESE
 const ONE_MIN = 60000;
@@ -21,6 +16,13 @@ const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
 const MIN_COIN_VAL_IN_BTC = 0.00000200;
 const TERMINAL_HEIGHT_BUFFER = 4;
 const TERMINAL_WIDTH_BUFFER = 17;
+const binance = new Binance().options({
+  APIKEY: API_KEY,
+  APISECRET: API_SECRET,
+  recvWindow: ONE_MIN
+  //test: true // comment out when running for real
+});
+
 
 // TODO: Move const to new file
 // TODO: Create web interface
@@ -36,6 +38,7 @@ const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
 const POLL_INTERVAL = 720;// roughly 1 second
 var LOOP = true; // false for single buy and quit
 var DEFAULT_BASE_CURRENCY = "USDT";
+const FETCH_BALANCE_INTERVAL = 5 * ONE_MIN;
 
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
@@ -85,7 +88,7 @@ const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.01;
-const RALLY_GREEN_RED_RATIO = 2;
+const RALLY_GREEN_RED_RATIO = 2.5;
 
 // DONT TOUCH THESE GLOBALS
 dump_count = 0;
@@ -118,6 +121,7 @@ prepump = false;
 pnl = 0;
 clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 opportunity_expired_time = 0;
+fetch_balance_time = 0;
 prices_data_points_count = 0;
 SELL_FINISHED = false;
 priceFetch = 0;
@@ -182,12 +186,13 @@ async function init() {
 		console.log("testing");
 	}
 	await binance.useServerTime();
+	loopGetBalanceAsync();
 	if (coinpair == "PREPUMP") {
 		waitUntilPrepump();
 		return;
 		// will not execute any more code after this
 	}
-	await getBalanceAsync();
+	
 	coin = getCoin(coinpair);
 	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
 
@@ -221,20 +226,21 @@ async function waitUntilPrepump() {
 			blacklist = [];
 			clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 		}
-		await getBalanceAsync();
 		rallies = await waitUntilFetchPricesAsync();
-		if (++prices_data_points_count < PRICES_HISTORY_LENGTH) {
-			continue;
-		}
 		if (detection_mode) {
 			console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			await sleep(SYMBOLS_PRICE_CHECK_TIME);
 			continue;
 		}
+
+		if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
+			continue;
+		}
+		
 		rally = null;
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.close) {
 				rally = null;
 			}
 		}
@@ -312,6 +318,45 @@ function detectCoinRallies() {
 		highest = sorted_historical_vals.slice(-1).pop();
 		high_median = sorted_historical_vals.slice(-RALLY_TIME/2).shift();
 		low_median = sorted_historical_vals.slice(0, RALLY_TIME).pop();
+		
+		// Testing
+		test_count = 0;
+		fail_reasons = ""
+		if(red == 0 || green/red > RALLY_GREEN_RED_RATIO) {
+			test_count++;
+		} else {
+			fail_reasons += "ratio ";
+		}
+		if (gain < RALLY_MAX_DELTA) {
+			test_count++;
+		} else {
+			fail_reasons += "maxDelta ";
+		}
+		if (gain > RALLY_MIN_DELTA) {
+			test_count++;
+		} else {
+			fail_reasons += "minDelta ";
+		}
+		if (last > first) {
+			test_count++;
+		} else {
+			fail_reasons += "last<first ";
+		}
+		if (high_median > first) {
+			test_count++;
+		} else {
+			fail_reasons += "highMed<first ";
+		}
+		if (low_median < first) {
+			test_count++;
+		} else {
+			fail_reasons += "lowMed>first ";
+		}
+		if (highest < last) {
+			test_count++;
+		} else {
+			fail_reasons += "highest>last ";
+		}
 		if ((red == 0
 			|| green/red > RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
@@ -328,6 +373,8 @@ function detectCoinRallies() {
 				first: first,
 				last: last
 			});
+		} else if (test_count > 5) {
+			rallies.push({sym: sym, close: "but no cigar", fail: fail_reasons});
 		}
 	}
 	return rallies.sort((a, b) => a.gain - b.gain);
@@ -344,7 +391,6 @@ async function fetchAllPricesAsyncIfReady() {
 	if (Date.now() < fetchMarketDataTime) {
 		return false;
 	}
-	getBalanceAsync();
 	fetchAllPricesAsync();
 	return true;
 }
@@ -355,6 +401,7 @@ async function fetchAllPricesAsync() {
 	while (priceFetch < 1) {
 		await sleep(100);
 	}
+	++prices_data_points_count;
 	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME + Math.floor(SYMBOLS_PRICE_CHECK_TIME * Math.random());
 	return parseServerPrices();
 }
@@ -559,7 +606,7 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					if (!ready && meanTrend.includes("Up")) {
-						//return latestPrice;
+						return latestPrice;
 					}
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
@@ -779,18 +826,36 @@ async function getLatestPriceAsync(coinpair) {
 	}
 }
 
-async function getBalanceAsync() {
-	binance.balance((error, b) => {
-		if ( error ) {
-			console.log(error);
-			return;
-		}
-		balances = b;
-		Object.keys(b).forEach(key => {
-			if (key != "USDT" && parseFloat(b[key].available) > 0 && !blacklist.includes(key)) {
-				blacklist.push(key)
+// never run this with await
+async function loopGetBalanceAsync() {
+	return new Promise(async (resolve) => {
+		while (true) {
+			// This is sketchy but I have no idea how to do proper concurrency
+			while (Date.now() < fetch_balance_time) {
+				await sleep(ONE_MIN);
 			}
-		})
+			fetching_balance = true;
+			binance.balance((error, b) => {
+				if ( error ) {
+					fetching_balance = false;
+					fetch_balance_time = Date.now() + ONE_MIN;
+					console.log(error);
+					return;
+				}
+				balances = b;
+				Object.keys(b).forEach(key => {
+					if (key != "USDT" && parseFloat(b[key].available) > 0 && !blacklist.includes(key)) {
+						blacklist.push(key)
+					}
+				})
+				fetching_balance = false;
+				fetch_balance_time = Date.now() + FETCH_BALANCE_INTERVAL;
+			});
+			while (fetching_balance) {
+				await sleep(ONE_MIN);
+			}
+		}
+		
 	});
 }
 
