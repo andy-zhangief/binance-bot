@@ -30,7 +30,9 @@ const binance = new Binance().options({
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
 const MAX_OVERRIDE_USDT = 50;
-const PCT_BUY = 0.2; // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
+// BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
+// DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
+const PCT_BUY = 0.01;
 var TAKE_PROFIT_MULTIPLIER = 1.05; // Only change for single coinpair trading, will be unset if prepump is enabled
 var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, will be unset if prepump is enabled
 const RUNTIME = 10 * ONE_MIN; //mins
