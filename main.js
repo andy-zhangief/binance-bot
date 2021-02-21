@@ -295,9 +295,9 @@ function getPricesForCoin(sym, timeframe) {
 	recent_prices = prices.slice(-timeframe);
 	res = [];
 	for (i = 0; i < timeframe; i++) {
-		res.push(recent_prices[i][sym]);
+		res.push(parseFloat(recent_prices[i][sym]));
 	}
-	return res;
+	return res.filter(a => a);
 }
 
 function detectCoinRallies() {
