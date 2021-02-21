@@ -30,6 +30,8 @@ Run with option `--detect` to only detect rallying coins.
 
 ![alt text](https://i.imgur.com/L0sbmi7.png)
 
+Feel free to reach out to me @yingjee#7954 on discord and I'd be happy to help you.
+
 If you would like to contribute:
 
 BTC: 3AWjCiHXhQGTC4aFJHnTGhhANhpyxiYdMz
