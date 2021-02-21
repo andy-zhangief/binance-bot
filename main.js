@@ -129,6 +129,7 @@ prices = [];
 prevDay = {};
 serverPrices = [];
 blacklist = [];
+override_blacklist = false;
 balances = {};
 coinInfo = null;
 manual_buy = false;
@@ -201,6 +202,7 @@ async function init() {
 	while (coinInfo == null) {
 		await sleep(100);
 	}
+	override_blacklist = true;
 	//console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
 }
@@ -210,6 +212,7 @@ async function waitUntilPrepump() {
 	LOOP = true;
 	auto = true;
 	prepump = true;
+	override_blacklist = false;
 	BUFFER_AFTER_FAIL = true;
 	coinpair = "";
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
@@ -537,7 +540,7 @@ async function waitUntilTimeToBuy() {
 		if (manual_buy) {
 			return latestPrice;
 		}
-		if (quit_buy || blacklist.includes(coin)) {
+		if (quit_buy || (!override_blacklist && blacklist.includes(coin))) {
 			return 0;
 		}
 		if(starting_price == 0) {
