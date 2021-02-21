@@ -18,13 +18,13 @@ It's best to use USDT as the base currency since if a coin is too little, then o
 
 It is best to run several instances of this bot at once to reduce variance. It has protections to make sure the same coin is not purchased by multiple bots.
 
-To run: `node main prepump [optional price check timeframe in seconds]` e.g `node main prepump 20` or `node main prepump` (I find 20 works best but feel free to play around with this value) or `node main [COINPAIR]` e.g `node main BTCUSDT` (NOT RECOMMENDED).
+To run: `node main prepump [optional price check timeframe in seconds]` e.g `node main prepump` or `node main prepump 20` (free to play around with this value) or `node main [COINPAIR]` e.g `node main BTCUSDT` (NOT RECOMMENDED).
 
 The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press `b` or `s` respectively.
 
 Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
 
-Run with option `--base=BTC` for BTC. e.g node main prepump --base=BTC
+Run with option `--base=BTC` for BTC. e.g `node main prepump --base=BTC`
 
 Run with option `--detect` to only detect rallying coins.
 

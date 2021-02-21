@@ -82,7 +82,7 @@ var BB_SELL = 10;
 var BB_BUY = 30;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 13333; // Uniform distribution of avg 1.5x this value
+var SYMBOLS_PRICE_CHECK_TIME = 40000; // Uniform distribution of avg 1.5x this value
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
