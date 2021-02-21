@@ -709,10 +709,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				case 6:
 					if (Math.floor((Date.now() - start) / TIME_TO_INC_LOSS_AND_DEC_PROFIT) > timeout_count) {
 						timeout_count++;
-						take_profit *= TAKE_PROFIT_REDUCTION_PCT;
-						take_profit = Math.round(take_profit * 10000)/10000;
-						stop_loss *= STOP_LOSS_INCREASE_PCT;
-						stop_loss = Math.round(stop_loss * 10000)/10000;
+						take_profit = Math.round(take_profit * TAKE_PROFIT_REDUCTION_PCT * 10000)/10000;
+						stop_loss = Math.round(stop_loss * STOP_LOSS_INCREASE_PCT * 10000)/10000;
 					}
 					// do nothing for now
 					break;
