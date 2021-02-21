@@ -86,7 +86,7 @@ const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
 const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_MAX_DELTA = 1.05; // don't go for something thats too steep
+const RALLY_MAX_DELTA = 1.03; // don't go for something thats too steep
 const RALLY_MIN_DELTA = 1.01;
 const RALLY_GREEN_RED_RATIO = 2.5;
 
