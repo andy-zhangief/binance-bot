@@ -36,7 +36,7 @@ var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, wi
 const RUNTIME = 10 * ONE_MIN; //mins
 const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
 const POLL_INTERVAL = 720;// roughly 1 second
-var LOOP = true; // false for single buy and quit
+var LOOP = false; // false for single buy and quit
 var DEFAULT_BASE_CURRENCY = "USDT";
 const FETCH_BALANCE_INTERVAL = 5 * ONE_MIN;
 
@@ -457,7 +457,11 @@ async function pump() {
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
-	if (prepump && (latestPrice == 0 || blacklist.includes(coin))) {
+	if ((prepump && blacklist.includes(coin)) || latestPrice == 0) {
+		if (!LOOP) {
+			console.log("Quitting");
+			process.exit(0);
+		} 
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
