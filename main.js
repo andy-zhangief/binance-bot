@@ -198,10 +198,10 @@ async function init() {
 
 	//await getExchangeInfo(coinpair);
 	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
-	while (Object.keys(balances).length == 0 || coinInfo == null) {
+	while (coinInfo == null) {
 		await sleep(100);
 	}
-	console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
+	//console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
 }
 
