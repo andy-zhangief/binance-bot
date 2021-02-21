@@ -669,7 +669,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit)}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss)}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + (take_profit/buy_price - 1) * 100 + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + (1-stop_loss/buy_price) * 100 + "%)")}`);
 		if (auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -710,7 +710,9 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (Math.floor((Date.now() - start) / TIME_TO_INC_LOSS_AND_DEC_PROFIT) > timeout_count) {
 						timeout_count++;
 						take_profit *= TAKE_PROFIT_REDUCTION_PCT;
+						take_profit = Math.round(take_profit * 10000)/10000;
 						stop_loss *= STOP_LOSS_INCREASE_PCT;
+						stop_loss = Math.round(stop_loss * 10000)/10000;
 					}
 					// do nothing for now
 					break;
