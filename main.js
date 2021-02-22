@@ -4,6 +4,7 @@ const {
 } = require("./secrets.js")
 
 const fs = require('fs');
+const _ = require('lodash');
 const tty = require('tty');
 const asciichart = require ('asciichart');
 const SocketModel = require('socket-model');
@@ -59,7 +60,7 @@ var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 5 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
-const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 90 * ONE_MIN;
+const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 30 * ONE_MIN;
 const TAKE_PROFIT_REDUCTION_PCT = 1;
 const STOP_LOSS_INCREASE_PCT = 1.01;
 const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
@@ -225,7 +226,12 @@ function initClientServer() {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
 				if (message.blacklist) {
-					blacklist = message.blacklist;
+					if (Math.abs(message.blacklist.length - blacklist.length) == 1) {
+						blacklist = message.blacklist;
+					} else {
+						blacklist.push(...message.blacklist);
+						blacklist = _.uniq(blacklist);
+					}
 					synchronizeBlacklist();
 				}
 				
@@ -247,9 +253,9 @@ function initClientServer() {
 					}
 				}
 				if (message.blacklist) {
-					if (message.blacklist != blacklist) {
+					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
 						blacklist = message.blacklist;
-						if (blacklist.includes(coin)) {
+						if (blacklist.includes(coin) && auto) {
 							quit_buy = true;
 						}
 					}
@@ -547,12 +553,12 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
+		blacklist = blacklist.filter(i => i !== coin);
+		synchronizeBlacklist();
 		if (!LOOP) {
 			console.log("Quitting");
 			process.exit(0);
 		}
-		blacklist = blacklist.filter(i => i !== coin);
-		synchronizeBlacklist();
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
@@ -769,7 +775,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + (take_profit/buy_price - 1).toFixed(3) * 100 + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + (1-stop_loss/buy_price).toFixed(3) * 100 + "%)")}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (-" + ((1-stop_loss/buy_price) * 100).toFixed(3) + "%)")}`);
 		if (auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
