@@ -29,7 +29,7 @@ const binance = new Binance().options({
 // MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 50;
+const MAX_OVERRIDE_USDT = 20;
 // BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
 // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 const PCT_BUY = 0.01;
@@ -54,11 +54,11 @@ var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
 var BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
+const OPPORTUNITY_EXPIRE_WINDOW = 5 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.75 * ONE_MIN;
 const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 90 * ONE_MIN;
-const TAKE_PROFIT_REDUCTION_PCT = 0.99;
+const TAKE_PROFIT_REDUCTION_PCT = 1;
 const STOP_LOSS_INCREASE_PCT = 1.01;
 const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
 
@@ -79,18 +79,18 @@ const MIN_TREND_STDEV_MULTIPLIER = 0.2;
 const OUTLIER_STDEV_MULTIPLIER = 0.5;
 const OUTLIER_INC = 5;
 var BB_SELL = 10;
-var BB_BUY = 30;
+var BB_BUY = 20;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 40000; // Uniform distribution of avg 1.5x this value
+var SYMBOLS_PRICE_CHECK_TIME = 10 /*<- Change this --- Not this ->*/ * 1000 * 2 / 3;
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
-const PRICES_HISTORY_LENGTH = 60; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_TIME = 22; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_MAX_DELTA = 1.03; // don't go for something thats too steep
-const RALLY_MIN_DELTA = 1.01;
-const RALLY_GREEN_RED_RATIO = 2.5;
+const PRICES_HISTORY_LENGTH = 180; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
+const RALLY_TIME = 18; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
+var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
+var RALLY_MIN_DELTA = 1.01;
+const RALLY_GREEN_RED_RATIO = 1.5;
 
 // DONT TOUCH THESE GLOBALS
 dump_count = 0;
@@ -137,6 +137,7 @@ coinInfo = null;
 manual_buy = false;
 manual_sell = false;
 quit_buy = false;
+yolo = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -219,24 +220,28 @@ async function waitUntilPrepump() {
 	prepump = true;
 	override_blacklist = false;
 	BUFFER_AFTER_FAIL = true;
+	// Testing only, change this!!!!
+	yolo = process.argv.includes("--yolo");
 	coinpair = "";
-	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME
+	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
-		console.clear();
-		console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
-		console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
-		console.log(`Blacklist: ${blacklist}`);
+		if (!detection_mode) {
+			console.clear();
+			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
+			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
+			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
+			console.log(`Blacklist: ${blacklist}`);
+		}
 		if (Date.now() > clearBlacklistTime) {
 			blacklist = [];
 			clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 		}
 		rallies = await waitUntilFetchPricesAsync();
 		if (detection_mode) {
-			console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
+			rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			await sleep(SYMBOLS_PRICE_CHECK_TIME);
 			continue;
 		}
@@ -248,7 +253,7 @@ async function waitUntilPrepump() {
 		rally = null;
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.close) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
 				rally = null;
 			}
 		}
@@ -311,6 +316,7 @@ function detectCoinRallies() {
 		last = lastX[0][sym];
 		min = last;
 		max = last;
+		last_x_values = [last];
 		for (i = 1; i < RALLY_TIME; i++) {
 			current = lastX[i][sym];
 			if (!current) {
@@ -324,6 +330,7 @@ function detectCoinRallies() {
 			min = Math.min(min, current);
 			max = Math.max(max, current);
 			last = current;
+			last_x_values.push(current)
 		}
 		if (green + red != RALLY_TIME - 1) {
 			break;
@@ -331,67 +338,83 @@ function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		sorted_historical_vals = prices.slice(0, -RALLY_TIME).map(x => x[sym]).filter(x => x).sort();
-		highest = sorted_historical_vals.slice(-1).pop();
-		high_median = sorted_historical_vals.slice(-RALLY_TIME/2).shift();
-		low_median = sorted_historical_vals.slice(0, RALLY_TIME).pop();
-		
+		historical_vals = getPricesForCoin(sym, PRICES_HISTORY_LENGTH).slice(0, -RALLY_TIME);
+		recent_historical_vals = historical_vals.slice(-3 * RALLY_TIME, -RALLY_TIME);
+		sorted_historical_vals = recent_historical_vals.sort();
+		recent_sorted_historical_vals = recent_historical_vals.sort();
+		max_historical = recent_sorted_historical_vals.pop();
+		high_median = sorted_historical_vals.slice(-0.05 * sorted_historical_vals.length).shift();
+		low_median = sorted_historical_vals.slice(0, -0.2 * sorted_historical_vals.length).pop();
+		min_historical = recent_sorted_historical_vals.shift();
+		is_uptrend = isUptrend(last_x_values, 1, true);
 		// Testing
 		test_count = 0;
 		fail_reasons = ""
-		if(red == 0 || green/red > RALLY_GREEN_RED_RATIO) {
+		if(red == 0 || green/red >= RALLY_GREEN_RED_RATIO) {
 			test_count++;
 		} else {
-			fail_reasons += "ratio ";
+			fail_reasons += "ratio " + green/red + " ";
 		}
 		if (gain < RALLY_MAX_DELTA) {
 			test_count++;
 		} else {
-			fail_reasons += "maxDelta ";
+			fail_reasons += "maxDelta " + gain + " ";
 		}
 		if (gain > RALLY_MIN_DELTA) {
 			test_count++;
 		} else {
-			fail_reasons += "minDelta ";
+			fail_reasons += "minDelta " + gain + " ";
 		}
 		if (last > first) {
 			test_count++;
 		} else {
-			fail_reasons += "last<first ";
+			fail_reasons += "last<first " + last + '>' + first + " ";
 		}
 		if (high_median > first) {
 			test_count++;
 		} else {
-			fail_reasons += "highMed<first ";
+			fail_reasons += "highMed<first " + high_median + '<' + first + " ";
 		}
 		if (low_median < first) {
 			test_count++;
 		} else {
-			fail_reasons += "lowMed>first ";
+			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
 		}
-		if (highest < last) {
+		if (max_historical < last) {
 			test_count++;
 		} else {
-			fail_reasons += "highest>last ";
+			fail_reasons += "highest>last " + max_historical + '>' + last + " ";
+		}
+		if (max_historical/min_historical < gain) {
+			test_count++;
+		} else {
+			fail_reasons += "historicalgain>gain " + max_historical/min_historical + '>' + gain + " ";
+		}
+		if (is_uptrend) {
+			test_count++;
+		} else {
+			fail_reasons += "no uptrend? ";
 		}
 		if ((red == 0
-			|| green/red > RALLY_GREEN_RED_RATIO)
+			|| green/red >= RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
 			&& gain > RALLY_MIN_DELTA
 			&& last > first
 			&& high_median > first
-			&& highest < last
-			&& low_median < first) {
+			&& max_historical < last
+			&& max_historical/min_historical < gain
+			&& low_median < first
+			&& is_uptrend) {
 			rallies.push({
+				sym: sym,
 				min: min,
 				max: max,
 				gain: gain,
-				sym: sym,
 				first: first,
 				last: last
 			});
-		} else if (test_count > 5) {
-			rallies.push({sym: sym, close: "but no cigar", fail: fail_reasons});
+		} else if (test_count > 7) {
+			rallies.push({sym: sym, first: first, last: last, gain: gain , fail: fail_reasons});
 		}
 	}
 	return rallies.sort((a, b) => a.gain - b.gain);
@@ -452,7 +475,7 @@ async function getPrevDay() {
 async function pump() {
 	//buy code here
 	console.log("pump");
-	if (BUY_LOCAL_MIN) {
+	if (BUY_LOCAL_MIN && !yolo) {
 		latestPrice = await waitUntilTimeToBuy();
 		manual_buy = false;
 		quit_buy = false;
@@ -623,11 +646,12 @@ async function waitUntilTimeToBuy() {
 					if (prepump && Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY * 1.5) {
+ 					if (lookback.length < BB_BUY * 1.2) {
 						break;
 					}
 					if (!ready && meanTrend.includes("Up")) {
-						return latestPrice;
+						//Leave this commented. It loses too much money
+						//return latestPrice;
 					}
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
@@ -677,7 +701,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_check = 0;
 	timeout_count = 0;
 	take_profit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss || Date.now() < stop_loss_check) && (latestPrice < take_profit || !meanTrend.includes("Down"))) {
+	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit)) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -739,18 +763,18 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			}
 			// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
 			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
-			if (latestPrice > take_profit && !take_profit_reached) {
-				take_profit_reached = true;
-				take_profit_check_time = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			} else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
-				return latestPrice;
-			}
+			// if (latestPrice > take_profit && !take_profit_reached) {
+			// 	take_profit_reached = true;
+			// 	take_profit_check_time = Date.now() + PROFIT_LOSS_CHECK_TIME;
+			// } else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
+			// 	return latestPrice;
+			// }
 			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
-			if (latestPrice < stop_loss && stop_loss_check == 0) {
-				stop_loss_check = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			} else if (latestPrice > stop_loss) {
-				stop_loss_check = 0;
-			}
+			// if (latestPrice < stop_loss && stop_loss_check == 0) {
+			// 	stop_loss_check = Date.now() + PROFIT_LOSS_CHECK_TIME;
+			// } else if (latestPrice > stop_loss) {
+			// 	stop_loss_check = 0;
+			// }
 		}
 		if (Date.now() > end && USE_TIMEOUT) {
 			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
@@ -886,11 +910,11 @@ async function getBidAsk(coinpair) {
 		fail_counter = 0;
 		return bidask
 	} catch (e) {
+		console.log(e);
 		if (++fail_counter >= 100) {
 			console.log(`Too many fails fetching bid/ask prices of ${coinpair}, exiting`);
 			process.exit(1);
 		}
-		await sleep(100);
 		return await getBidAsk(coinpair);
 	}
 	
@@ -928,21 +952,21 @@ function parseDepth(depth) {
 	});
 }
 
-function isUptrend(q2, buffer, stdev = 0) {
-	if (stdev == 0) {
-		stdev = getLastStdev();
-	}
+function isUptrend(q2, buffer, kinda = false, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
 	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < (buffer * kinda ? 3 : 1)
 		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
-function isDowntrend(q2, buffer, stdev = 0) {
-	if (stdev == 0) {
-		stdev = getLastStdev();
-	}
+function isDowntrend(q2, buffer, kinda = false, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
 	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < (buffer * kinda ? 3 : 1)
 		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
