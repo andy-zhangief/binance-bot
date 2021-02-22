@@ -58,7 +58,7 @@ const TIME_BEFORE_NEW_BUY = ONE_MIN;
 var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 5 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.75 * ONE_MIN;
+const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
 const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 90 * ONE_MIN;
 const TAKE_PROFIT_REDUCTION_PCT = 1;
 const STOP_LOSS_INCREASE_PCT = 1.01;
@@ -142,6 +142,8 @@ server = null;
 client = null;
 price_data_received = false;
 custom_check_time = false;
+coinpair = process.argv[2].toUpperCase();
+coin = "";
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -189,8 +191,6 @@ process.stdin.on('keypress', (str, key) => {
 			break;
 	}
 });
-
-coinpair = process.argv[2].toUpperCase();
 
 async function init() {
 	if (binance.getOption("test")) {
@@ -247,7 +247,12 @@ function initClientServer() {
 					}
 				}
 				if (message.blacklist) {
-					blacklist = message.blacklist;
+					if (message.blacklist != blacklist) {
+						blacklist = message.blacklist;
+						if (blacklist.includes(coin)) {
+							quit_buy = true;
+						}
+					}
 				}
 				if (message.historicalPrices) {
 					prices = message.historicalPrices;
@@ -541,7 +546,7 @@ async function pump() {
 	} else {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
-	if ((prepump && blacklist.includes(coin)) || latestPrice == 0) {
+	if (latestPrice == 0) {
 		if (!LOOP) {
 			console.log("Quitting");
 			process.exit(0);
@@ -1015,7 +1020,7 @@ function parseDepth(depth) {
 	});
 }
 
-function isUptrend(q2, buffer, kinda = false, stdev = 0) {
+function isUptrend(q2, buffer, kinda = true, stdev = 0) {
 	// if (stdev == 0) {
 	// 	stdev = getLastStdev();
 	// }
@@ -1024,7 +1029,7 @@ function isUptrend(q2, buffer, kinda = false, stdev = 0) {
 		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
-function isDowntrend(q2, buffer, kinda = false, stdev = 0) {
+function isDowntrend(q2, buffer, kinda = true, stdev = 0) {
 	// if (stdev == 0) {
 	// 	stdev = getLastStdev();
 	// }
