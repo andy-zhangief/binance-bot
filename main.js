@@ -6,6 +6,7 @@ const {
 const fs = require('fs');
 const tty = require('tty');
 const asciichart = require ('asciichart');
+const SocketModel = require('socket-model');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
@@ -40,7 +41,7 @@ const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
 const POLL_INTERVAL = 720;// roughly 1 second
 var LOOP = false; // false for single buy and quit
 var DEFAULT_BASE_CURRENCY = "USDT";
-const FETCH_BALANCE_INTERVAL = 5 * ONE_MIN;
+const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
 
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
@@ -138,6 +139,9 @@ manual_buy = false;
 manual_sell = false;
 quit_buy = false;
 yolo = false;
+server = null;
+client = null;
+price_data_received = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -192,6 +196,7 @@ async function init() {
 	if (binance.getOption("test")) {
 		console.log("testing");
 	}
+	initClientServer();
 	await binance.useServerTime();
 	loopGetBalanceAsync();
 	if (coinpair == "PREPUMP") {
@@ -211,6 +216,40 @@ async function init() {
 	override_blacklist = true;
 	//console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
+}
+
+function initClientServer() {
+	if (process.argv.includes("--server")) {
+		server = SocketModel.createServer( { socketFile:'/tmp/test.sock' } );
+		server.onMessage(function(obj) {
+			if (obj.message) {
+				message = JSON.parse(obj.message)
+				if (message.blacklist) {
+					blacklist = message.blacklist;
+					synchronizeBlacklist();
+				}
+				
+			}
+		});
+		server.start();
+	} else if (process.argv.includes("--client")) {
+		client = SocketModel.createClient( { socketFile:'/tmp/test.sock' } );
+		client.onMessage(function(obj) {
+			if (obj.message) {
+				message = JSON.parse(obj.message)
+				if (message.prices) {
+					serverPrices = message.prices;
+					++prices_data_points_count;
+					price_data_received = true;
+				}
+				if (message.blacklist) {
+					blacklist = message.blacklist;
+				}
+				
+			}
+		});
+		client.start();
+	}
 }
 
 async function waitUntilPrepump() {
@@ -241,8 +280,7 @@ async function waitUntilPrepump() {
 		}
 		rallies = await waitUntilFetchPricesAsync();
 		if (detection_mode) {
-			rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
-			await sleep(SYMBOLS_PRICE_CHECK_TIME);
+			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			continue;
 		}
 
@@ -295,6 +333,9 @@ function parseServerPrices() {
 		newPrices[v.symbol] = v.askPrice;
 	});
 	prices.push(newPrices);
+	if (server) {
+		server.broadcast(JSON.stringify({prices: serverPrices}));
+	}
 	return detectCoinRallies();
 }
 
@@ -317,7 +358,7 @@ function detectCoinRallies() {
 		min = last;
 		max = last;
 		last_x_values = [last];
-		for (i = 1; i < RALLY_TIME; i++) {
+		for (i = 1; i < lastX.length; i++) {
 			current = lastX[i][sym];
 			if (!current) {
 				break;
@@ -421,18 +462,25 @@ function detectCoinRallies() {
 }
 
 async function waitUntilFetchPricesAsync() {
-	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
+	if (!client) {
+		while(Date.now() < fetchMarketDataTime) {
+			await sleep(100);
+		}
+		return await fetchAllPricesAsync();
+	} else {
+		while (!price_data_received) {
+			await sleep(100);
+		}
+		price_data_received = false;
+		return parseServerPrices();
 	}
-	return await fetchAllPricesAsync();
 }
 
 async function fetchAllPricesAsyncIfReady() {
-	if (Date.now() < fetchMarketDataTime) {
-		return false;
-	}
-	fetchAllPricesAsync();
-	return true;
+	return new Promise(async (resolve) => {
+		await waitUntilFetchPricesAsync();
+		resolve();
+	});
 }
 
 async function fetchAllPricesAsync() {
@@ -476,6 +524,8 @@ async function pump() {
 	//buy code here
 	console.log("pump");
 	if (BUY_LOCAL_MIN && !yolo) {
+		blacklist.push(coin);
+		synchronizeBlacklist();
 		latestPrice = await waitUntilTimeToBuy();
 		manual_buy = false;
 		quit_buy = false;
@@ -486,7 +536,9 @@ async function pump() {
 		if (!LOOP) {
 			console.log("Quitting");
 			process.exit(0);
-		} 
+		}
+		blacklist = blacklist.filter(i => i !== coin);
+		synchronizeBlacklist();
 		console.log("BUY WINDOW EXPIRED");
 		SELL_FINISHED = true; // never bought
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
@@ -503,7 +555,6 @@ async function pump() {
 			console.log(`PUMP ERROR: ${error.body}`);
 			process.exit(1);
 		}
-		blacklist.push(coin);
 		beep();
 		console.log("pump is successful")
 		console.info("Market Buy response", response);
@@ -542,6 +593,8 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
 			if (prepump) {
+				blacklist = blacklist.filter(i => i !== coin);
+				synchronizeBlacklist();
 				return;
 			}
 			ANALYZE = true;
@@ -575,9 +628,10 @@ async function waitUntilTimeToBuy() {
 	starting_price = 0;
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
+	fetching_prices = false;
 	while (true) {
 		var [mean, stdev] = await tick(true);
-		console.clear();
+		//console.clear();
 		if (manual_buy) {
 			return latestPrice;
 		}
@@ -676,8 +730,11 @@ async function waitUntilTimeToBuy() {
 		if (SHOW_GRAPH) {
 			plot(true);
 		}
-		if (prepump) {
-			fetchAllPricesAsyncIfReady();
+		if (prepump && !fetching_prices) {
+			fetching_prices = true;
+			fetchAllPricesAsyncIfReady().catch().finally(() => { 
+				fetching_prices = false;
+			});
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
@@ -871,7 +928,7 @@ async function getLatestPriceAsync(coinpair) {
 	}
 }
 
-// never run this with await
+// this never resolves
 async function loopGetBalanceAsync() {
 	return new Promise(async (resolve) => {
 		while (true) {
@@ -917,8 +974,6 @@ async function getBidAsk(coinpair) {
 		}
 		return await getBidAsk(coinpair);
 	}
-	
-
 }
 
 //TODO: reimplement this + the related functions, fail_counter was set to 1.
@@ -1031,6 +1086,16 @@ async function getExchangeInfo() {
 		}
 		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), function(err){});
 	});
+}
+
+function synchronizeBlacklist() {
+	if (server) {
+		server.broadcast(JSON.stringify({blacklist: blacklist}));
+	}
+	if (client) {
+		client.send(JSON.stringify({blacklist: blacklist}));
+	}
+	console.log(blacklist)
 }
 
 function lastValueIsOutlier() {
