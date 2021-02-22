@@ -84,11 +84,11 @@ var BB_SELL = 10;
 var BB_BUY = 20;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 10 /*<- Change this --- Not this ->*/ * 1000 * 2 / 3;
+var SYMBOLS_PRICE_CHECK_TIME = 10 /*<- Change this --- Not this ->*/ * 1000;
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
-const PRICES_HISTORY_LENGTH = 180; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_TIME = 18; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
+const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
+const RALLY_TIME = 18; // * SYMBOLS_PRICE_CHECK_TIME
 var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
 var RALLY_MIN_DELTA = 1.01;
 const RALLY_GREEN_RED_RATIO = 1.5;
@@ -141,6 +141,7 @@ yolo = false;
 server = null;
 client = null;
 price_data_received = false;
+custom_check_time = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -239,9 +240,11 @@ function initClientServer() {
 		client.onMessage(function(obj) {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
-				if (message.prices) {
-					serverPrices = message.prices;
-					price_data_received = true;
+				if (message.prices && message.timestamp && message.interval) {
+					if (message.timestamp > fetchMarketDataTime - 1000) {
+						serverPrices = message.prices;
+						price_data_received = true;
+					}
 				}
 				if (message.blacklist) {
 					blacklist = message.blacklist;
@@ -266,7 +269,8 @@ async function waitUntilPrepump() {
 	// Testing only, change this!!!!
 	yolo = process.argv.includes("--yolo");
 	coinpair = "";
-	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME;
+	custom_check_time = !!parseFloat(process.argv[3]);
+	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	while (true) {
@@ -334,7 +338,7 @@ function parseServerPrices() {
 	});
 	prices.push(newPrices);
 	if (server) {
-		server.broadcast(JSON.stringify({prices: serverPrices}));
+		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
 	}
 }
 
@@ -430,11 +434,11 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "historicalgain>gain " + max_historical/min_historical + '>' + gain + " ";
 		}
-		if (is_uptrend) {
-			test_count++;
-		} else {
-			fail_reasons += "no uptrend? ";
-		}
+		// if (is_uptrend) {
+		// 	test_count++;
+		// } else {
+		// 	fail_reasons += "no uptrend? ";
+		// }
 		if ((red == 0
 			|| green/red >= RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
@@ -444,7 +448,8 @@ function detectCoinRallies() {
 			&& max_historical < last
 			&& max_historical/min_historical < gain
 			&& low_median < first
-			&& is_uptrend) {
+			//&& is_uptrend
+			) {
 			rallies.push({
 				sym: sym,
 				min: min,
@@ -453,7 +458,7 @@ function detectCoinRallies() {
 				first: first,
 				last: last
 			});
-		} else if (test_count > 7) {
+		} else if (test_count > 6) {
 			rallies.push({sym: sym, first: first, last: last, gain: gain , fail: fail_reasons});
 		}
 	}
@@ -461,8 +466,10 @@ function detectCoinRallies() {
 }
 
 async function waitUntilFetchPricesAsync() {
-	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
+	if (!client || custom_check_time) {
+		while(Date.now() < fetchMarketDataTime) {
+			await sleep(100);
+		}
 	}
 	if (!client) {
 		await fetchAllPricesAsync();
@@ -474,7 +481,7 @@ async function waitUntilFetchPricesAsync() {
 	}
 	parseServerPrices();
 	++prices_data_points_count;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME + Math.floor(SYMBOLS_PRICE_CHECK_TIME * Math.random());
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
 }
 
 async function fetchAllPricesAsyncIfReady() {
@@ -522,6 +529,8 @@ async function pump() {
 	//buy code here
 	console.log("pump");
 	if (BUY_LOCAL_MIN && !yolo) {
+		manual_buy = false;
+		quit_buy = false;
 		blacklist.push(coin);
 		synchronizeBlacklist();
 		latestPrice = await waitUntilTimeToBuy();
@@ -591,8 +600,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
 			if (prepump) {
-				blacklist = blacklist.filter(i => i !== coin);
-				synchronizeBlacklist();
+				removeFromBlacklistLater(coin);
 				return;
 			}
 			ANALYZE = true;
@@ -629,7 +637,7 @@ async function waitUntilTimeToBuy() {
 	fetching_prices = false;
 	while (true) {
 		var [mean, stdev] = await tick(true);
-		//console.clear();
+		console.clear();
 		if (manual_buy) {
 			return latestPrice;
 		}
@@ -1086,6 +1094,13 @@ async function getExchangeInfo() {
 	});
 }
 
+function removeFromBlacklistLater(coin) {
+	setTimeout(() => {
+		blacklist = blacklist.filter(i => i !== coin);
+		synchronizeBlacklist();
+	}, 30 * ONE_MIN);
+}
+
 function synchronizeBlacklist() {
 	if (server) {
 		server.broadcast(JSON.stringify({blacklist: blacklist}));
@@ -1187,9 +1202,9 @@ function beep() {
 }
 
 function sleep(ms) {
-  return new Promise((resolve) => {
-    setTimeout(resolve, ms);
-  });
+	return new Promise((resolve) => {
+		setTimeout(resolve, ms);
+	});
 } 
 
 init();
