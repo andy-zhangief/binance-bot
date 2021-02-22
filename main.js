@@ -615,14 +615,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 }
 
 async function waitUntilTimeToBuy() {
-	if (q.length == 0) {
-		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair)); // for graph visualization
-		means = new Array(QUEUE_SIZE).fill(q[0]);
-		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
-		highstd = new Array(QUEUE_SIZE).fill(q[0]);
-		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
-		masell = new Array(QUEUE_SIZE).fill(q[0]);
-	}
 	//TODO: clean this up
 	count = 0;
 	meanRev = false;
@@ -901,6 +893,7 @@ function analyzeDecision() {
 }
 
 async function tick(buying) {
+	initializeQs();
 	await sleep(POLL_INTERVAL);
 	//lastDepth = await getMarketDepth(coinpair);
 	bidask = await getBidAsk(coinpair);
@@ -918,6 +911,17 @@ async function tick(buying) {
 	masell.push(average(lookback.slice(-BB_SELL)));
 	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && mabuy.shift() != 0 && masell.shift() != 0;
 	return [mean, stdev]
+}
+
+function initializeQs() {
+	if (q.length == 0) {
+		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair)); // for graph visualization
+		means = new Array(QUEUE_SIZE).fill(q[0]);
+		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
+		highstd = new Array(QUEUE_SIZE).fill(q[0]);
+		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
+		masell = new Array(QUEUE_SIZE).fill(q[0]);
+	}
 }
 
 // The old function
