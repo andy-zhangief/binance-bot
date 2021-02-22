@@ -30,7 +30,7 @@ Run with option `--detect` to only detect rallying coins.
 
 To run multiple synchronized bots, run one bot with the option `--server` and the others with the option `--client`. They should synchronize prices and blacklists. You can restart any amount of clients and they will receive the historical price data when they start. For best results, the client's price fetch interval (number after prepump) should be a multiple of the server's (which is defaulted to 10).
 
-![alt text](https://i.imgur.com/L0sbmi7.png)
+![alt text](https://i.imgur.com/II1D8l8.png)
 
 Feel free to reach out to me on discord and I'd be happy to help you. https://discord.gg/BTh9wuaPxD
 
