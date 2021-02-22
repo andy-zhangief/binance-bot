@@ -32,7 +32,7 @@ const binance = new Binance().options({
 // MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 20;
+const MAX_OVERRIDE_USDT = 40;
 // BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
 // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 const PCT_BUY = 0.01;
@@ -57,7 +57,7 @@ var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
 var BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 5 * ONE_MIN;
+const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
 const TIME_TO_CHANGE_PROFIT_LOSS = 30 * ONE_MIN;
@@ -142,7 +142,6 @@ yolo = false;
 server = null;
 client = null;
 price_data_received = false;
-custom_check_time = false;
 coinpair = process.argv[2].toUpperCase();
 coin = "";
 
@@ -247,7 +246,8 @@ function initClientServer() {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
 				if (message.prices && message.timestamp && message.interval) {
-					if (message.timestamp > fetchMarketDataTime - 1000) {
+					console.log("Got a price update from server");
+					if (message.timestamp > fetchMarketDataTime) {
 						serverPrices = message.prices;
 						price_data_received = true;
 					}
@@ -255,6 +255,7 @@ function initClientServer() {
 				if (message.blacklist) {
 					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
 						blacklist = message.blacklist;
+						console.log(`Updated Blacklist: ${blacklist}`);
 						if (blacklist.includes(coin) && auto && !SELL_FINISHED) {
 							quit_buy = true;
 						}
@@ -280,7 +281,6 @@ async function waitUntilPrepump() {
 	// Testing only, change this!!!!
 	yolo = process.argv.includes("--yolo");
 	coinpair = "";
-	custom_check_time = !!parseFloat(process.argv[3]);
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
@@ -305,7 +305,7 @@ async function waitUntilPrepump() {
 		rally = null;
 		if (!yolo) {
 			// This avoids the race condition if we're waiting to buy anyways
-			await sleep(3000 * Math.random() + 500);
+			await sleep(10000 * Math.random() + 5000);
 		}
 		while (rallies.length) {
 			rally = rallies.shift();
@@ -480,10 +480,8 @@ function detectCoinRallies() {
 }
 
 async function waitUntilFetchPricesAsync() {
-	if (!client || custom_check_time) {
-		while(Date.now() < fetchMarketDataTime) {
-			await sleep(100);
-		}
+	while(Date.now() < fetchMarketDataTime) {
+		await sleep(100);
 	}
 	if (!client) {
 		await fetchAllPricesAsync();
@@ -498,7 +496,7 @@ async function waitUntilFetchPricesAsync() {
 	}
 	parseServerPrices();
 	++prices_data_points_count;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME - !!client ? 1000 : 0 ;
 }
 
 async function fetchAllPricesAsyncIfReady() {
@@ -715,7 +713,7 @@ async function waitUntilTimeToBuy() {
 					if (prepump && Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY * 1.2) {
+ 					if (lookback.length < BB_BUY) {
 						break;
 					}
 					if (!ready && meanTrend.includes("Up")) {
@@ -779,7 +777,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (-" + ((1-stop_loss/buy_price) * 100).toFixed(3) + "%)")}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")}`);
 		if (auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
