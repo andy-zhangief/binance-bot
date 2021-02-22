@@ -17,7 +17,7 @@ const ONE_MIN = 60000;
 const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
 const MIN_COIN_VAL_IN_BTC = 0.00000200;
 const TERMINAL_HEIGHT_BUFFER = 4;
-const TERMINAL_WIDTH_BUFFER = 17;
+const TERMINAL_WIDTH_BUFFER = 18;
 const SOCKETFILE = '/tmp/binance-bot.sock'
 const binance = new Binance().options({
   APIKEY: API_KEY,
@@ -48,7 +48,7 @@ const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
 const AUTO_ADJUST_GRAPH = true;
-const GRAPH_PADDING = '               ';
+const GRAPH_PADDING = '                ';
 var GRAPH_HEIGHT = 32;
 var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
 
@@ -1125,8 +1125,6 @@ function synchronizeBlacklist() {
 	if (client) {
 		client.send(JSON.stringify({blacklist: blacklist}));
 	}
-	console.log(blacklist)
-}
 
 function lastValueIsOutlier() {
 	stdev = getLastStdev();
