@@ -348,7 +348,7 @@ function parseServerPrices() {
 function getPricesForCoin(sym, timeframe) {
 	recent_prices = prices.slice(-timeframe);
 	res = [];
-	for (i = 0; i < timeframe; i++) {
+	for (i = 0; i < recent_prices.length; i++) {
 		res.push(parseFloat(recent_prices[i][sym]));
 	}
 	return res.filter(a => a);
