@@ -85,7 +85,7 @@ var BB_SELL = 10;
 var BB_BUY = 20;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 10 /*<- Change this --- Not this ->*/ * 1000;
+var SYMBOLS_PRICE_CHECK_TIME = 10 * 1000;
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
@@ -496,7 +496,7 @@ async function waitUntilFetchPricesAsync() {
 	}
 	parseServerPrices();
 	++prices_data_points_count;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME - !!client ? 1000 : 0 ;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME - (!!client ? 1000 : 0) ;
 }
 
 async function fetchAllPricesAsyncIfReady() {
