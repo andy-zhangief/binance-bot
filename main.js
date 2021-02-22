@@ -17,6 +17,7 @@ const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
 const MIN_COIN_VAL_IN_BTC = 0.00000200;
 const TERMINAL_HEIGHT_BUFFER = 4;
 const TERMINAL_WIDTH_BUFFER = 17;
+const SOCKETFILE = '/tmp/binance-bot.sock'
 const binance = new Binance().options({
   APIKEY: API_KEY,
   APISECRET: API_SECRET,
@@ -220,7 +221,7 @@ async function init() {
 
 function initClientServer() {
 	if (process.argv.includes("--server")) {
-		server = SocketModel.createServer( { socketFile:'/tmp/test.sock' } );
+		server = SocketModel.createServer( { socketFile: SOCKETFILE} );
 		server.onMessage(function(obj) {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
@@ -231,9 +232,12 @@ function initClientServer() {
 				
 			}
 		});
+		server.onClientConnection((socket) => {
+			server.getWriter().send(JSON.stringify({historicalPrices: prices}), socket);
+		});
 		server.start();
 	} else if (process.argv.includes("--client")) {
-		client = SocketModel.createClient( { socketFile:'/tmp/test.sock' } );
+		client = SocketModel.createClient( { socketFile: SOCKETFILE } );
 		client.onMessage(function(obj) {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
@@ -245,7 +249,10 @@ function initClientServer() {
 				if (message.blacklist) {
 					blacklist = message.blacklist;
 				}
-				
+				if (message.historicalPrices) {
+					prices = message.historicalPrices;
+					prices_data_points_count = prices.length;
+				}
 			}
 		});
 		client.start();
@@ -265,7 +272,6 @@ async function waitUntilPrepump() {
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 * 2/3 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
-	prices = new Array(PRICES_HISTORY_LENGTH).fill({});
 	while (true) {
 		if (!detection_mode) {
 			console.clear();
@@ -320,11 +326,11 @@ async function waitUntilPrepump() {
 }
 
 function parseServerPrices() {
-	prevPrices = prices.shift();
+	prices.length >= PRICES_HISTORY_LENGTH && prices.shift();
 	newPrices = {};
 	serverPrices.forEach(v => {
 		// don't touch futures
-		if (!v.symbol.endsWith(DEFAULT_BASE_CURRENCY) || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
+		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY) || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
 			return;
 		}
 		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
