@@ -743,10 +743,6 @@ async function waitUntilTimeToBuy() {
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
 	end = Date.now() + RUNTIME;
-	if (q.length == 0) {
-		// This should never be the case
-		q = new Array(QUEUE_SIZE).fill(latestPrice * 0.95); // for graph visualization
-	}
 	count = 0;
 	meanRev = false;
 	meanRevStart = 0;
@@ -893,12 +889,12 @@ function analyzeDecision() {
 }
 
 async function tick(buying) {
-	initializeQs();
 	await sleep(POLL_INTERVAL);
 	//lastDepth = await getMarketDepth(coinpair);
 	bidask = await getBidAsk(coinpair);
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice); //await getLatestPriceAsync(coinpair);
 	pushToLookback(latestPrice);
+	initializeQs();
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
@@ -915,7 +911,7 @@ async function tick(buying) {
 
 function initializeQs() {
 	if (q.length == 0) {
-		q = new Array(QUEUE_SIZE).fill(await getLatestPriceAsync(coinpair)); // for graph visualization
+		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
 		means = new Array(QUEUE_SIZE).fill(q[0]);
 		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
 		highstd = new Array(QUEUE_SIZE).fill(q[0]);
