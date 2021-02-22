@@ -60,9 +60,9 @@ var BUFFER_AFTER_FAIL = true;
 const OPPORTUNITY_EXPIRE_WINDOW = 5 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
-const TIME_TO_INC_LOSS_AND_DEC_PROFIT = 30 * ONE_MIN;
-const TAKE_PROFIT_REDUCTION_PCT = 1;
-const STOP_LOSS_INCREASE_PCT = 1.01;
+const TIME_TO_CHANGE_PROFIT_LOSS = 30 * ONE_MIN;
+const TAKE_PROFIT_CHANGE_PCT = 1.01;
+const STOP_LOSS_CHANGE_PCT = 1.01;
 const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
 
 // ANALYSIS SETTINS
@@ -255,7 +255,7 @@ function initClientServer() {
 				if (message.blacklist) {
 					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
 						blacklist = message.blacklist;
-						if (blacklist.includes(coin) && auto) {
+						if (blacklist.includes(coin) && auto && !SELL_FINISHED) {
 							quit_buy = true;
 						}
 					}
@@ -303,6 +303,10 @@ async function waitUntilPrepump() {
 			continue;
 		}
 		rally = null;
+		if (!yolo) {
+			// This avoids the race condition if we're waiting to buy anyways
+			await sleep(3000 * Math.random() + 500);
+		}
 		while (rallies.length) {
 			rally = rallies.shift();
 			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
@@ -553,6 +557,7 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
+		SELL_FINISHED = true; // never bought
 		blacklist = blacklist.filter(i => i !== coin);
 		synchronizeBlacklist();
 		if (!LOOP) {
@@ -560,7 +565,6 @@ async function pump() {
 			process.exit(0);
 		}
 		console.log("BUY WINDOW EXPIRED");
-		SELL_FINISHED = true; // never bought
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 		return;
 	}
@@ -813,10 +817,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 6:
-					if (Math.floor((Date.now() - start) / TIME_TO_INC_LOSS_AND_DEC_PROFIT) > timeout_count) {
+					if (Math.floor((Date.now() - start) / TIME_TO_CHANGE_PROFIT_LOSS) > timeout_count) {
 						timeout_count++;
-						take_profit = Math.round(take_profit * TAKE_PROFIT_REDUCTION_PCT * 10000)/10000;
-						stop_loss = Math.round(stop_loss * STOP_LOSS_INCREASE_PCT * 10000)/10000;
+						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
+						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
 					}
 					// do nothing for now
 					break;
