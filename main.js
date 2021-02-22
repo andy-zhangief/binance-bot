@@ -1125,6 +1125,7 @@ function synchronizeBlacklist() {
 	if (client) {
 		client.send(JSON.stringify({blacklist: blacklist}));
 	}
+}
 
 function lastValueIsOutlier() {
 	stdev = getLastStdev();
