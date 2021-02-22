@@ -28,6 +28,8 @@ Run with option `--base=BTC` for BTC. e.g `node main prepump --base=BTC`
 
 Run with option `--detect` to only detect rallying coins.
 
+To run multiple synchronized bots, run one bot with the option `--server` and the others with the option `--client`. They should synchronize prices and blacklists. You can restart any amount of clients and they will receive the historical price data when they start.
+
 ![alt text](https://i.imgur.com/L0sbmi7.png)
 
 Feel free to reach out to me on discord and I'd be happy to help you. https://discord.gg/BTh9wuaPxD
