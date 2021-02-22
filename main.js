@@ -274,6 +274,7 @@ async function waitUntilPrepump() {
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	while (true) {
+		await waitUntilFetchPricesAsync();
 		if (!detection_mode) {
 			console.clear();
 			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
@@ -281,7 +282,6 @@ async function waitUntilPrepump() {
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 			console.log(`Blacklist: ${blacklist}`);
 		}
-		await waitUntilFetchPricesAsync();
 		rallies = detectCoinRallies();
 		if (detection_mode) {
 			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
@@ -291,7 +291,6 @@ async function waitUntilPrepump() {
 		if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
 			continue;
 		}
-		
 		rally = null;
 		while (rallies.length) {
 			rally = rallies.shift();
@@ -299,6 +298,7 @@ async function waitUntilPrepump() {
 				rally = null;
 			}
 		}
+
 		if (rally != null && Date.now() > dont_buy_before) {
 			coinpair = rally.sym;
 			coin = getCoin(coinpair);
@@ -324,7 +324,9 @@ async function waitUntilPrepump() {
 }
 
 function parseServerPrices() {
-	prices.length >= PRICES_HISTORY_LENGTH && prices.shift();
+	while (prices.length >= PRICES_HISTORY_LENGTH) {
+		prices.shift();
+	}
 	newPrices = {};
 	serverPrices.forEach(v => {
 		// don't touch futures
@@ -337,9 +339,6 @@ function parseServerPrices() {
 		newPrices[v.symbol] = v.askPrice;
 	});
 	prices.push(newPrices);
-	if (server) {
-		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
-	}
 }
 
 function getPricesForCoin(sym, timeframe) {
@@ -478,6 +477,9 @@ async function waitUntilFetchPricesAsync() {
 			await sleep(100);
 		}
 		price_data_received = false;
+	}
+	if (server) {
+		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
 	}
 	parseServerPrices();
 	++prices_data_points_count;
@@ -641,7 +643,7 @@ async function waitUntilTimeToBuy() {
 		if (manual_buy) {
 			return latestPrice;
 		}
-		if (quit_buy || (!override_blacklist && blacklist.includes(coin))) {
+		if (quit_buy) {
 			return 0;
 		}
 		if(starting_price == 0) {
