@@ -87,7 +87,6 @@ var BB_BUY = 20;
 var SYMBOLS_PRICE_CHECK_TIME = 10 /*<- Change this --- Not this ->*/ * 1000 * 2 / 3;
 const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
-const CLEAR_BLACKLIST_TIME = 120 * ONE_MIN;
 const PRICES_HISTORY_LENGTH = 180; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 18; // * 1.5 * SYMBOLS_PRICE_CHECK_TIME
 var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
@@ -123,7 +122,6 @@ fail_counter = 0;
 dont_buy_before = 0;
 prepump = false;
 pnl = 0;
-clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
 opportunity_expired_time = 0;
 fetch_balance_time = 0;
 prices_data_points_count = 0;
@@ -243,7 +241,6 @@ function initClientServer() {
 				message = JSON.parse(obj.message)
 				if (message.prices) {
 					serverPrices = message.prices;
-					++prices_data_points_count;
 					price_data_received = true;
 				}
 				if (message.blacklist) {
@@ -280,11 +277,8 @@ async function waitUntilPrepump() {
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 			console.log(`Blacklist: ${blacklist}`);
 		}
-		if (Date.now() > clearBlacklistTime) {
-			blacklist = [];
-			clearBlacklistTime = Date.now() + CLEAR_BLACKLIST_TIME;
-		}
-		rallies = await waitUntilFetchPricesAsync();
+		await waitUntilFetchPricesAsync();
+		rallies = detectCoinRallies();
 		if (detection_mode) {
 			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			continue;
@@ -342,7 +336,6 @@ function parseServerPrices() {
 	if (server) {
 		server.broadcast(JSON.stringify({prices: serverPrices}));
 	}
-	return detectCoinRallies();
 }
 
 function getPricesForCoin(sym, timeframe) {
@@ -468,18 +461,20 @@ function detectCoinRallies() {
 }
 
 async function waitUntilFetchPricesAsync() {
+	while(Date.now() < fetchMarketDataTime) {
+		await sleep(100);
+	}
 	if (!client) {
-		while(Date.now() < fetchMarketDataTime) {
-			await sleep(100);
-		}
-		return await fetchAllPricesAsync();
+		await fetchAllPricesAsync();
 	} else {
 		while (!price_data_received) {
 			await sleep(100);
 		}
 		price_data_received = false;
-		return parseServerPrices();
 	}
+	parseServerPrices();
+	++prices_data_points_count;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME + Math.floor(SYMBOLS_PRICE_CHECK_TIME * Math.random());
 }
 
 async function fetchAllPricesAsyncIfReady() {
@@ -495,9 +490,6 @@ async function fetchAllPricesAsync() {
 	while (priceFetch < 1) {
 		await sleep(100);
 	}
-	++prices_data_points_count;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME + Math.floor(SYMBOLS_PRICE_CHECK_TIME * Math.random());
-	return parseServerPrices();
 }
 
 async function getAllPrices() {
