@@ -22,6 +22,14 @@ To run: `node main prepump [optional price check timeframe in seconds]` e.g `nod
 
 The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press `b` or `s` respectively.
 
+Color code for graph:
+White - Price of Coinpair
+Pink - 20 Second Moving Average
+Yellow - 20 Minute Moving Average
+Green - 20 Minute Moving Lower Bollinger Band
+Red - 20 Minute Moving Upper Bollinger Band
+https://www.investopedia.com/terms/b/bollingerbands.asp
+
 Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
 
 Run with option `--base=BTC` for BTC. e.g `node main prepump --base=BTC`
