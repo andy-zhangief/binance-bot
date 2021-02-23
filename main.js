@@ -915,7 +915,7 @@ function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed) {
 	historical_prices = getPricesForCoin(coinpair, time_elapsed);
 	max_historical = Math.max(...historical_prices);
 	historical_profit = max_historical/lastBuy;
-	new_take_profit = Math.max(average([TAKE_PROFIT_MULTIPLIER, historical_loss]), 1.01);
+	new_take_profit = Math.max(average([TAKE_PROFIT_MULTIPLIER, historical_profit]), 1.01);
 	PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
 	PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 }
