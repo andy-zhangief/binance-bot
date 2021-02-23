@@ -313,11 +313,12 @@ async function waitUntilPrepump() {
 			continue;
 		}
 		rally = null;
-		if (!yolo) {
-			// This avoids the race condition if we're waiting to buy anyways
-			await sleep(10000 * Math.random() + 5000);
-		}
+		
 		while (rallies.length) {
+			if (!yolo) {
+				// This avoids the race condition if we're waiting to buy anyways
+				await sleep(8000 * Math.random() + 2000);
+			}
 			rally = rallies.shift();
 			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
 				rally = null;
@@ -489,7 +490,7 @@ function detectCoinRallies() {
 				first: first,
 				last: last
 			});
-		} else if (test_count > 6) {
+		} else if (test_count > 6 && detection_mode) {
 			rallies.push({sym: sym, first: first, last: last, gain: gain , fail: fail_reasons});
 		}
 	}
@@ -516,7 +517,7 @@ async function waitUntilFetchPricesAsync() {
 	++time_elapsed_since_rally;
 	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
 	if (client) {
-		fetchMarketDataTime -= 2000;
+		fetchMarketDataTime -= 1000;
 	}
 }
 
