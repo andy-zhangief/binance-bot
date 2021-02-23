@@ -86,8 +86,8 @@ var BB_BUY = 20;
 
 // PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
 var SYMBOLS_PRICE_CHECK_TIME = 10 * 1000;
-const PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
-const PREPUMP_STOP_LOSS_MULTIPLIER = 1;
+var PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
+var PREPUMP_STOP_LOSS_MULTIPLIER = 1;
 const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 18; // * SYMBOLS_PRICE_CHECK_TIME
 var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
@@ -128,6 +128,7 @@ fetch_balance_time = 0;
 prices_data_points_count = 0;
 SELL_FINISHED = false;
 priceFetch = 0;
+time_elapsed_since_rally = 0;
 prices = [];
 prevDay = {};
 serverPrices = [];
@@ -290,6 +291,7 @@ async function waitUntilPrepump() {
 			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
+			console.log(`Rally Profit Multiplier: ${PREPUMP_TAKE_PROFIT_MULTIPLIER}, Rally Stop Loss Multiplier ${PREPUMP_STOP_LOSS_MULTIPLIER}`);
 			console.log(`Blacklist: ${blacklist}`);
 		}
 		rallies = detectCoinRallies();
@@ -331,10 +333,12 @@ async function waitUntilPrepump() {
 			rally_inc_pct = rally.gain - 1;
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
 			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
+			time_elapsed_since_rally = 0;
 			pump();
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
 			}
+			analyzeDecisionForPrepump(rally_inc_pct);
 		}
 	}
 }
@@ -497,6 +501,7 @@ async function waitUntilFetchPricesAsync() {
 	}
 	parseServerPrices();
 	++prices_data_points_count;
+	++time_elapsed_since_rally;
 	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
 	if (client) {
 		fetchMarketDataTime -= 1000;
@@ -901,6 +906,18 @@ function analyzeDecision() {
 		// it means we made a bad sell
 		BB_SELL = Math.min(BB_SELL + BUY_SELL_INC, MAX_BUY_SELL_BUF);
 	}
+}
+
+function analyzeDecisionForPrepump(rally_inc_pct) {
+	historical_prices = getPricesForCoin(coinpair, time_elapsed_since_rally).slice(0, -RALLY_TIME);
+	max_historical = Math.max(...historical_prices);
+	min_historical = Math.min(...historical_prices);
+	historical_loss = min_historical/lastBuy;
+	historical_profit = max_historical/lastBuy;
+	new_stop_loss = Math.max(average([STOP_LOSS_MULTIPLIER, historical_loss]), 0.97);
+	new_take_profit = Math.max(average([TAKE_PROFIT_MULTIPLIER, historical_loss]), 1.01);
+	PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
+	PREPUMP_STOP_LOSS_MULTIPLIER = ((1/new_stop_loss - 1)/rally_inc_pct).toFixed(4);
 }
 
 async function tick(buying) {
