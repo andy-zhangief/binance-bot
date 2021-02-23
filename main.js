@@ -88,6 +88,10 @@ var BB_BUY = 20;
 var SYMBOLS_PRICE_CHECK_TIME = 10 * 1000;
 var PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
 var PREPUMP_STOP_LOSS_MULTIPLIER = 1;
+const PREPUMP_BULL_PROFIT_MULTIPLIER = 2;
+const PREPUMP_BEAR_PROFIT_MULTIPLIER = 1;
+const PREPUMP_BULL_LOSS_MULTIPLIER = 1;
+const PREPUMP_BEAR_LOSS_MULTIPLIER = 0.5;
 const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
 const RALLY_TIME = 18; // * SYMBOLS_PRICE_CHECK_TIME
 var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
@@ -199,7 +203,7 @@ async function init() {
 	}
 	initClientServer();
 	await binance.useServerTime();
-	loopGetBalanceAsync();
+	loopGetBalanceAndPrevDayAsync();
 	if (coinpair == "PREPUMP") {
 		waitUntilPrepump();
 		return;
@@ -247,9 +251,14 @@ function initClientServer() {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
 				if (message.prices && message.timestamp && message.interval) {
-					if (!fetchMarketDataTime || parseInt(message.timestamp) > fetchMarketDataTime) {
+					console.log("Received prices from server");
+					if (!fetchMarketDataTime || parseInt(message.timestamp) >= fetchMarketDataTime) {
 						serverPrices = message.prices;
 						price_data_received = true;
+						console.log("Prices are good");
+					} else {
+						console.log("Prices are no good");
+						console.log(message.timestamp + " < " + fetchMarketDataTime);
 					}
 				}
 				if (message.blacklist) {
@@ -338,10 +347,10 @@ async function waitUntilPrepump() {
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
 			}
-			setTimeout(() => {
-				analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally);
-			}, ONE_MIN)
-			
+			console.log("Time for analysis");
+			old_take_profit = TAKE_PROFIT_MULTIPLIER;
+			new Promise((resolve) => setTimeout(resolve, 5 * ONE_MIN))
+				.then(analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally, old_take_profit));
 		}
 	}
 }
@@ -507,7 +516,7 @@ async function waitUntilFetchPricesAsync() {
 	++time_elapsed_since_rally;
 	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
 	if (client) {
-		fetchMarketDataTime -= 1000;
+		fetchMarketDataTime -= 2000;
 	}
 }
 
@@ -548,9 +557,31 @@ async function getPrevDay() {
 		    let symbol = obj.symbol;
 		    prevDay[symbol] = obj.priceChangePercent;
 		}
+		setMultiplersFromPreviousDayBTCPrices();
 	});
 }
 
+function setMultiplersFromPreviousDayBTCPrices() {
+	if (prevDay['BTCUSDT']) {
+		prevDayBTC = prevDay['BTCUSDT'];
+		if (parseFloat(prevDayBTC) > 0) {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BEAR_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BULL_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BEAR_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BULL_LOSS_MULTIPLIER;
+			}
+		} else {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BULL_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BEAR_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BULL_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BEAR_LOSS_MULTIPLIER;
+			}
+		}
+	}
+
+}
 
 async function pump() {
 	//buy code here
@@ -911,13 +942,14 @@ function analyzeDecision() {
 	}
 }
 
-function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed) {
+function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed, old_take_profit) {
 	historical_prices = getPricesForCoin(coinpair, time_elapsed);
 	max_historical = Math.max(...historical_prices);
 	historical_profit = max_historical/lastBuy;
-	new_take_profit = Math.max(average([TAKE_PROFIT_MULTIPLIER, historical_profit]), 1.01);
+	new_take_profit = Math.max(average([old_take_profit, historical_profit]), 1.01);
 	PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
 	PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
+	console.log("Analysis complete");
 }
 
 async function tick(buying) {
@@ -969,13 +1001,13 @@ async function getLatestPriceAsync(coinpair) {
 }
 
 // this never resolves
-async function loopGetBalanceAsync() {
+async function loopGetBalanceAndPrevDayAsync() {
 	return new Promise(async (resolve) => {
 		while (true) {
-			// This is sketchy but I have no idea how to do proper concurrency
 			while (Date.now() < fetch_balance_time) {
 				await sleep(ONE_MIN);
 			}
+			getPrevDay();
 			fetching_balance = true;
 			binance.balance((error, b) => {
 				if ( error ) {
