@@ -22,14 +22,6 @@ To run: `node main prepump [optional price check timeframe in seconds]` e.g `nod
 
 The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press `b` or `s` respectively.
 
-Color code for graph:
-White - Price of Coinpair
-Pink - 20 Second Moving Average
-Yellow - 20 Minute Moving Average
-Green - 20 Minute Moving Lower Bollinger Band
-Red - 20 Minute Moving Upper Bollinger Band
-https://www.investopedia.com/terms/b/bollingerbands.asp
-
 Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
 
 Run with option `--base=BTC` for BTC. e.g `node main prepump --base=BTC`
@@ -40,7 +32,23 @@ Run with option `--yolo` to buy immediately once rally is detected.
 
 To run multiple synchronized bots, run one bot with the option `--server` and the others with the option `--client`. They should synchronize prices and blacklists. You can restart any amount of clients and they will receive the historical price data when they start. For best results, the client's price fetch interval (number after prepump) should be a multiple of the server's (which is defaulted to 10).
 
+# Graph Index:
+White - Price of Coinpair
+
+Pink - 20 Second Moving Average
+
+Yellow - 20 Minute Moving Average
+
+Green - 20 Minute Moving Lower Bollinger Band
+
+Red - 20 Minute Moving Upper Bollinger Band
+
+https://www.investopedia.com/terms/b/bollingerbands.asp
+
 ![alt text](https://i.imgur.com/II1D8l8.png)
+
+
+# Contact:
 
 Feel free to reach out to me on discord and I'd be happy to help you. https://discord.gg/BTh9wuaPxD
 
