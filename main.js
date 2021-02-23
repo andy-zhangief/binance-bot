@@ -104,7 +104,7 @@ lookback = [];
 means = [];
 mabuy = [];
 masell = [];
-fetchMarketDataTime = Date.now();
+fetchMarketDataTime = 0;
 lastBuy = 0;
 lastSell = 0;
 supports = {};
@@ -246,8 +246,7 @@ function initClientServer() {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
 				if (message.prices && message.timestamp && message.interval) {
-					console.log("Got a price update from server");
-					if (message.timestamp > fetchMarketDataTime) {
+					if (!fetchMarketDataTime || parseInt(message.timestamp) > fetchMarketDataTime) {
 						serverPrices = message.prices;
 						price_data_received = true;
 					}
@@ -322,6 +321,8 @@ async function waitUntilPrepump() {
 			SELL_FINISHED = false;
 			lookback = [];
 			q = [];
+			blacklist.push(coin);
+			synchronizeBlacklist();
 			while (coinInfo == null) {
 				await sleep(100);
 			}
@@ -496,7 +497,10 @@ async function waitUntilFetchPricesAsync() {
 	}
 	parseServerPrices();
 	++prices_data_points_count;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME - (!!client ? 1000 : 0) ;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
+	if (client) {
+		fetchMarketDataTime -= 1000;
+	}
 }
 
 async function fetchAllPricesAsyncIfReady() {
@@ -546,8 +550,6 @@ async function pump() {
 	if (BUY_LOCAL_MIN && !yolo) {
 		manual_buy = false;
 		quit_buy = false;
-		blacklist.push(coin);
-		synchronizeBlacklist();
 		latestPrice = await waitUntilTimeToBuy();
 		manual_buy = false;
 		quit_buy = false;
@@ -597,7 +599,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	binance.marketSell(coinpair, quantity, (error, response) => {
 		if (error) {
 			console.log(`MARKET DUMP ERROR: ${error.body}`);
-			console.log("we're screwed");
+			console.log("Market sell error, please sell on Binance.com manually");
 			return;
 		}
 		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
