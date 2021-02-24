@@ -14419,8 +14419,8 @@
     },
     "BTCUPUSDT": {
         "status": "TRADING",
-        "minPrice": "18.10100000",
-        "maxPrice": "343.91500000",
+        "minPrice": "13.79700000",
+        "maxPrice": "262.13700000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -14437,8 +14437,8 @@
     },
     "BTCDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00620000",
-        "maxPrice": "0.11640000",
+        "minPrice": "0.00810000",
+        "maxPrice": "0.15340000",
         "tickSize": "0.00010000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15445,8 +15445,8 @@
     },
     "ETHUPUSDT": {
         "status": "TRADING",
-        "minPrice": "19.60700000",
-        "maxPrice": "372.52900000",
+        "minPrice": "11.10100000",
+        "maxPrice": "210.91600000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15463,8 +15463,8 @@
     },
     "ETHDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00063000",
-        "maxPrice": "0.01190000",
+        "minPrice": "0.00078000",
+        "maxPrice": "0.01477000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15481,8 +15481,8 @@
     },
     "ADAUPUSDT": {
         "status": "TRADING",
-        "minPrice": "9.00700000",
-        "maxPrice": "171.12100000",
+        "minPrice": "8.52400000",
+        "maxPrice": "161.95500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15499,8 +15499,8 @@
     },
     "ADADOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00017000",
-        "maxPrice": "0.00305000",
+        "minPrice": "0.00011000",
+        "maxPrice": "0.00208000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15517,8 +15517,8 @@
     },
     "LINKUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.85000000",
-        "maxPrice": "54.14700000",
+        "minPrice": "1.35400000",
+        "maxPrice": "25.71100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -15535,8 +15535,8 @@
     },
     "LINKDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00008500",
-        "maxPrice": "0.00160100",
+        "minPrice": "0.00009600",
+        "maxPrice": "0.00181800",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16201,8 +16201,8 @@
     },
     "BNBUPUSDT": {
         "status": "TRADING",
-        "minPrice": "79.79900000",
-        "maxPrice": "1516.16400000",
+        "minPrice": "54.76800000",
+        "maxPrice": "1040.59000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16219,8 +16219,8 @@
     },
     "BNBDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00027000",
-        "maxPrice": "0.00494000",
+        "minPrice": "0.00023000",
+        "maxPrice": "0.00423000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16237,8 +16237,8 @@
     },
     "XTZUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.12700000",
-        "maxPrice": "2.40000000",
+        "minPrice": "0.05800000",
+        "maxPrice": "1.08800000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -16255,8 +16255,8 @@
     },
     "XTZDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.01500000",
-        "maxPrice": "0.27000000",
+        "minPrice": "0.01900000",
+        "maxPrice": "0.34400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18361,8 +18361,8 @@
     },
     "EOSUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.63400000",
-        "maxPrice": "12.03800000",
+        "minPrice": "0.19400000",
+        "maxPrice": "3.68400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18379,8 +18379,8 @@
     },
     "EOSDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.02100000",
-        "maxPrice": "0.38700000",
+        "minPrice": "0.03300000",
+        "maxPrice": "0.61100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18397,8 +18397,8 @@
     },
     "TRXUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.60400000",
-        "maxPrice": "11.47500000",
+        "minPrice": "0.24200000",
+        "maxPrice": "4.58700000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18415,8 +18415,8 @@
     },
     "TRXDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.01500000",
-        "maxPrice": "0.27400000",
+        "minPrice": "0.01800000",
+        "maxPrice": "0.32400000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18433,8 +18433,8 @@
     },
     "XRPUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.49100000",
-        "maxPrice": "9.31300000",
+        "minPrice": "0.33700000",
+        "maxPrice": "6.38500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18451,8 +18451,8 @@
     },
     "XRPDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00018700",
-        "maxPrice": "0.00354800",
+        "minPrice": "0.00016000",
+        "maxPrice": "0.00303900",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18469,8 +18469,8 @@
     },
     "DOTUPUSDT": {
         "status": "TRADING",
-        "minPrice": "17.66300000",
-        "maxPrice": "335.59500000",
+        "minPrice": "13.97000000",
+        "maxPrice": "265.42100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18487,9 +18487,9 @@
     },
     "DOTDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00010000",
-        "maxPrice": "0.00187000",
-        "tickSize": "0.00001000",
+        "minPrice": "0.00008500",
+        "maxPrice": "0.00160600",
+        "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "99999999.00000000",
@@ -18757,8 +18757,8 @@
     },
     "LTCUPUSDT": {
         "status": "TRADING",
-        "minPrice": "6.03600000",
-        "maxPrice": "114.66800000",
+        "minPrice": "2.37000000",
+        "maxPrice": "45.02900000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -18775,8 +18775,8 @@
     },
     "LTCDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00089000",
-        "maxPrice": "0.01690000",
+        "minPrice": "0.00133000",
+        "maxPrice": "0.02514000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19387,8 +19387,8 @@
     },
     "UNIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.82200000",
-        "maxPrice": "53.60300000",
+        "minPrice": "2.24800000",
+        "maxPrice": "42.70100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19405,8 +19405,8 @@
     },
     "UNIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00092000",
-        "maxPrice": "0.01731000",
+        "minPrice": "0.00046000",
+        "maxPrice": "0.00870000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19927,8 +19927,8 @@
     },
     "SXPUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.25060000",
-        "maxPrice": "4.76120000",
+        "minPrice": "0.13270000",
+        "maxPrice": "2.51960000",
         "tickSize": "0.00010000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -19945,9 +19945,9 @@
     },
     "SXPDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00000300",
-        "maxPrice": "0.00004400",
-        "tickSize": "0.00000100",
+        "minPrice": "0.00000108",
+        "maxPrice": "0.00002034",
+        "tickSize": "0.00000001",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "99999999.00000000",
@@ -20071,8 +20071,8 @@
     },
     "FILUPUSDT": {
         "status": "TRADING",
-        "minPrice": "0.86200000",
-        "maxPrice": "16.37000000",
+        "minPrice": "0.42400000",
+        "maxPrice": "8.05500000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20089,8 +20089,8 @@
     },
     "FILDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.03500000",
-        "maxPrice": "0.66100000",
+        "minPrice": "0.04600000",
+        "maxPrice": "0.87000000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20107,8 +20107,8 @@
     },
     "YFIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "1.29300000",
-        "maxPrice": "24.55000000",
+        "minPrice": "0.64600000",
+        "maxPrice": "12.26300000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20125,8 +20125,8 @@
     },
     "YFIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00058000",
-        "maxPrice": "0.01094000",
+        "minPrice": "0.00069000",
+        "maxPrice": "0.01299000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -20466,7 +20466,7 @@
         "icebergAllowed": true
     },
     "BOTBTC": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.00001000",
         "maxPrice": "100000.00000000",
         "tickSize": "0.00001000",
@@ -20484,7 +20484,7 @@
         "icebergAllowed": true
     },
     "BOTBUSD": {
-        "status": "TRADING",
+        "status": "BREAK",
         "minPrice": "0.01000000",
         "maxPrice": "100000.00000000",
         "tickSize": "0.01000000",
@@ -21367,8 +21367,8 @@
     },
     "AAVEUPUSDT": {
         "status": "TRADING",
-        "minPrice": "16.22100000",
-        "maxPrice": "308.18400000",
+        "minPrice": "11.22800000",
+        "maxPrice": "213.31600000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21385,8 +21385,8 @@
     },
     "AAVEDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00008200",
-        "maxPrice": "0.00155500",
+        "minPrice": "0.00004900",
+        "maxPrice": "0.00093000",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21745,8 +21745,8 @@
     },
     "SUSHIUPUSDT": {
         "status": "TRADING",
-        "minPrice": "6.63500000",
-        "maxPrice": "126.05400000",
+        "minPrice": "5.33400000",
+        "maxPrice": "101.33100000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21763,8 +21763,8 @@
     },
     "SUSHIDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00005000",
-        "maxPrice": "0.00094100",
+        "minPrice": "0.00002100",
+        "maxPrice": "0.00038500",
         "tickSize": "0.00000100",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21781,8 +21781,8 @@
     },
     "XLMUPUSDT": {
         "status": "TRADING",
-        "minPrice": "2.96800000",
-        "maxPrice": "56.37600000",
+        "minPrice": "1.18400000",
+        "maxPrice": "22.47900000",
         "tickSize": "0.00100000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -21799,8 +21799,8 @@
     },
     "XLMDOWNUSDT": {
         "status": "TRADING",
-        "minPrice": "0.00100000",
-        "maxPrice": "0.01890000",
+        "minPrice": "0.00135000",
+        "maxPrice": "0.02556000",
         "tickSize": "0.00001000",
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
@@ -23335,6 +23335,204 @@
         "stepSize": "0.01000000",
         "minQty": "0.01000000",
         "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "UFTETH": {
+        "status": "TRADING",
+        "minPrice": "0.00000100",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000100",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00500000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "UFTBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00010000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00010000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "1INCHBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00010000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00010000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "BANDBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "GRTBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00010000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00010000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "IOSTBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00001000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00001000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
+        "maxQty": "9000000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "OMGBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00010000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00010000",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "900000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "REEFBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00001000",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00001000",
+        "stepSize": "0.10000000",
+        "minQty": "0.10000000",
+        "maxQty": "9000000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "ACMBTC": {
+        "status": "TRADING",
+        "minPrice": "0.00000010",
+        "maxPrice": "1000.00000000",
+        "tickSize": "0.00000010",
+        "stepSize": "0.01000000",
+        "minQty": "0.01000000",
+        "maxQty": "90000000.00000000",
+        "minNotional": "0.00010000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "ACMBUSD": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
+        "minNotional": "10.00000000",
+        "orderTypes": [
+            "LIMIT",
+            "LIMIT_MAKER",
+            "MARKET",
+            "STOP_LOSS_LIMIT",
+            "TAKE_PROFIT_LIMIT"
+        ],
+        "icebergAllowed": true
+    },
+    "ACMUSDT": {
+        "status": "TRADING",
+        "minPrice": "0.00100000",
+        "maxPrice": "10000.00000000",
+        "tickSize": "0.00100000",
+        "stepSize": "0.00100000",
+        "minQty": "0.00100000",
+        "maxQty": "90000.00000000",
         "minNotional": "10.00000000",
         "orderTypes": [
             "LIMIT",

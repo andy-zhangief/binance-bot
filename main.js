@@ -92,6 +92,8 @@ var {
 	PREPUMP_BEAR_LOSS_MULTIPLIER,
 	PRICES_HISTORY_LENGTH,
 	RALLY_TIME,
+	MIN_RALLY_TIME,
+	MAX_RALLY_TIME,
 	RALLY_MAX_DELTA,
 	RALLY_MIN_DELTA,
 	RALLY_GREEN_RED_RATIO,
@@ -200,6 +202,7 @@ function initArgumentVariables() {
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	SHOW_GRAPH = !process.argv.includes("--no-plot");
 	silent = process.argv.includes("--silent");
+	// TODO: Check if server is already started
 	process.argv.includes("--server") && !process.argv.includes("--client") && initServer();
 	!process.argv.includes("--server") && process.argv.includes("--client") && initClient();
 }
@@ -226,7 +229,6 @@ function initKeybindings() {
 				if (server) {
 					blacklist = [];
 					updateBlacklistFromBalance();
-					synchronizeBlacklist();
 				}
 				break;
 			case "e":
@@ -325,7 +327,7 @@ async function waitUntilPrepump() {
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 			console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
-			console.log(`Rally Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
+			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
 			console.log(`You have made ${purchases.length} purchases`);
 			console.log(`Last 3 Purchases: ${JSON.stringify(purchases.slice(-3), null, 4)}`);
@@ -413,6 +415,7 @@ function detectCoinRallies() {
 		if (green + red != RALLY_TIME - 1) {
 			break;
 		}
+		// TODO: Rethink where start/end values should be in comparison to sorted historical
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
@@ -458,6 +461,7 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
 		}
+		// Rethink this in particular
 		if (max_historical < last) {
 			test_count++;
 		} else {
@@ -655,7 +659,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && latestPrice < mean + 1.5 * stdev) {
+						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -843,6 +847,7 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.5, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
+			RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
 		}, 3 * ONE_MIN);
 	});
 }
@@ -1127,7 +1132,10 @@ function updateBlacklistFromBalance() {
 		if (key != "USDT" && parseFloat(balances[key].available) > 0 && !blacklist.includes(key)) {
 			blacklist.push(key)
 		}
-	})
+	});
+	if (server) {
+		synchronizeBlacklist();
+	}
 }
 
 function removeFromBlacklistLater(coin) {
