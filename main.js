@@ -32,7 +32,7 @@ const binance = new Binance().options({
 // MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
 // IMPORTANT SETTINGS YOU SHOULD CHANGE
 const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 40;
+const MAX_OVERRIDE_USDT = 20;
 // BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
 // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 const PCT_BUY = 0.01;
@@ -127,6 +127,7 @@ fail_counter = 0;
 dont_buy_before = 0;
 prepump = false;
 pnl = 0;
+purchases = [];
 opportunity_expired_time = 0;
 fetch_balance_time = 0;
 prices_data_points_count = 0;
@@ -144,9 +145,11 @@ manual_buy = false;
 manual_sell = false;
 quit_buy = false;
 yolo = false;
+futures = false;
 server = null;
 client = null;
 price_data_received = false;
+fetching_prices_from_graph_mode = false;
 coinpair = process.argv[2].toUpperCase();
 coin = "";
 
@@ -251,14 +254,9 @@ function initClientServer() {
 			if (obj.message) {
 				message = JSON.parse(obj.message)
 				if (message.prices && message.timestamp && message.interval) {
-					console.log("Received prices from server");
 					if (!fetchMarketDataTime || parseInt(message.timestamp) >= fetchMarketDataTime) {
 						serverPrices = message.prices;
 						price_data_received = true;
-						console.log("Prices are good");
-					} else {
-						console.log("Prices are no good");
-						console.log(message.timestamp + " < " + fetchMarketDataTime);
 					}
 				}
 				if (message.blacklist) {
@@ -289,36 +287,41 @@ async function waitUntilPrepump() {
 	BUFFER_AFTER_FAIL = true;
 	// Testing only, change this!!!!
 	yolo = process.argv.includes("--yolo");
+	futures = process.argv.includes("--futures");
+	old_take_profit = 0;
 	coinpair = "";
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
+
+	if (futures) {
+		RALLY_MAX_DELTA = 1.03;
+	}
+
 	while (true) {
 		await waitUntilFetchPricesAsync();
 		if (!detection_mode) {
 			console.clear();
 			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
+			console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 			console.log(`Rally Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
+			console.log(`You have made ${purchases.length} purchases`);
+			console.log(`Purchases: ${JSON.stringify(purchases, null, 4)}`);
 		}
 		rallies = detectCoinRallies();
 		if (detection_mode) {
 			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			continue;
 		}
-
 		if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
 			continue;
 		}
 		rally = null;
 		
 		while (rallies.length) {
-			if (!yolo) {
-				// This avoids the race condition if we're waiting to buy anyways
-				await sleep(8000 * Math.random() + 2000);
-			}
 			rally = rallies.shift();
 			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
 				rally = null;
@@ -326,6 +329,16 @@ async function waitUntilPrepump() {
 		}
 
 		if (rally != null && Date.now() > dont_buy_before) {
+			if (!yolo) {
+				// This avoids the race condition if we're waiting to buy anyways
+				await sleep(10000 * Math.random() + 2000);
+			}
+			if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
+				continue;
+			}
+			if (blacklist.includes(getCoin(rally.sym))) {
+				continue;
+			}
 			coinpair = rally.sym;
 			coin = getCoin(coinpair);
 			baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
@@ -348,11 +361,35 @@ async function waitUntilPrepump() {
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
 			}
-			console.log("Time for analysis");
-			old_take_profit = TAKE_PROFIT_MULTIPLIER;
-			new Promise((resolve) => setTimeout(resolve, 5 * ONE_MIN))
-				.then(analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally, old_take_profit));
+			if (ANALYZE) {
+				old_take_profit = TAKE_PROFIT_MULTIPLIER;
+				analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally, old_take_profit)
+			}
 		}
+	}
+}
+
+async function waitUntilFetchPricesAsync() {
+	while(Date.now() < fetchMarketDataTime) {
+		await sleep(100);
+	}
+	if (!client) {
+		await fetchAllPricesAsync();
+	} else {
+		while (!price_data_received) {
+			await sleep(100);
+		}
+		price_data_received = false;
+	}
+	if (server) {
+		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
+	}
+	parseServerPrices();
+	++prices_data_points_count;
+	++time_elapsed_since_rally;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
+	if (client) {
+		fetchMarketDataTime -= 1000;
 	}
 }
 
@@ -362,12 +399,19 @@ function parseServerPrices() {
 	}
 	newPrices = {};
 	serverPrices.forEach(v => {
-		// don't touch futures
-		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY) || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
+		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY)) {
 			return;
 		}
 		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
 			return;
+		}
+		if (!detect) {
+			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
+				return;
+			}
+			if (futures && !v.symbol.includes("DOWNUSDT") && !v.symbol.includes("UPUSDT")) {
+				return;
+			}
 		}
 		newPrices[v.symbol] = v.askPrice;
 	});
@@ -497,30 +541,6 @@ function detectCoinRallies() {
 	return rallies.sort((a, b) => a.gain - b.gain);
 }
 
-async function waitUntilFetchPricesAsync() {
-	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
-	}
-	if (!client) {
-		await fetchAllPricesAsync();
-	} else {
-		while (!price_data_received) {
-			await sleep(100);
-		}
-		price_data_received = false;
-	}
-	if (server) {
-		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
-	}
-	parseServerPrices();
-	++prices_data_points_count;
-	++time_elapsed_since_rally;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
-	if (client) {
-		fetchMarketDataTime -= 1000;
-	}
-}
-
 async function fetchAllPricesAsyncIfReady() {
 	return new Promise(async (resolve) => {
 		await waitUntilFetchPricesAsync();
@@ -605,6 +625,8 @@ async function pump() {
 			process.exit(0);
 		}
 		console.log("BUY WINDOW EXPIRED");
+		lastBuy = 0;
+		lastSell = 0;
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 		return;
 	}
@@ -653,14 +675,20 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		pnl = Math.round(pnl*10000000)/10000000;
 		if (LOOP) {
 			beep();
+			purchases.push({
+				coin: coinpair,
+				buy: lastBuy,
+				sell: lastSell,
+				gain: lastSell/lastBuy
+			})
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
+			ANALYZE = true;
 			if (prepump) {
 				removeFromBlacklistLater(coin);
 				return;
 			}
-			ANALYZE = true;
 			pump()
 			return;
 		}
@@ -683,7 +711,7 @@ async function waitUntilTimeToBuy() {
 	starting_price = 0;
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
-	fetching_prices = false;
+	fetching_prices_from_graph_mode = false;
 	while (true) {
 		var [mean, stdev] = await tick(true);
 		console.clear();
@@ -785,10 +813,10 @@ async function waitUntilTimeToBuy() {
 		if (SHOW_GRAPH) {
 			plot(true);
 		}
-		if (prepump && !fetching_prices) {
-			fetching_prices = true;
+		if (prepump && !fetching_prices_from_graph_mode) {
+			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
-				fetching_prices = false;
+				fetching_prices_from_graph_mode = false;
 			});
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
@@ -857,6 +885,9 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 6:
+					if (Date.now() < timeBeforeSale) {
+						break;
+					}
 					if (Math.floor((Date.now() - start) / TIME_TO_CHANGE_PROFIT_LOSS) > timeout_count) {
 						timeout_count++;
 						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
@@ -892,8 +923,11 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		if (SHOW_GRAPH) {
 			plot(false);
 		}
-		if (prepump) {
-			fetchAllPricesAsyncIfReady();
+		if (prepump && !fetching_prices_from_graph_mode) {
+			fetching_prices_from_graph_mode = true;
+			fetchAllPricesAsyncIfReady().catch().finally(() => { 
+				fetching_prices_from_graph_mode = false;
+			});
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
@@ -944,13 +978,20 @@ function analyzeDecision() {
 }
 
 function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed, old_take_profit) {
-	historical_prices = getPricesForCoin(coinpair, time_elapsed);
-	max_historical = Math.max(...historical_prices);
-	historical_profit = max_historical/lastBuy;
-	new_take_profit = Math.max(average([old_take_profit, historical_profit]), 1.01);
-	PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
-	PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
-	console.log("Analysis complete");
+	ANALYZE = false;
+	if (!lastBuy || !lastSell) {
+		return;
+	}
+	return new Promise((_) => {
+		setTimeout(() => {
+			historical_prices = getPricesForCoin(coinpair, time_elapsed);
+			max_historical = Math.max(...historical_prices);
+			historical_profit = max_historical/lastBuy;
+			new_take_profit = Math.max(average([old_take_profit, historical_profit]), 1.01);
+			PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
+			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
+		}, 3 * ONE_MIN);
+	});
 }
 
 async function tick(buying) {
