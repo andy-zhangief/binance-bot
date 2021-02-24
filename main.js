@@ -48,7 +48,7 @@ const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
 const AUTO_ADJUST_GRAPH = true;
-const GRAPH_PADDING = '          ';
+const GRAPH_PADDING = '000000000'; // don't ask
 var GRAPH_HEIGHT = 32;
 var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
 
@@ -153,7 +153,6 @@ price_data_received = false;
 fetching_prices_from_graph_mode = false;
 coinpair = process.argv[2].toUpperCase();
 coin = "";
-sketchy_plot_lock_change_this = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
