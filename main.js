@@ -354,7 +354,6 @@ async function waitUntilPrepump() {
 			while (coinInfo == null) {
 				await sleep(100);
 			}
-			beep();
 			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
 			rally_inc_pct = rally.gain - 1;
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
