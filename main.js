@@ -1,6 +1,8 @@
 const {
 	API_KEY,
-	API_SECRET
+	API_SECRET,
+	MAX_OVERRIDE_BTC,
+	MAX_OVERRIDE_USDT
 } = require("./secrets.js")
 
 const fs = require('fs');
@@ -26,16 +28,10 @@ const binance = new Binance().options({
   //test: true // comment out when running for real
 });
 
+////////////////////////////// GLOBALS ///////////////////////////////
 
-// TODO: Move const to new file
-// TODO: Create web interface
-// MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
-// IMPORTANT SETTINGS YOU SHOULD CHANGE
-const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 20;
 // BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
-// DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
-const PCT_BUY = 0.01;
+const PCT_BUY = 0.01; // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 var TAKE_PROFIT_MULTIPLIER = 1.05; // Only change for single coinpair trading, will be unset if prepump is enabled
 var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, will be unset if prepump is enabled
 const RUNTIME = 10 * ONE_MIN; //mins
@@ -46,12 +42,11 @@ var DEFAULT_BASE_CURRENCY = "USDT";
 const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
 
 // GRAPH SETTINGS
-const SHOW_GRAPH = true;
+var SHOW_GRAPH = true;
 const AUTO_ADJUST_GRAPH = true;
 const GRAPH_PADDING = '000000000'; // don't ask
 var GRAPH_HEIGHT = 32;
 var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
-
 
 // BUY SELL SETTINGS
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
@@ -139,7 +134,6 @@ prices = [];
 prevDay = {};
 serverPrices = [];
 blacklist = [];
-override_blacklist = false;
 balances = {};
 coinInfo = null;
 manual_buy = false;
@@ -151,151 +145,168 @@ server = null;
 client = null;
 price_data_received = false;
 fetching_prices_from_graph_mode = false;
-coinpair = process.argv[2].toUpperCase();
+coinpair = "";
 coin = "";
 
-////////////////////////// CODE STARTS ////////////////////////
-
-if (!process.argv[2] || !(process.argv[2].trim() == "prepump" || process.argv[2].endsWith("USDT") || process.argv[2].endsWith("BTC"))) {
-	console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
-	console.log("Optional parameters:");
-	console.log("--base=BTC|USDT to select base trading currency");
-	console.log("--detect to only detect rallying coins");
-	process.exit(1);
-}
-
-// Read Keystrokes
-readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
-process.stdin.on('keypress', (str, key) => {
-	if (key.ctrl && key.name === 'c') {
-		// I should write log data to file for analytics
-		process.exit(0); // eslint-disable-line no-process-exit
-	}
-	switch (str) {
-		case "a":
-			// a is to toggle auto
-			auto = !auto;
-			break;
-		case "b":
-			// b is for buy
-			manual_buy = true;
-			break;
-		case "e":
-			// e to extend the opportunity window
-			opportunity_expired_time += 5 * ONE_MIN;
-			break;
-		case "q":
-			// q to quit early when looking for prepumps
-			quit_buy = true;
-			break;
-		case "s":
-			// s is for sell
-			manual_sell = true;
-			break;
-		// case "p":
-		// 	console.log(getPricesForCoin("BTCUSDT", 10));
-		// 	break;
-		default:
-			break;
-	}
-});
+///////////////////////// INITIALIZATION ///////////////////////////////////
 
 async function init() {
+	checkValidArgs();
 	if (binance.getOption("test")) {
 		console.log("testing");
 	}
-	initClientServer();
+	initArgumentVariables();
+	initKeybindings();
 	await binance.useServerTime();
 	loopGetBalanceAndPrevDayAsync();
 	if (coinpair == "PREPUMP") {
 		waitUntilPrepump();
 		return;
-		// will not execute any more code after this
 	}
-	
 	coin = getCoin(coinpair);
 	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-
-	//await getExchangeInfo(coinpair);
-	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
+	readCoinInfo();
 	while (coinInfo == null) {
 		await sleep(100);
 	}
-	override_blacklist = true;
-	//console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
 }
 
-function initClientServer() {
-	if (process.argv.includes("--server")) {
-		server = SocketModel.createServer( { socketFile: SOCKETFILE} );
-		server.onMessage(function(obj) {
-			if (obj.message) {
-				message = JSON.parse(obj.message)
-				if (message.blacklist) {
-					if (Math.abs(message.blacklist.length - blacklist.length) == 1) {
-						blacklist = message.blacklist;
-					} else {
-						blacklist.push(...message.blacklist);
-						blacklist = _.uniq(blacklist);
-					}
-					synchronizeBlacklist();
-				}
-				
-			}
-		});
-		server.onClientConnection((socket) => {
-			server.getWriter().send(JSON.stringify({historicalPrices: prices}), socket);
-		});
-		server.start();
-	} else if (process.argv.includes("--client")) {
-		client = SocketModel.createClient( { socketFile: SOCKETFILE } );
-		client.onMessage(function(obj) {
-			if (obj.message) {
-				message = JSON.parse(obj.message)
-				if (message.prices && message.timestamp && message.interval) {
-					if (!fetchMarketDataTime || parseInt(message.timestamp) >= fetchMarketDataTime) {
-						serverPrices = message.prices;
-						price_data_received = true;
-					}
-				}
-				if (message.blacklist) {
-					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-						if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !SELL_FINISHED) {
-							quit_buy = true;
-						}
-						blacklist = message.blacklist;
-						console.log(`Updated Blacklist: ${blacklist}`);
-						
-					}
-				}
-				if (message.historicalPrices) {
-					prices = message.historicalPrices;
-					prices_data_points_count = prices.length;
-				}
-			}
-		});
-		client.start();
+function checkValidArgs() {
+	if (!process.argv[2] || !(process.argv[2].trim() == "prepump" || process.argv[2].endsWith("USDT") || process.argv[2].endsWith("BTC"))) {
+		console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
+		console.log("Optional parameters:");
+		console.log("--base=BTC|USDT to select base trading currency");
+		console.log("--detect to only detect rallying coins");
+		console.log("--server to initialize a server. Only initialize one server at a time");
+		console.log("--client to initialize a client. Clients will sync price data and blacklist with the server");
+		console.log("--yolo to buy immediately after detecting a rally");
+		console.log("--no-plot to skip displaying the graph on the buy/sell screen");
+		process.exit(1);
 	}
 }
 
-async function waitUntilPrepump() {
-	//await getExchangeInfo(coinpair);
-	LOOP = true;
-	auto = true;
-	prepump = true;
-	override_blacklist = false;
-	BUFFER_AFTER_FAIL = true;
-	// Testing only, change this!!!!
+function initArgumentVariables() {
+	coinpair = process.argv[2].toUpperCase();
 	yolo = process.argv.includes("--yolo");
 	futures = process.argv.includes("--futures");
-	old_take_profit = 0;
-	coinpair = "";
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
+	SHOW_GRAPH = !process.argv.includes("--no-plot");
+	process.argv.includes("--server") && !process.argv.includes("--client") && initServer();
+	!process.argv.includes("--server") && process.argv.includes("--client") && initClient();
+}
 
+function initKeybindings() {
+	readline.emitKeypressEvents(process.stdin);
+	process.stdin.setRawMode(true);
+	process.stdin.on('keypress', (str, key) => {
+		if (key.ctrl && key.name === 'c') {
+			// I should write log data to file for analytics
+			process.exit(0); // eslint-disable-line no-process-exit
+		}
+		switch (str) {
+			case "a":
+				// a is to toggle auto
+				auto = !auto;
+				break;
+			case "b":
+				// b is for buy
+				manual_buy = true;
+				break;
+			case "c":
+				// c is to clear blacklist
+				if (server) {
+					blacklist = [];
+					updateBlacklistFromBalance();
+					synchronizeBlacklist();
+				}
+				break;
+			case "e":
+				// e to extend the opportunity window
+				opportunity_expired_time += 5 * ONE_MIN;
+				break;
+			case "q":
+				// q to quit early when looking for prepumps
+				quit_buy = true;
+				break;
+			case "s":
+				// s is for sell
+				manual_sell = true;
+				break;
+			// case "p":
+			// 	console.log(getPricesForCoin("BTCUSDT", 10));
+			// 	break;
+			default:
+				break;
+		}
+	});
+}
+
+function initServer() {
+	server = SocketModel.createServer( { socketFile: SOCKETFILE} );
+	server.onMessage(function(obj) {
+		if (obj.message) {
+			message = JSON.parse(obj.message)
+			if (message.blacklist) {
+				if (Math.abs(message.blacklist.length - blacklist.length) == 1) {
+					blacklist = message.blacklist;
+				} else {
+					blacklist.push(...message.blacklist);
+					blacklist = _.uniq(blacklist);
+				}
+				synchronizeBlacklist();
+			}
+			
+		}
+	});
+	server.onClientConnection((socket) => {
+		server.getWriter().send(JSON.stringify({historicalPrices: prices}), socket);
+	});
+	server.start();
+	getExchangeInfo();
+}
+
+function initClient() {
+	client = SocketModel.createClient( { socketFile: SOCKETFILE } );
+	client.onMessage(function(obj) {
+		if (obj.message) {
+			message = JSON.parse(obj.message)
+			if (message.prices && message.timestamp && message.interval) {
+				if (!fetchMarketDataTime || parseInt(message.timestamp) >= fetchMarketDataTime) {
+					serverPrices = message.prices;
+					price_data_received = true;
+				}
+			}
+			if (message.blacklist) {
+				if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
+					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !SELL_FINISHED) {
+						quit_buy = true;
+					}
+					blacklist = message.blacklist;
+					console.log(`Updated Blacklist: ${blacklist}`);
+					
+				}
+			}
+			if (message.historicalPrices) {
+				prices = message.historicalPrices;
+				prices_data_points_count = prices.length;
+			}
+		}
+	});
+	client.start();
+}
+
+///////////////////////////// BEFORE BUY ////////////////////////////////////////
+
+async function waitUntilPrepump() {
+	LOOP = true;
+	auto = true;
+	prepump = true;
+	BUFFER_AFTER_FAIL = true;
+	coinpair = "";
+	
 	if (futures) {
 		RALLY_MAX_DELTA = 1.03;
 	}
@@ -358,6 +369,7 @@ async function waitUntilPrepump() {
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
 			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
 			time_elapsed_since_rally = 0;
+			latestPrice = rally.last;
 			pump();
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
@@ -365,64 +377,6 @@ async function waitUntilPrepump() {
 			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, time_elapsed_since_rally, purchases.slice(-1).pop(), TAKE_PROFIT_MULTIPLIER);
 		}
 	}
-}
-
-async function waitUntilFetchPricesAsync() {
-	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
-	}
-	if (!client) {
-		await fetchAllPricesAsync();
-	} else {
-		while (!price_data_received) {
-			await sleep(100);
-		}
-		price_data_received = false;
-	}
-	if (server) {
-		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
-	}
-	parseServerPrices();
-	++prices_data_points_count;
-	++time_elapsed_since_rally;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
-	if (client) {
-		fetchMarketDataTime -= 1000;
-	}
-}
-
-function parseServerPrices() {
-	while (prices.length >= PRICES_HISTORY_LENGTH) {
-		prices.shift();
-	}
-	newPrices = {};
-	serverPrices.forEach(v => {
-		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY)) {
-			return;
-		}
-		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
-			return;
-		}
-		if (!detection_mode) {
-			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
-				return;
-			}
-			if (futures && !v.symbol.includes("DOWNUSDT") && !v.symbol.includes("UPUSDT")) {
-				return;
-			}
-		}
-		newPrices[v.symbol] = v.askPrice;
-	});
-	prices.push(newPrices);
-}
-
-function getPricesForCoin(sym, timeframe) {
-	recent_prices = prices.slice(-timeframe);
-	res = [];
-	for (i = 0; i < recent_prices.length; i++) {
-		res.push(parseFloat(recent_prices[i][sym]));
-	}
-	return res.filter(a => a);
 }
 
 function detectCoinRallies() {
@@ -539,68 +493,7 @@ function detectCoinRallies() {
 	return rallies.sort((a, b) => a.gain - b.gain);
 }
 
-async function fetchAllPricesAsyncIfReady() {
-	return new Promise(async (resolve) => {
-		await waitUntilFetchPricesAsync();
-		resolve();
-	});
-}
-
-async function fetchAllPricesAsync() {
-	priceFetch = 0;
-	await getAllPrices();
-	while (priceFetch < 1) {
-		await sleep(100);
-	}
-}
-
-async function getAllPrices() {
-	binance.bookTickers((error, ticker) => {
-		if (error) {
-			while (++fail_counter >= 100) {
-				console.log("TOO MANY FAILS GETTING PRICES");
-				process.exit(1);
-			}
-			return;
-		}
-		fail_counter = 0;
-		priceFetch++;
-		serverPrices = ticker;
-	});
-}
-
-async function getPrevDay() {
-	binance.prevDay(false, (error, pd) => {
-  	// console.info(prevDay); // view all data
-		for ( let obj of pd ) {
-		    let symbol = obj.symbol;
-		    prevDay[symbol] = obj.priceChangePercent;
-		}
-		setMultiplersFromPreviousDayBTCPrices();
-	});
-}
-
-function setMultiplersFromPreviousDayBTCPrices() {
-	if (prevDay['BTCUSDT']) {
-		prevDayBTC = prevDay['BTCUSDT'];
-		if (parseFloat(prevDayBTC) > 0) {
-			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BEAR_PROFIT_MULTIPLIER) {
-				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BULL_PROFIT_MULTIPLIER;
-			}
-			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BEAR_LOSS_MULTIPLIER) {
-				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BULL_LOSS_MULTIPLIER;
-			}
-		} else {
-			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BULL_PROFIT_MULTIPLIER) {
-				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BEAR_PROFIT_MULTIPLIER;
-			}
-			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BULL_LOSS_MULTIPLIER) {
-				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BEAR_LOSS_MULTIPLIER;
-			}
-		}
-	}
-
-}
+////////////////////////////////////// BUY ///////////////////////////////////////////////
 
 async function pump() {
 	//buy code here
@@ -649,51 +542,6 @@ async function pump() {
 		actualquantity = response.executedQty // replace with bought quantity
 		ndump((buy_price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), buy_price, (buy_price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
-}
-
-async function ndump(take_profit, buy_price, stop_loss, quantity) {
-	waiting = true;
-	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
-	manual_sell = false;
-	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
-	binance.marketSell(coinpair, quantity, (error, response) => {
-		if (error) {
-			console.log(`MARKET DUMP ERROR: ${error.body}`);
-			console.log("Market sell error, please sell on Binance.com manually");
-			return;
-		}
-		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
-		console.log("market dump is successful")
-		console.info("Market sell response", response);
-		console.info("order id: " + response.orderId);
-		SELL_TS = 0;
-		SELL_FINISHED = true;
-		lastSell = sell_price * response.executedQty;
-		pnl += lastSell - lastBuy;
-		pnl = Math.round(pnl*10000000)/10000000;
-		if (LOOP) {
-			beep();
-			purchases.push({
-				sym: coinpair,
-				buy: lastBuy,
-				buyPrice: buy_price,
-				sell: lastSell,
-				sellPrice: sell_price,
-				gain: lastSell/lastBuy
-			});
-			if (BUFFER_AFTER_FAIL) {
-				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
-			}
-			if (prepump) {
-				removeFromBlacklistLater(coin);
-				return;
-			}
-			pump()
-			return;
-		}
-		process.exit(0); // kill kill kill
-	});
-	return;
 }
 
 async function waitUntilTimeToBuy() {
@@ -822,6 +670,53 @@ async function waitUntilTimeToBuy() {
 	}
 }
 
+///////////////////////// SELL ///////////////////////////////////////////////
+
+async function ndump(take_profit, buy_price, stop_loss, quantity) {
+	waiting = true;
+	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
+	manual_sell = false;
+	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
+	binance.marketSell(coinpair, quantity, (error, response) => {
+		if (error) {
+			console.log(`MARKET DUMP ERROR: ${error.body}`);
+			console.log("Market sell error, please sell on Binance.com manually");
+			return;
+		}
+		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		console.log("market dump is successful")
+		console.info("Market sell response", response);
+		console.info("order id: " + response.orderId);
+		SELL_TS = 0;
+		SELL_FINISHED = true;
+		lastSell = sell_price * response.executedQty;
+		pnl += lastSell - lastBuy;
+		pnl = Math.round(pnl*10000000)/10000000;
+		if (LOOP) {
+			beep();
+			purchases.push({
+				sym: coinpair,
+				buy: lastBuy,
+				buyPrice: buy_price,
+				sell: lastSell,
+				sellPrice: sell_price,
+				gain: lastSell/lastBuy
+			});
+			if (BUFFER_AFTER_FAIL) {
+				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
+			}
+			if (prepump) {
+				removeFromBlacklistLater(coin);
+				return;
+			}
+			pump()
+			return;
+		}
+		process.exit(0); // kill kill kill
+	});
+	return;
+}
+
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
 	end = Date.now() + RUNTIME;
@@ -926,6 +821,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	return latestPrice
 }
 
+///////////////////////// AFTER SELL //////////////////////////////////////
+
 function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, old_profit_multiplier) {
 	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
 		return;
@@ -942,6 +839,19 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
 		}, 3 * ONE_MIN);
 	});
+}
+
+/////////////////////////// HELPER FUNCTIONS DURING BUY/SELL ///////////////////////////
+
+function initializeQs() {
+	if (q.length == 0) {
+		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
+		means = new Array(QUEUE_SIZE).fill(latestPrice);
+		lowstd = new Array(QUEUE_SIZE).fill(latestPrice);
+		highstd = new Array(QUEUE_SIZE).fill(latestPrice);
+		mabuy = new Array(QUEUE_SIZE).fill(latestPrice);
+		masell = new Array(QUEUE_SIZE).fill(latestPrice);
+	}
 }
 
 async function tick(buying) {
@@ -965,18 +875,153 @@ async function tick(buying) {
 	return [mean, stdev]
 }
 
-function initializeQs() {
-	if (q.length == 0) {
-		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
-		means = new Array(QUEUE_SIZE).fill(q[0]);
-		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
-		highstd = new Array(QUEUE_SIZE).fill(q[0]);
-		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
-		masell = new Array(QUEUE_SIZE).fill(q[0]);
+function pushToLookback(latestPrice) {
+	lookback.push(latestPrice);
+	if (lookback.length > LOOKBACK_SIZE) {
+		lookback.shift();
 	}
 }
 
-// The old function
+function isUptrend(q2, buffer, kinda = true, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
+	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < (buffer * kinda ? 3 : 1)
+		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+}
+
+function isDowntrend(q2, buffer, kinda = true, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
+	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
+		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < (buffer * kinda ? 3 : 1)
+		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+}
+
+////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
+async function waitUntilFetchPricesAsync() {
+	while(Date.now() < fetchMarketDataTime) {
+		await sleep(100);
+	}
+	if (!client) {
+		await fetchAllPricesAsync();
+	} else {
+		while (!price_data_received) {
+			await sleep(100);
+		}
+		price_data_received = false;
+	}
+	if (server) {
+		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
+	}
+	parseServerPrices();
+	++prices_data_points_count;
+	++time_elapsed_since_rally;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
+	if (client) {
+		fetchMarketDataTime -= 1000;
+	}
+}
+
+function parseServerPrices() {
+	while (prices.length >= PRICES_HISTORY_LENGTH) {
+		prices.shift();
+	}
+	newPrices = {};
+	serverPrices.forEach(v => {
+		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY)) {
+			return;
+		}
+		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
+			return;
+		}
+		if (!detection_mode) {
+			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
+				return;
+			}
+			if (futures && !v.symbol.includes("DOWNUSDT") && !v.symbol.includes("UPUSDT")) {
+				return;
+			}
+		}
+		newPrices[v.symbol] = v.askPrice;
+	});
+	prices.push(newPrices);
+}
+
+function getPricesForCoin(sym, timeframe) {
+	recent_prices = prices.slice(-timeframe);
+	res = [];
+	for (i = 0; i < recent_prices.length; i++) {
+		res.push(parseFloat(recent_prices[i][sym]));
+	}
+	return res.filter(a => a);
+}
+
+async function fetchAllPricesAsyncIfReady() {
+	return new Promise(async (resolve) => {
+		await waitUntilFetchPricesAsync();
+		resolve();
+	});
+}
+
+async function fetchAllPricesAsync() {
+	priceFetch = 0;
+	await getAllPrices();
+	while (priceFetch < 1) {
+		await sleep(100);
+	}
+}
+
+async function getAllPrices() {
+	binance.bookTickers((error, ticker) => {
+		if (error) {
+			while (++fail_counter >= 100) {
+				console.log("TOO MANY FAILS GETTING PRICES");
+				process.exit(1);
+			}
+			return;
+		}
+		fail_counter = 0;
+		priceFetch++;
+		serverPrices = ticker;
+	});
+}
+
+async function getPrevDay() {
+	binance.prevDay(false, (error, pd) => {
+  	// console.info(prevDay); // view all data
+		for ( let obj of pd ) {
+		    let symbol = obj.symbol;
+		    prevDay[symbol] = obj.priceChangePercent;
+		}
+		setMultiplersFromPreviousDayBTCPrices();
+	});
+}
+
+function setMultiplersFromPreviousDayBTCPrices() {
+	if (prevDay['BTCUSDT']) {
+		prevDayBTC = prevDay['BTCUSDT'];
+		if (parseFloat(prevDayBTC) > 0) {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BEAR_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BULL_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BEAR_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BULL_LOSS_MULTIPLIER;
+			}
+		} else {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BULL_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BEAR_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BULL_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BEAR_LOSS_MULTIPLIER;
+			}
+		}
+	}
+}
+
+// DEPRECATED
 async function getLatestPriceAsync(coinpair) {
 	try {
 		let ticker = await binance.prices(coinpair);
@@ -990,39 +1035,6 @@ async function getLatestPriceAsync(coinpair) {
 		await sleep(100);
 		return await getLatestPriceAsync(coinpair);
 	}
-}
-
-// this never resolves
-async function loopGetBalanceAndPrevDayAsync() {
-	return new Promise(async (resolve) => {
-		while (true) {
-			while (Date.now() < fetch_balance_time) {
-				await sleep(ONE_MIN);
-			}
-			getPrevDay();
-			fetching_balance = true;
-			binance.balance((error, b) => {
-				if ( error ) {
-					fetching_balance = false;
-					fetch_balance_time = Date.now() + ONE_MIN;
-					console.log(error);
-					return;
-				}
-				balances = b;
-				Object.keys(b).forEach(key => {
-					if (key != "USDT" && parseFloat(b[key].available) > 0 && !blacklist.includes(key)) {
-						blacklist.push(key)
-					}
-				})
-				fetching_balance = false;
-				fetch_balance_time = Date.now() + FETCH_BALANCE_INTERVAL;
-			});
-			while (fetching_balance) {
-				await sleep(ONE_MIN);
-			}
-		}
-		
-	});
 }
 
 async function getBidAsk(coinpair) {
@@ -1071,23 +1083,59 @@ function parseDepth(depth) {
 	});
 }
 
-function isUptrend(q2, buffer, kinda = true, stdev = 0) {
-	// if (stdev == 0) {
-	// 	stdev = getLastStdev();
-	// }
-	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < (buffer * kinda ? 3 : 1)
-		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+// this never resolves
+async function loopGetBalanceAndPrevDayAsync() {
+	return new Promise(async (resolve) => {
+		while (true) {
+			while (Date.now() < fetch_balance_time) {
+				await sleep(ONE_MIN);
+			}
+			getPrevDay();
+			fetching_balance = true;
+			binance.balance((error, b) => {
+				if ( error ) {
+					fetching_balance = false;
+					fetch_balance_time = Date.now() + ONE_MIN;
+					console.log(error);
+					return;
+				}
+				balances = b;
+				updateBlacklistFromBalance();
+				fetching_balance = false;
+				fetch_balance_time = Date.now() + FETCH_BALANCE_INTERVAL;
+			});
+			while (fetching_balance) {
+				await sleep(ONE_MIN);
+			}
+		}
+		
+	});
 }
 
-function isDowntrend(q2, buffer, kinda = true, stdev = 0) {
-	// if (stdev == 0) {
-	// 	stdev = getLastStdev();
-	// }
-	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < (buffer * kinda ? 3 : 1)
-		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+function updateBlacklistFromBalance() {
+	Object.keys(balances).forEach(key => {
+		if (key != "USDT" && parseFloat(balances[key].available) > 0 && !blacklist.includes(key)) {
+			blacklist.push(key)
+		}
+	})
 }
+
+function removeFromBlacklistLater(coin) {
+	setTimeout(() => {
+		blacklist = blacklist.filter(i => i !== coin);
+		synchronizeBlacklist();
+	}, 5 * ONE_MIN);
+}
+
+function synchronizeBlacklist() {
+	if (server) {
+		server.broadcast(JSON.stringify({blacklist: blacklist}));
+	}
+	if (client) {
+		client.send(JSON.stringify({blacklist: blacklist}));
+	}
+}
+
 
 function getBalance(coin) {
 	if (!balances[coin]) {
@@ -1102,13 +1150,6 @@ function getCoin(coinpair) {
 	}
 	// assume BTC
 	return coinpair.slice(0, -3);
-}
-
-function pushToLookback(latestPrice) {
-	lookback.push(latestPrice);
-	if (lookback.length > LOOKBACK_SIZE) {
-		lookback.shift();
-	}
 }
 
 function readCoinInfo() {
@@ -1152,21 +1193,7 @@ async function getExchangeInfo() {
 	});
 }
 
-function removeFromBlacklistLater(coin) {
-	setTimeout(() => {
-		blacklist = blacklist.filter(i => i !== coin);
-		synchronizeBlacklist();
-	}, 30 * ONE_MIN);
-}
-
-function synchronizeBlacklist() {
-	if (server) {
-		server.broadcast(JSON.stringify({blacklist: blacklist}));
-	}
-	if (client) {
-		client.send(JSON.stringify({blacklist: blacklist}));
-	}
-}
+/////////////////////////////// MATH /////////////////////////////////////////////////
 
 function lastValueIsOutlier() {
 	stdev = getLastStdev();
@@ -1202,6 +1229,8 @@ function average(data){
   var avg = sum / data.length;
   return avg;
 }
+
+/////////////////////////////// GRAPHING /////////////////////////////////////////////////
 
 function formatGraph(x, i) {
 	return ("" + x + GRAPH_PADDING).slice (0, GRAPH_PADDING.length);
@@ -1240,6 +1269,8 @@ function getHistogramData() {
 	blankRed = new Array(parseInt(PLOT_DATA_POINTS/5 + histogramGreen.length)).fill(0);
 	return [blankGreen.concat(histogramGreen), blankRed.concat(histogramRed), firstGreen, firstRed];
 }
+
+/////////////////////////////// MISC /////////////////////////////////////////////////
 
 function colorText(color, str) {
 	return asciichart[color] + str + asciichart.reset;
