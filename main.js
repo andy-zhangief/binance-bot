@@ -143,6 +143,7 @@ var {
 	quit_buy,
 	yolo,
 	futures,
+	silent,
 	server,
 	client,
 	price_data_received,
@@ -185,6 +186,7 @@ function checkValidArgs() {
 		console.log("--client to initialize a client. Clients will sync price data and blacklist with the server");
 		console.log("--yolo to buy immediately after detecting a rally");
 		console.log("--no-plot to skip displaying the graph on the buy/sell screen");
+		console.log("--silent for no noise indicator when buying or selling");
 		process.exit(1);
 	}
 }
@@ -197,6 +199,7 @@ function initArgumentVariables() {
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	SHOW_GRAPH = !process.argv.includes("--no-plot");
+	silent = process.argv.includes("--silent");
 	process.argv.includes("--server") && !process.argv.includes("--client") && initServer();
 	!process.argv.includes("--server") && process.argv.includes("--client") && initClient();
 }
@@ -1293,7 +1296,9 @@ function msToTime(duration) {
 }
 
 function beep() {
-	console.log("\007");
+	if (!silent) {
+		console.log("\007");
+	}
 }
 
 function sleep(ms) {
