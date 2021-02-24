@@ -66,7 +66,6 @@ const STOP_LOSS_CHANGE_PCT = 1.01;
 const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
 
 // ANALYSIS SETTINS
-var ANALYZE = false;
 const ANALYSIS_TIME = 60; //Seconds
 const ANALYSIS_BUFFER = 5;
 const BUY_SELL_INC = 2;
@@ -361,10 +360,7 @@ async function waitUntilPrepump() {
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
 			}
-			if (ANALYZE) {
-				old_take_profit = TAKE_PROFIT_MULTIPLIER;
-				analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally, old_take_profit)
-			}
+			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, time_elapsed_since_rally, purchases.slice(-1).pop());
 		}
 	}
 }
@@ -646,10 +642,10 @@ async function pump() {
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
 		BUY_TS = 0;
-		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
-		lastBuy = price * response.executedQty;
+		buy_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		lastBuy = buy_price * response.executedQty;
 		actualquantity = response.executedQty // replace with bought quantity
-		ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
+		ndump((buy_price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), buy_price, (buy_price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
 }
 
@@ -664,27 +660,28 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 			console.log("Market sell error, please sell on Binance.com manually");
 			return;
 		}
-		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		console.log("market dump is successful")
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
 		SELL_FINISHED = true;
-		lastSell = price * response.executedQty;
+		lastSell = sell_price * response.executedQty;
 		pnl += lastSell - lastBuy;
 		pnl = Math.round(pnl*10000000)/10000000;
 		if (LOOP) {
 			beep();
 			purchases.push({
-				coin: coinpair,
+				sym: coinpair,
 				buy: lastBuy,
+				buyPrice: buy_price,
 				sell: lastSell,
+				sellPrice: sell_price,
 				gain: lastSell/lastBuy
-			})
+			});
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
-			ANALYZE = true;
 			if (prepump) {
 				removeFromBlacklistLater(coin);
 				return;
@@ -837,7 +834,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_check = 0;
 	timeout_count = 0;
 	take_profit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit)) {
+	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || Date.now() < timeBeforeSale) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -885,9 +882,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					break;
 				case 6:
-					if (Date.now() < timeBeforeSale) {
-						break;
-					}
 					if (Math.floor((Date.now() - start) / TIME_TO_CHANGE_PROFIT_LOSS) > timeout_count) {
 						timeout_count++;
 						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
@@ -915,11 +909,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			// 	stop_loss_check = 0;
 			// }
 		}
-		if (Date.now() > end && USE_TIMEOUT) {
-			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
-			lastSellReason = "Sold bcuz timeout";
-			return latestPrice;
-		}
 		if (SHOW_GRAPH) {
 			plot(false);
 		}
@@ -935,60 +924,18 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	return latestPrice
 }
 
-// Unused
-function analyzeDecision() {
-	// 4 cases: bought too early, bought too late, sold too early, sold too late
-	ANALYZE = false;
-	LB_BUY_TS = -BUY_TS - 1;
-	LB_SELL_TS = -SELL_TS - 1;
-	buy_val = lookback.slice(LB_BUY_TS)[0];
-	sell_val = lookback.slice(LB_SELL_TS)[0];
-	BUY_LOOKBACK = lookback.slice(-LB_BUY_TS - ANALYSIS_TIME, -LB_BUY_TS + ANALYSIS_TIME + 1);
-	SELL_LOOKBACK = lookback.slice(-LB_SELL_TS - ANALYSIS_TIME, -LB_SELL_TS + ANALYSIS_TIME + 1);
-	buy_min = Infinity;
-	sell_max = 0;
-	buy_min_idx = 0;
-	sell_max_idx = 0;
-	for (i = 0; i < BUY_LOOKBACK.length; i++) {
-		if (BUY_LOOKBACK[i] < buy_min) {
-			buy_min = BUY_LOOKBACK[i];
-			buy_min_idx = i;
-		}
-		if (SELL_LOOKBACK[i] > sell_max) {
-			sell_max = SELL_LOOKBACK[i];
-			sell_max_idx = i;
-		}
-	}
-	bot_idx = BUY_LOOKBACK.length/2-0.5;
-	sold_idx = SELL_LOOKBACK.length/2-0.5;
-	if (buy_min_idx < bot_idx - BB_BUY - ANALYSIS_BUFFER) {
-		// it means we bought too late
-		BB_BUY = Math.max(BB_BUY - BUY_SELL_INC, MIN_BUY_SELL_BUF);
-	} else if (buy_min_idx > bot_idx) {
-		// it means we made a bad buy
-		BB_BUY = Math.min(BB_BUY + BUY_SELL_INC, MAX_BUY_SELL_BUF);
-	}
-	if (sell_max_idx < sold_idx - BB_SELL - ANALYSIS_BUFFER) {
-		// it means we sold too late
-		BB_SELL = Math.max(BB_SELL - BUY_SELL_INC, MIN_BUY_SELL_BUF);
-	} else if (sell_max_idx > sold_idx) {
-		// it means we made a bad sell
-		BB_SELL = Math.min(BB_SELL + BUY_SELL_INC, MAX_BUY_SELL_BUF);
-	}
-}
-
-function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed, old_take_profit) {
-	ANALYZE = false;
-	if (!lastBuy || !lastSell) {
+function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase) {
+	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
 		return;
 	}
 	return new Promise((_) => {
 		setTimeout(() => {
 			historical_prices = getPricesForCoin(coinpair, time_elapsed);
 			max_historical = Math.max(...historical_prices);
-			historical_profit = max_historical/lastBuy;
+			historical_profit = max_historical/purchase.buyPrice;
 			new_take_profit = Math.max(average([old_take_profit, historical_profit]), 1.01);
-			PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
+			//TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
+			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4));
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 		}, 3 * ONE_MIN);
 	});
