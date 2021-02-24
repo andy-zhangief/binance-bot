@@ -48,7 +48,7 @@ const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
 // GRAPH SETTINGS
 const SHOW_GRAPH = true;
 const AUTO_ADJUST_GRAPH = true;
-const GRAPH_PADDING = '                ';
+const GRAPH_PADDING = '          ';
 var GRAPH_HEIGHT = 32;
 var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
 
@@ -57,7 +57,9 @@ var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as
 const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
 const TIME_BEFORE_NEW_BUY = ONE_MIN;
 var BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
+var OPPORTUNITY_EXPIRE_WINDOW = 8 * ONE_MIN;
+const MIN_OPPORTUNITY_EXPIRE_WINDOW = 3 * ONE_MIN;
+const MAX_OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
 const BUY_LOCAL_MIN = true;
 const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
 const TIME_TO_CHANGE_PROFIT_LOSS = 30 * ONE_MIN;
@@ -151,6 +153,7 @@ price_data_received = false;
 fetching_prices_from_graph_mode = false;
 coinpair = process.argv[2].toUpperCase();
 coin = "";
+sketchy_plot_lock_change_this = false;
 
 ////////////////////////// CODE STARTS ////////////////////////
 
@@ -260,11 +263,12 @@ function initClientServer() {
 				}
 				if (message.blacklist) {
 					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-						blacklist = message.blacklist;
-						console.log(`Updated Blacklist: ${blacklist}`);
-						if (blacklist.includes(coin) && auto && !SELL_FINISHED) {
+						if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !SELL_FINISHED) {
 							quit_buy = true;
 						}
+						blacklist = message.blacklist;
+						console.log(`Updated Blacklist: ${blacklist}`);
+						
 					}
 				}
 				if (message.historicalPrices) {
@@ -308,7 +312,7 @@ async function waitUntilPrepump() {
 			console.log(`Rally Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
 			console.log(`You have made ${purchases.length} purchases`);
-			console.log(`Purchases: ${JSON.stringify(purchases, null, 4)}`);
+			console.log(`Last 3 Purchases: ${JSON.stringify(purchases.slice(-3), null, 4)}`);
 		}
 		rallies = detectCoinRallies();
 		if (detection_mode) {
@@ -360,7 +364,7 @@ async function waitUntilPrepump() {
 			while (!SELL_FINISHED) {
 				await sleep(ONE_MIN * 0.5);
 			}
-			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, time_elapsed_since_rally, purchases.slice(-1).pop());
+			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, time_elapsed_since_rally, purchases.slice(-1).pop(), TAKE_PROFIT_MULTIPLIER);
 		}
 	}
 }
@@ -710,6 +714,12 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_check_time = 0;
 	fetching_prices_from_graph_mode = false;
 	while (true) {
+		if (prepump && !fetching_prices_from_graph_mode) {
+			fetching_prices_from_graph_mode = true;
+			fetchAllPricesAsyncIfReady().catch().finally(() => { 
+				fetching_prices_from_graph_mode = false;
+			});
+		}
 		var [mean, stdev] = await tick(true);
 		console.clear();
 		if (manual_buy) {
@@ -793,7 +803,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
+						if (meanTrend.includes("Up") && latestPrice < mean + 1.5 * stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -809,12 +819,6 @@ async function waitUntilTimeToBuy() {
 		}
 		if (SHOW_GRAPH) {
 			plot(true);
-		}
-		if (prepump && !fetching_prices_from_graph_mode) {
-			fetching_prices_from_graph_mode = true;
-			fetchAllPricesAsyncIfReady().catch().finally(() => { 
-				fetching_prices_from_graph_mode = false;
-			});
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
@@ -835,6 +839,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	timeout_count = 0;
 	take_profit_check_time = 0;
 	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || Date.now() < timeBeforeSale) {
+		if (prepump && !fetching_prices_from_graph_mode) {
+			fetching_prices_from_graph_mode = true;
+			fetchAllPricesAsyncIfReady().catch().finally(() => { 
+				fetching_prices_from_graph_mode = false;
+			});
+		}
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -912,19 +922,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		if (SHOW_GRAPH) {
 			plot(false);
 		}
-		if (prepump && !fetching_prices_from_graph_mode) {
-			fetching_prices_from_graph_mode = true;
-			fetchAllPricesAsyncIfReady().catch().finally(() => { 
-				fetching_prices_from_graph_mode = false;
-			});
-		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
 	lastSellReason = "Sold bcuz take profit or stop loss hit";
 	return latestPrice
 }
 
-function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase) {
+function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, old_profit_multiplier) {
 	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
 		return;
 	}
@@ -933,10 +937,11 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase) {
 			historical_prices = getPricesForCoin(coinpair, time_elapsed);
 			max_historical = Math.max(...historical_prices);
 			historical_profit = max_historical/purchase.buyPrice;
-			new_take_profit = Math.max(average([old_take_profit, historical_profit]), 1.01);
+			new_take_profit = Math.max(average([old_profit_multiplier, historical_profit]), 1.01);
 			//TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
-			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4));
+			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.5, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
+			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
 		}, 3 * ONE_MIN);
 	});
 }
@@ -1201,7 +1206,7 @@ function average(data){
 }
 
 function formatGraph(x, i) {
-	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
+	return ("" + x + GRAPH_PADDING).slice (0, GRAPH_PADDING.length);
 }
 
 function plot(buying) {
