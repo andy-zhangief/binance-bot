@@ -405,7 +405,7 @@ function parseServerPrices() {
 		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
 			return;
 		}
-		if (!detect) {
+		if (!detection_mode) {
 			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
 				return;
 			}
