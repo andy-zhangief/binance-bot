@@ -14,13 +14,6 @@ const SocketModel = require('socket-model');
 const Binance = require('node-binance-api');
 const readline = require('readline');
 
-// DO NOT CHANGE THESE
-const ONE_MIN = 60000;
-const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
-const MIN_COIN_VAL_IN_BTC = 0.00000200;
-const TERMINAL_HEIGHT_BUFFER = 4;
-const TERMINAL_WIDTH_BUFFER = 18;
-const SOCKETFILE = '/tmp/binance-bot.sock'
 const binance = new Binance().options({
   APIKEY: API_KEY,
   APISECRET: API_SECRET,
@@ -30,123 +23,133 @@ const binance = new Binance().options({
 
 ////////////////////////////// GLOBALS ///////////////////////////////
 
-// BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
-const PCT_BUY = 0.01; // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
-var TAKE_PROFIT_MULTIPLIER = 1.05; // Only change for single coinpair trading, will be unset if prepump is enabled
-var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, will be unset if prepump is enabled
-const RUNTIME = 10 * ONE_MIN; //mins
-const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
-const POLL_INTERVAL = 720;// roughly 1 second
-var LOOP = false; // false for single buy and quit
-var DEFAULT_BASE_CURRENCY = "USDT";
-const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
+var {
+	// DO NOT CHANGE THESE
+	ONE_MIN,
+	APPROX_LOCAL_MIN_MAX_BUFFER_PCT,
+	MIN_COIN_VAL_IN_BTC,
+	TERMINAL_HEIGHT_BUFFER,
+	TERMINAL_WIDTH_BUFFER,
+	SOCKETFILE,
 
-// GRAPH SETTINGS
-var SHOW_GRAPH = true;
-const AUTO_ADJUST_GRAPH = true;
-const GRAPH_PADDING = '000000000'; // don't ask
-var GRAPH_HEIGHT = 32;
-var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
+	// NOT SURE WHAT I SHOULD LABEL THIS AS. TODO: CHANGE THIS LABEL
+	PCT_BUY,
+	TAKE_PROFIT_MULTIPLIER,
+	STOP_LOSS_MULTIPLIER,
+	RUNTIME,
+	USE_TIMEOUT,
+	POLL_INTERVAL,
+	LOOP,
+	DEFAULT_BASE_CURRENCY,
+	FETCH_BALANCE_INTERVAL,
 
-// BUY SELL SETTINGS
-const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
-const TIME_BEFORE_NEW_BUY = ONE_MIN;
-var BUFFER_AFTER_FAIL = true;
-var OPPORTUNITY_EXPIRE_WINDOW = 8 * ONE_MIN;
-const MIN_OPPORTUNITY_EXPIRE_WINDOW = 3 * ONE_MIN;
-const MAX_OPPORTUNITY_EXPIRE_WINDOW = 15 * ONE_MIN;
-const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
-const TIME_TO_CHANGE_PROFIT_LOSS = 30 * ONE_MIN;
-const TAKE_PROFIT_CHANGE_PCT = 1.01;
-const STOP_LOSS_CHANGE_PCT = 1.01;
-const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
+	// GRAPH SETTINGS
+	SHOW_GRAPH,
+	AUTO_ADJUST_GRAPH,
+	GRAPH_PADDING,
+	GRAPH_HEIGHT,
+	PLOT_DATA_POINTS, 
 
-// ANALYSIS SETTINS
-const ANALYSIS_TIME = 60; //Seconds
-const ANALYSIS_BUFFER = 5;
-const BUY_SELL_INC = 2;
-const MIN_BUY_SELL_BUF = 10;
-const MAX_BUY_SELL_BUF = 60;
+	// BUY SELL SETTINGS
+	BUY_SELL_STRATEGY,
+	TIME_BEFORE_NEW_BUY,
+	BUFFER_AFTER_FAIL,
+	OPPORTUNITY_EXPIRE_WINDOW,
+	MIN_OPPORTUNITY_EXPIRE_WINDOW,
+	MAX_OPPORTUNITY_EXPIRE_WINDOW,
+	BUY_LOCAL_MIN,
+	BUY_INDICATOR_INC,
+	TIME_TO_CHANGE_PROFIT_LOSS,
+	TAKE_PROFIT_CHANGE_PCT,
+	STOP_LOSS_CHANGE_PCT,
+	PROFIT_LOSS_CHECK_TIME,
 
-// QUEUE SETTINGS
-const QUEUE_SIZE = 1200; // 20m
-const MIN_QUEUE_SIZE = 50;
-const LOOKBACK_SIZE = 10000;
-const LOOKBACK_TREND_LIMIT = 500;
-const MIN_TREND_STDEV_MULTIPLIER = 0.2;
-const OUTLIER_STDEV_MULTIPLIER = 0.5;
-const OUTLIER_INC = 5;
-var BB_SELL = 10;
-var BB_BUY = 20;
+	// ANALYSIS SETTINS
+	ANALYSIS_TIME,
+	ANALYSIS_BUFFER,
+	BUY_SELL_INC,
+	MIN_BUY_SELL_BUF,
+	MAX_BUY_SELL_BUF,
 
-// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 10 * 1000;
-var PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
-var PREPUMP_STOP_LOSS_MULTIPLIER = 1;
-const PREPUMP_BULL_PROFIT_MULTIPLIER = 2;
-const PREPUMP_BEAR_PROFIT_MULTIPLIER = 1;
-const PREPUMP_BULL_LOSS_MULTIPLIER = 1;
-const PREPUMP_BEAR_LOSS_MULTIPLIER = 0.5;
-const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_TIME = 18; // * SYMBOLS_PRICE_CHECK_TIME
-var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
-var RALLY_MIN_DELTA = 1.01;
-const RALLY_GREEN_RED_RATIO = 1.5;
+	// QUEUE SETTINGS
+	QUEUE_SIZE,
+	MIN_QUEUE_SIZE,
+	LOOKBACK_SIZE,
+	LOOKBACK_TREND_LIMIT,
+	MIN_TREND_STDEV_MULTIPLIER,
+	OUTLIER_STDEV_MULTIPLIER,
+	OUTLIER_INC,
+	BB_SELL,
+	BB_BUY,
 
-// DONT TOUCH THESE GLOBALS
-dump_count = 0;
-latestPrice = 0;
-q = [];
-lowstd = [];
-highstd = [];
-lookback = [];
-means = [];
-mabuy = [];
-masell = [];
-fetchMarketDataTime = 0;
-lastBuy = 0;
-lastSell = 0;
-supports = {};
-resistances = {};
-lastBuyReason = "";
-lastSellReason = "";
-BUY_TS = 0;
-SELL_TS = 0;
-auto = false;
-histogram = false;
-detection_mode = false;
-last_keypress = "";
-lastTrend = "";
-lastDepth = {};
-fail_counter = 0;
-dont_buy_before = 0;
-prepump = false;
-pnl = 0;
-purchases = [];
-opportunity_expired_time = 0;
-fetch_balance_time = 0;
-prices_data_points_count = 0;
-SELL_FINISHED = false;
-priceFetch = 0;
-time_elapsed_since_rally = 0;
-prices = [];
-prevDay = {};
-serverPrices = [];
-blacklist = [];
-balances = {};
-coinInfo = null;
-manual_buy = false;
-manual_sell = false;
-quit_buy = false;
-yolo = false;
-futures = false;
-server = null;
-client = null;
-price_data_received = false;
-fetching_prices_from_graph_mode = false;
-coinpair = "";
-coin = "";
+	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
+	SYMBOLS_PRICE_CHECK_TIME,
+	PREPUMP_TAKE_PROFIT_MULTIPLIER,
+	PREPUMP_STOP_LOSS_MULTIPLIER,
+	PREPUMP_BULL_PROFIT_MULTIPLIER,
+	PREPUMP_BEAR_PROFIT_MULTIPLIER,
+	PREPUMP_BULL_LOSS_MULTIPLIER,
+	PREPUMP_BEAR_LOSS_MULTIPLIER,
+	PRICES_HISTORY_LENGTH,
+	RALLY_TIME,
+	RALLY_MAX_DELTA,
+	RALLY_MIN_DELTA,
+	RALLY_GREEN_RED_RATIO,
+
+	// DONT TOUCH THESE GLOBALS
+	dump_count,
+	latestPrice,
+	q,
+	lowstd,
+	highstd,
+	lookback,
+	means,
+	mabuy,
+	masell,
+	fetchMarketDataTime,
+	lastBuy,
+	lastSell,
+	supports,
+	resistances,
+	lastBuyReason,
+	lastSellReason,
+	BUY_TS,
+	SELL_TS,
+	auto,
+	histogram,
+	detection_mode,
+	last_keypress,
+	lastTrend,
+	lastDepth,
+	fail_counter,
+	dont_buy_before,
+	prepump,
+	pnl,
+	purchases,
+	opportunity_expired_time,
+	fetch_balance_time,
+	prices_data_points_count,
+	SELL_FINISHED,
+	priceFetch,
+	time_elapsed_since_rally,
+	prices,
+	prevDay,
+	serverPrices,
+	blacklist,
+	balances,
+	coinInfo,
+	manual_buy,
+	manual_sell,
+	quit_buy,
+	yolo,
+	futures,
+	server,
+	client,
+	price_data_received,
+	fetching_prices_from_graph_mode,
+	coinpair,
+	coin
+} = require("./const.js");
 
 ///////////////////////// INITIALIZATION ///////////////////////////////////
 
@@ -306,7 +309,7 @@ async function waitUntilPrepump() {
 	prepump = true;
 	BUFFER_AFTER_FAIL = true;
 	coinpair = "";
-	
+
 	if (futures) {
 		RALLY_MAX_DELTA = 1.03;
 	}
@@ -991,6 +994,10 @@ async function getAllPrices() {
 
 async function getPrevDay() {
 	binance.prevDay(false, (error, pd) => {
+		if (error || !pd) {
+			// TODO: Better error handling
+			return;
+		}
   	// console.info(prevDay); // view all data
 		for ( let obj of pd ) {
 		    let symbol = obj.symbol;
