@@ -83,6 +83,7 @@ var {
 	BB_BUY,
 
 	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
+	DEFAULT_SYMBOL_PRICE_CHECK_TIME,
 	SYMBOLS_PRICE_CHECK_TIME,
 	PREPUMP_TAKE_PROFIT_MULTIPLIER,
 	PREPUMP_STOP_LOSS_MULTIPLIER,
@@ -204,6 +205,10 @@ function initArgumentVariables() {
 	silent = process.argv.includes("--silent");
 	// TODO: Check if server is already started
 	process.argv.includes("--server") && !process.argv.includes("--client") && initServer();
+	if (server && SYMBOLS_PRICE_CHECK_TIME != DEFAULT_SYMBOL_PRICE_CHECK_TIME) {
+		console.warn("Servers must have default symbol price check time. Configure this in const.js");
+		SYMBOLS_PRICE_CHECK_TIME = DEFAULT_SYMBOL_PRICE_CHECK_TIME;
+	}
 	!process.argv.includes("--server") && process.argv.includes("--client") && initClient();
 }
 
@@ -298,7 +303,7 @@ function initClient() {
 				}
 			}
 			if (message.historicalPrices) {
-				prices = message.historicalPrices;
+				prices = message.historicalPrices.filter((_, i) => i % (SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME) == 0);
 				prices_data_points_count = prices.length;
 			}
 		}
@@ -330,7 +335,8 @@ async function waitUntilPrepump() {
 			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
 			console.log(`You have made ${purchases.length} purchases`);
-			console.log(`Last 3 Purchases: ${JSON.stringify(purchases.slice(-3), null, 4)}`);
+			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/8);
+			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
 		rallies = detectCoinRallies();
 		if (detection_mode) {
