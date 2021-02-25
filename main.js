@@ -369,12 +369,12 @@ async function waitUntilPrepump() {
 			coinpair = rally.sym;
 			coin = getCoin(coinpair);
 			baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-			readCoinInfo();
 			SELL_FINISHED = false;
 			lookback = [];
 			q = [];
 			blacklist.push(coin);
 			synchronizeBlacklist();
+			readCoinInfo();
 			while (coinInfo == null) {
 				await sleep(100);
 			}
@@ -1179,8 +1179,9 @@ function getCoin(coinpair) {
 function readCoinInfo() {
 	fs.readFile("minimums.json", function(err, data){
 		if (err) {
-			console.log("minimums.json read error");
-			process.exit(1);
+			getExchangeInfo();
+			console.log("minimums.json read error, fetching data");
+			return;
 		}
 		coinInfo = JSON.parse(data)[coinpair]
 		if (coinInfo != null) {
