@@ -30,7 +30,7 @@ module.exports = {
 
 	// BUY SELL SETTINGS
 	BUY_SELL_STRATEGY : 6, // 3 : buy boulinger bounce, 6 is wait until min and buy bounce
-	TIME_BEFORE_NEW_BUY : ONE_MIN,
+	TIME_BEFORE_NEW_BUY : 3 * ONE_MIN,
 	BUFFER_AFTER_FAIL : true,
 	OPPORTUNITY_EXPIRE_WINDOW : 10 * ONE_MIN,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW : 3 * ONE_MIN,
@@ -96,6 +96,7 @@ module.exports = {
 	resistances : {},
 	lastBuyReason : "",
 	lastSellReason : "",
+	lastSellLocalMax: 0,
 	BUY_TS : 0,
 	SELL_TS : 0,
 	auto : false,

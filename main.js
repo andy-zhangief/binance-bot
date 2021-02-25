@@ -118,6 +118,7 @@ var {
 	resistances,
 	lastBuyReason,
 	lastSellReason,
+	lastSellLocalMax,
 	BUY_TS,
 	SELL_TS,
 	auto,
@@ -182,7 +183,10 @@ async function init() {
 }
 
 function checkValidArgs() {
-	if (!process.argv[2] || !(process.argv[2].trim() == "prepump" || process.argv[2].endsWith("USDT") || process.argv[2].endsWith("BTC"))) {
+	if (!process.argv[2]
+		|| !(process.argv[2].trim().toUpperCase() == "PREPUMP" 
+		|| process.argv[2].toUpperCase().endsWith("USDT") 
+		|| process.argv[2].toUpperCase().endsWith("BTC"))) {
 		console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
 		console.log("Optional parameters:");
 		console.log("--base=BTC|USDT to select base trading currency");
@@ -337,7 +341,7 @@ async function waitUntilPrepump() {
 			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
 			console.log(`You have made ${purchases.length} purchases`);
-			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/8);
+			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/ 9);
 			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
 		rallies = detectCoinRallies();
@@ -577,11 +581,25 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
 	fetching_prices_from_graph_mode = false;
+	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
+	follows_btc = false;
+	follows_btc_history = new Array(10).fill(0.5);
+	lastBTC = [];
 	while (true) {
 		if (prepump && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
 				fetching_prices_from_graph_mode = false;
+				btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
+				lastBTC = btcHistorical.slice(-3);
+				last_btc_q_index = q.length - 1 - Math.floor(2 * SYMBOLS_PRICE_CHECK_TIME/1000);
+				if ((q[last_btc_q_index] < q[q.length-1] && lastBTC[0] < lastBTC[lastBTC.length-1]) || (q[last_btc_q_index] > q[q.length-1] && lastBTC[0] > lastBTC[lastBTC.length-1])) {
+					follows_btc_history.push(1);
+				} else {
+					follows_btc_history.push(0);
+				}
+				follows_btc_history.shift();
+				follows_btc = average(follows_btc_history) >= 0.7;
 			});
 		}
 		var [mean, stdev] = await tick(true);
@@ -595,11 +613,12 @@ async function waitUntilTimeToBuy() {
 		if(starting_price == 0) {
 			starting_price = latestPrice;
 		}
+		
 		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)},${!prepump ? ` Following BTC: ${follows_btc},` : ''} Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -663,8 +682,11 @@ async function waitUntilTimeToBuy() {
 					}
 					ready = true;
 					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
-						buy_indicator_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+						// TODO: Optimize this value
+						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice(-0.66 * btcHistorical.length).shift()) {
+							buy_indicator_reached = true;
+							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
@@ -692,6 +714,7 @@ async function waitUntilTimeToBuy() {
 
 async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	waiting = true;
+	lastSellLocalMax = 0;
 	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
 	manual_sell = false;
 	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
@@ -718,8 +741,10 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 				buyPrice: buy_price,
 				sell: lastSell,
 				sellPrice: sell_price,
+				maxPrice: lastSellLocalMax,
 				gain: lastSell/lastBuy
 			});
+			lastSellLocalMax = 0;
 			if (BUFFER_AFTER_FAIL) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
@@ -761,6 +786,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		if (manual_sell) {
 			return latestPrice;
 		}
+		lastSellLocalMax = Math.max(latestPrice, lastSellLocalMax);
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
@@ -848,7 +874,7 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 	return new Promise((_) => {
 		setTimeout(() => {
 			historical_prices = getPricesForCoin(coinpair, time_elapsed);
-			max_historical = Math.max(...historical_prices);
+			max_historical = Math.max(purchase.maxPrice, ...historical_prices);
 			historical_profit = max_historical/purchase.buyPrice;
 			new_take_profit = Math.max(average([old_profit_multiplier, historical_profit]), 1.01);
 			//TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
@@ -864,12 +890,13 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 
 function initializeQs() {
 	if (q.length == 0) {
+		// small digits is to prevent bug in asciichart library if all values are the same
 		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
-		means = new Array(QUEUE_SIZE).fill(latestPrice);
-		lowstd = new Array(QUEUE_SIZE).fill(latestPrice);
-		highstd = new Array(QUEUE_SIZE).fill(latestPrice);
-		mabuy = new Array(QUEUE_SIZE).fill(latestPrice);
-		masell = new Array(QUEUE_SIZE).fill(latestPrice);
+		means = new Array(QUEUE_SIZE).fill(latestPrice + 0.0000000001);
+		lowstd = new Array(QUEUE_SIZE).fill(latestPrice - 0.0001);
+		highstd = new Array(QUEUE_SIZE).fill(latestPrice + 0.0001);
+		mabuy = new Array(QUEUE_SIZE).fill(latestPrice + 0.00000001);
+		masell = new Array(QUEUE_SIZE).fill(latestPrice - 0.0000001);
 	}
 }
 
@@ -901,21 +928,21 @@ function pushToLookback(latestPrice) {
 	}
 }
 
-function isUptrend(q2, buffer, kinda = true, stdev = 0) {
+function isUptrend(q2, buffer = 0, kinda = true, stdev = 0) {
 	// if (stdev == 0) {
 	// 	stdev = getLastStdev();
 	// }
 	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < (buffer * kinda ? 3 : 1)
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer * (kinda ? 3 : 1)
 		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
-function isDowntrend(q2, buffer, kinda = true, stdev = 0) {
+function isDowntrend(q2, buffer = 0, kinda = true, stdev = 0) {
 	// if (stdev == 0) {
 	// 	stdev = getLastStdev();
 	// }
-	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < (buffer * kinda ? 3 : 1)
+	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length <= buffer
+		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length <= buffer * (kinda ? 3 : 1)
 		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
@@ -1274,7 +1301,8 @@ function plot(buying) {
 		GRAPH_HEIGHT = process.stdout.rows - TERMINAL_HEIGHT_BUFFER;
 		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
 	}
-	points = [highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)];
+	num_points_to_plot = Math.min(lookback.length + 1, PLOT_DATA_POINTS);
+	points = [highstd.slice(-num_points_to_plot), lowstd.slice(-num_points_to_plot), means.slice(-num_points_to_plot), (buying ? mabuy : masell).slice(-num_points_to_plot), q.slice(-num_points_to_plot)];
 	console.log (
 	asciichart.plot(points, 
 	{
