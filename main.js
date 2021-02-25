@@ -264,6 +264,7 @@ function initKeybindings() {
 }
 
 function initServer() {
+	// TODO: listen for client DC message and sell coin if client is holding
 	server = SocketModel.createServer( { socketFile: SOCKETFILE} );
 	server.onMessage(function(obj) {
 		if (obj.message) {
@@ -618,7 +619,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)},${!prepump ? ` Following BTC: ${follows_btc},` : ''} Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)},${prepump ? ` Following BTC: ${follows_btc},` : ''} Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -681,15 +682,15 @@ async function waitUntilTimeToBuy() {
 						//return latestPrice;
 					}
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
+					if (previousTrend.includes("Down") && meanTrend.includes("Up") && mabuy.slice(-1).pop() < mean) {
 						// TODO: Optimize this value
-						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice(-0.66 * btcHistorical.length).shift()) {
+						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice(-0.5 * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
 							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
+						if (meanTrend.includes("Up") && mabuy.slice(-1).pop() < mean + stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -773,15 +774,17 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	stop_loss_check = 0;
 	timeout_count = 0;
+	mean = 0;
+	stdev = 0;
 	take_profit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || Date.now() < timeBeforeSale) {
+	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || Date.now() < timeBeforeSale || (take_profit_reached && latestPrice > mean)) {
 		if (prepump && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
 				fetching_prices_from_graph_mode = false;
 			});
 		}
-		var [mean, stdev] = await tick(false);
+		[mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
 			return latestPrice;
@@ -833,6 +836,9 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						timeout_count++;
 						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
 						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
+					}
+					if (latestPrice > take_profit && !take_profit_reached) {
+						take_profit_reached = true;
 					}
 					// do nothing for now
 					break;
@@ -1302,6 +1308,9 @@ function plot(buying) {
 		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
 	}
 	num_points_to_plot = Math.min(lookback.length + 1, PLOT_DATA_POINTS);
+	if (GRAPH_HEIGHT < 5 || num_points_to_plot < 5) {
+		return;
+	}
 	points = [highstd.slice(-num_points_to_plot), lowstd.slice(-num_points_to_plot), means.slice(-num_points_to_plot), (buying ? mabuy : masell).slice(-num_points_to_plot), q.slice(-num_points_to_plot)];
 	console.log (
 	asciichart.plot(points, 
