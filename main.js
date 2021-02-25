@@ -91,6 +91,8 @@ var {
 	PREPUMP_BEAR_PROFIT_MULTIPLIER,
 	PREPUMP_BULL_LOSS_MULTIPLIER,
 	PREPUMP_BEAR_LOSS_MULTIPLIER,
+	PREPUMP_BULL_RALLY_TIME,
+	PREPUMP_BEAR_RALLY_TIME,
 	PRICES_HISTORY_LENGTH,
 	RALLY_TIME,
 	MIN_RALLY_TIME,
@@ -248,9 +250,9 @@ function initKeybindings() {
 				// s is for sell
 				manual_sell = true;
 				break;
-			// case "p":
-			// 	console.log(getPricesForCoin("BTCUSDT", 10));
-			// 	break;
+			case "p":
+				SHOW_GRAPH = !SHOW_GRAPH;
+				break;
 			default:
 				break;
 		}
@@ -850,7 +852,7 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			historical_profit = max_historical/purchase.buyPrice;
 			new_take_profit = Math.max(average([old_profit_multiplier, historical_profit]), 1.01);
 			//TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
-			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.5, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
+			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.75, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
 			RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
@@ -1031,12 +1033,18 @@ function setMultiplersFromPreviousDayBTCPrices() {
 			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BEAR_LOSS_MULTIPLIER) {
 				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BULL_LOSS_MULTIPLIER;
 			}
+			if (RALLY_TIME == PREPUMP_BEAR_RALLY_TIME) {
+				RALLY_TIME = PREPUMP_BULL_RALLY_TIME;
+			}
 		} else {
 			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BULL_PROFIT_MULTIPLIER) {
 				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BEAR_PROFIT_MULTIPLIER;
 			}
 			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BULL_LOSS_MULTIPLIER) {
 				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BEAR_LOSS_MULTIPLIER;
+			}
+			if (RALLY_TIME == PREPUMP_BULL_RALLY_TIME) {
+				RALLY_TIME = PREPUMP_BEAR_RALLY_TIME;
 			}
 		}
 	}
