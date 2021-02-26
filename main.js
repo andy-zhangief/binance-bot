@@ -63,6 +63,7 @@ var {
 	TAKE_PROFIT_CHANGE_PCT,
 	STOP_LOSS_CHANGE_PCT,
 	PROFIT_LOSS_CHECK_TIME,
+	SELL_RIDE_PROFITS,
 
 	// ANALYSIS SETTINS
 	ANALYSIS_TIME,
@@ -838,10 +839,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
 						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
 					}
-					if (latestPrice > take_profit && !ride_profits) {
+					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
 					}
-					if ((ride_profits || prevDay["BTCUSDT"] < -1) && latestPrice < lastSellLocalMax * 0.99) {
+					if (ride_profits && latestPrice < lastSellLocalMax * 0.99) {
 						lastSellReason = "Sold bcuz price is 1% lower than max"
 						return latestPrice;
 					}
