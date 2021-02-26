@@ -64,6 +64,7 @@ var {
 	STOP_LOSS_CHANGE_PCT,
 	PROFIT_LOSS_CHECK_TIME,
 	SELL_RIDE_PROFITS,
+	FOLLOW_BTC_MIN_BUY_MEDIAN,
 
 	// ANALYSIS SETTINS
 	ANALYSIS_TIME,
@@ -688,7 +689,7 @@ async function waitUntilTimeToBuy() {
 					maBuyPrice = mabuy.slice(-1).pop();
 					if (previousTrend.includes("Down") && meanTrend.includes("Up") && maBuyPrice < mean) {
 						// TODO: Optimize this value
-						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice(-0.5 * btcHistorical.length).shift()) {
+						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice((FOLLOW_BTC_MIN_BUY_MEDIAN-1) * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
 							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
