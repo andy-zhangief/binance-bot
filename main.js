@@ -53,7 +53,7 @@ var {
 	// BUY SELL SETTINGS
 	BUY_SELL_STRATEGY,
 	TIME_BEFORE_NEW_BUY,
-	BUFFER_AFTER_FAIL,
+	AFTER_SELL_WAIT_BEFORE_BUYING,
 	OPPORTUNITY_EXPIRE_WINDOW,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
@@ -84,6 +84,8 @@ var {
 	OUTLIER_INC,
 	BB_SELL,
 	BB_BUY,
+	UPPER_BB_PCT,
+	LOWER_BB_PCT,
 
 	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
 	DEFAULT_SYMBOL_PRICE_CHECK_TIME,
@@ -123,6 +125,8 @@ var {
 	lastBuyReason,
 	lastSellReason,
 	lastSellLocalMax,
+	lastSellLocalMaxStdev,
+	lastSellLocalMinStdev,
 	BUY_TS,
 	SELL_TS,
 	auto,
@@ -333,7 +337,7 @@ async function waitUntilPrepump() {
 	LOOP = true;
 	auto = true;
 	prepump = true;
-	BUFFER_AFTER_FAIL = true;
+	AFTER_SELL_WAIT_BEFORE_BUYING = true;
 	coinpair = "";
 
 	if (futures) {
@@ -629,7 +633,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${prepump ? `Following BTC: ${follows_btc}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : `BBHigh: ${colorText("red", highstd.slice(-1).pop())}, BBLow: ${colorText("green", lowstd.slice(-1).pop())}`} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc},${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : ""} BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -716,13 +720,12 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					ready = true;
-					console.log(buy_indicator_reached, msToTime(buy_indicator_check_time - Date.now()));
 					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
 						buy_indicator_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice > lowstd.slice(-1).pop() && latestPrice < mean - 1.5 * stdev) {
+						if (latestPrice > lowstd.slice(-1).pop() && latestPrice < mean - (LOWER_BB_PCT + 0.5) * stdev) {
 							return latestPrice;
 						}
 						buy_indicator_reached = false;
@@ -744,6 +747,8 @@ async function waitUntilTimeToBuy() {
 async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	waiting = true;
 	lastSellLocalMax = 0;
+	lastSellLocalMaxStdev = 0;
+	lastSellLocalMinStdev = 0;
 	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
 	manual_sell = false;
 	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
@@ -764,28 +769,32 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 		pnl = Math.round(pnl*10000000)/10000000;
 		if (LOOP) {
 			beep();
-			purchases.push({
+			purchase = {
 				sym: coinpair,
 				buy: lastBuy,
 				buyPrice: buy_price,
 				sell: lastSell,
 				sellPrice: sell_price,
 				maxPrice: lastSellLocalMax,
+				maxStdev: lastSellLocalMaxStdev,
+				minStdev: lastSellLocalMinStdev,
 				gain: lastSell/lastBuy
-			});
+			};
+			purchases.push(purchase);
 			lastSellLocalMax = 0;
-			if (BUFFER_AFTER_FAIL) {
+			if (AFTER_SELL_WAIT_BEFORE_BUYING) {
 				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 			}
 			if (prepump) {
 				removeFromBlacklistLater(coin);
 				return;
 			}
+			analyzeDecisionForSingleCoin(purchase);
 			pump()
 			return;
 		}
 		console.log("Sell complete, exiting");
-		process.exit(0); // kill kill kill
+		process.exit(0);
 	});
 	return;
 }
@@ -821,11 +830,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			return latestPrice;
 		}
 		lastSellLocalMax = Math.max(latestPrice, lastSellLocalMax);
+		lastSellLocalMaxStdev = Math.max((latestPrice - mean)/stdev, lastSellLocalMaxStdev);
+		lastSellLocalMinStdev = Math.min((latestPrice - mean)/stdev, lastSellLocalMinStdev);
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")} Sell Window: ${sell_indicator_reached ? colorText("green", msToTime(sell_indicator_check_time - Date.now())) : colorText("red", "N/A")}`);
 		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -876,10 +887,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					// do nothing for now
 					break;
 				case 7:
-					if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
-						sell_indicator_reached = true;
-						sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
-					}
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
 					}
@@ -887,11 +894,17 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						lastSellReason = "Sold bcuz price is 1% lower than max"
 						return latestPrice;
 					}
-					if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-						if (latestPrice < highstd.slice(-1).pop()) {
-							return latestPrice;
+					if (latestPrice < take_profit) {
+						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
+						sell_indicator_reached = true;
+						sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
-						sell_indicator_reached = false;
+						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+							if (latestPrice < highstd.slice(-1).pop() && latestPrice > mean + (UPPER_BB_PCT - 0.5) * stdev) {
+								return latestPrice;
+							}
+							sell_indicator_reached = false;
+						}
 					}
 					break;
 				default:
@@ -925,6 +938,23 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 
 ///////////////////////// AFTER SELL //////////////////////////////////////
 
+function analyzeDecisionForSingleCoin(purchase) {
+	if (!purchase || !purchase.sym) {
+		return;
+	}
+	return new Promise((_) => {
+		if (purchase.gain > 1) {
+			// Increase UPPER_BB_PCT && LOSER_BB_PCT
+			UPPER_BB_PCT = Math.max(1.5, Math.min(2.0, UPPER_BB_PCT + 0.1));
+			LOWER_BB_PCT = Math.max(-2.2, Math.min(-1.8, LOWER_BB_PCT + 0.1));
+		} else {
+			// Decrease UPPER_BB_PCT && LOWER_BB_PCT
+			UPPER_BB_PCT = Math.max(1.5, Math.min(2.0, UPPER_BB_PCT - 0.1));
+			LOWER_BB_PCT = Math.max(-2.2, Math.min(-1.8, LOWER_BB_PCT - 0.1));
+		}
+	}, TIME_BEFORE_NEW_BUY);
+}
+
 function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, old_profit_multiplier) {
 	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
 		return;
@@ -940,7 +970,7 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
 			RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
-		}, 3 * ONE_MIN);
+		}, TIME_BEFORE_NEW_BUY);
 	});
 }
 
@@ -969,8 +999,8 @@ function initializeQs() {
 			mabuy = new Array(QUEUE_SIZE).fill(averageHistorical + 0.00000001);
 			masell = new Array(QUEUE_SIZE).fill(averageHistorical - 0.0000001);
 			means = new Array(QUEUE_SIZE).fill(averageHistorical);
-			lowstd =  new Array(QUEUE_SIZE).fill(averageHistorical - 2 * stdevHistorical);
-			highstd =  new Array(QUEUE_SIZE).fill(averageHistorical + 2 * stdevHistorical);
+			lowstd =  new Array(QUEUE_SIZE).fill(averageHistorical + LOWER_BB_PCT * stdevHistorical);
+			highstd =  new Array(QUEUE_SIZE).fill(averageHistorical + UPPER_BB_PCT * stdevHistorical);
 		}
 		
 	}
@@ -989,8 +1019,8 @@ async function tick(buying) {
 	stdev = getStandardDeviation(everyNthElement(q, 60));
 	mean = average(q);
 	means.push(mean);
-	lowstd.push(mean - 2*stdev);
-	highstd.push(mean + 2*stdev);
+	lowstd.push(mean + LOWER_BB_PCT * stdev);
+	highstd.push(mean + UPPER_BB_PCT * stdev);
 	mabuy.push(average(lookback.slice(-BB_BUY)));
 	masell.push(average(lookback.slice(-BB_SELL)));
 	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && mabuy.shift() != 0 && masell.shift() != 0;

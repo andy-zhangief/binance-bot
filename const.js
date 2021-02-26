@@ -31,12 +31,12 @@ module.exports = {
 	// BUY SELL SETTINGS
 	BUY_SELL_STRATEGY : 7, // 3 : buy boulinger bounce, 6 is wait until min and buy bounce
 	TIME_BEFORE_NEW_BUY : 5 * ONE_MIN,
-	BUFFER_AFTER_FAIL : true,
+	AFTER_SELL_WAIT_BEFORE_BUYING : true,
 	OPPORTUNITY_EXPIRE_WINDOW : 10 * ONE_MIN,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW : 3 * ONE_MIN,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW : 15 * ONE_MIN,
 	BUY_LOCAL_MIN : true,
-	BUY_INDICATOR_INC : ONE_MIN,
+	BUY_INDICATOR_INC : 0.5 * ONE_MIN,
 	TIME_TO_CHANGE_PROFIT_LOSS : 30 * ONE_MIN,
 	TAKE_PROFIT_CHANGE_PCT : 1.0025,
 	STOP_LOSS_CHANGE_PCT : 1.0025,
@@ -62,6 +62,8 @@ module.exports = {
 	OUTLIER_INC : 5,
 	BB_SELL : 10,
 	BB_BUY : 20,
+	UPPER_BB_PCT : 1.5,
+	LOWER_BB_PCT : -2.2,
 
 	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
 	DEFAULT_SYMBOL_PRICE_CHECK_TIME : DEFAULT_SYMBOL_PRICE_CHECK_TIME,
@@ -101,6 +103,8 @@ module.exports = {
 	lastBuyReason : "",
 	lastSellReason : "",
 	lastSellLocalMax: 0,
+	lastSellLocalMaxStdev : 0,
+	lastSellLocalMinStdev : 0,
 	BUY_TS : 0,
 	SELL_TS : 0,
 	auto : false,
