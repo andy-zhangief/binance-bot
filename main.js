@@ -196,6 +196,7 @@ function checkValidArgs() {
 		|| process.argv[2].toUpperCase().endsWith("BTC"))) {
 		console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
 		console.log("Optional parameters:");
+		console.log("--auto to start in auto mode");
 		console.log("--base=BTC|USDT to select base trading currency");
 		console.log("--detect to only detect rallying coins");
 		console.log("--server to initialize a server. Only initialize one server at a time");
@@ -210,6 +211,7 @@ function checkValidArgs() {
 function initArgumentVariables() {
 	coinpair = process.argv[2].toUpperCase();
 	yolo = process.argv.includes("--yolo");
+	auto = process.argv.includes("--auto");
 	futures = process.argv.includes("--futures");
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
@@ -595,7 +597,7 @@ async function waitUntilTimeToBuy() {
 	follows_btc_history = new Array(10).fill(0.5);
 	lastBTC = [];
 	while (true) {
-		if (prepump && !fetching_prices_from_graph_mode) {
+		if ((client || server) && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
 				fetching_prices_from_graph_mode = false;
@@ -627,7 +629,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)},${prepump ? ` Following BTC: ${follows_btc},` : ''} Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, ${prepump ? `Following BTC: ${follows_btc}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : `BBHigh: ${colorText("red", highstd.slice(-1).pop())}, BBLow: ${colorText("green", lowstd.slice(-1).pop())}`} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -691,7 +693,7 @@ async function waitUntilTimeToBuy() {
 					}
 					ready = true;
 					maBuyPrice = mabuy.slice(-1).pop();
-					if (previousTrend.includes("Down") && maBuyPrice < mean) {
+					if (!buy_indicator_reached && previousTrend.includes("Down") && maBuyPrice < mean) {
 						// TODO: Optimize this value
 						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice((FOLLOW_BTC_MIN_BUY_MEDIAN-1) * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
@@ -714,11 +716,16 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					ready = true;
-					if (latestPrice < lowstd.slice(-1).pop()) {
+					console.log(buy_indicator_reached, msToTime(buy_indicator_check_time - Date.now()));
+					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
 						buy_indicator_reached = true;
+						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
-					if (buy_indicator_reached && latestPrice > lowstd.slice(-1).pop()) {
-						return latestPrice;
+					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
+						if (latestPrice > lowstd.slice(-1).pop() && latestPrice < mean - 1.5 * stdev) {
+							return latestPrice;
+						}
+						buy_indicator_reached = false;
 					}
 					break;
 				default:
@@ -796,12 +803,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_check = 0;
 	timeout_count = 0;
 	sell_indicator_reached = false;
+	sell_indicator_check_time = 0;
 	mean = 0;
 	stdev = 0;
 	ride_profits = false;
 	take_profit_check_time = 0;
 	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
-		if (prepump && !fetching_prices_from_graph_mode) {
+		if ((client || server) && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
 				fetching_prices_from_graph_mode = false;
@@ -868,11 +876,15 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					// do nothing for now
 					break;
 				case 7:
-					if (latestPrice < highstd.slice(-1).pop()) {
+					if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
 						sell_indicator_reached = true;
+						sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 					}
-					if (sell_indicator_reached && latestPrice < highstd.slice(-1).pop()) {
-						return latestPrice;
+					if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+						if (latestPrice < highstd.slice(-1).pop()) {
+							return latestPrice;
+						}
+						sell_indicator_reached = false;
 					}
 					break;
 				default:
