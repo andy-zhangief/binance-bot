@@ -12,12 +12,12 @@ module.exports = {
 
 	// BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
 	PCT_BUY : 0.01, // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
-	TAKE_PROFIT_MULTIPLIER : 1.05, // Only change for single coinpair trading, will be unset if prepump is enabled
-	STOP_LOSS_MULTIPLIER : 0.985, // Only change for single coinpair trading, will be unset if prepump is enabled
+	TAKE_PROFIT_MULTIPLIER : 1.04, // Only change for single coinpair trading, will be unset if prepump is enabled
+	STOP_LOSS_MULTIPLIER : 0.98, // Only change for single coinpair trading, will be unset if prepump is enabled
 	RUNTIME : 10 * ONE_MIN, //mins
 	USE_TIMEOUT : false, // Automatically sell when RUNTIME is reached
 	POLL_INTERVAL : 720,// roughly 1 second
-	LOOP : false, // false for single buy and quit
+	LOOP : true, // false for single buy and quit
 	DEFAULT_BASE_CURRENCY : "USDT",
 	FETCH_BALANCE_INTERVAL : 60 * ONE_MIN,
 
@@ -29,7 +29,7 @@ module.exports = {
 	PLOT_DATA_POINTS : 120, // Play around with this value. It can be as high as QUEUE_SIZE
 
 	// BUY SELL SETTINGS
-	BUY_SELL_STRATEGY : 6, // 3 : buy boulinger bounce, 6 is wait until min and buy bounce
+	BUY_SELL_STRATEGY : 7, // 3 : buy boulinger bounce, 6 is wait until min and buy bounce
 	TIME_BEFORE_NEW_BUY : 3 * ONE_MIN,
 	BUFFER_AFTER_FAIL : true,
 	OPPORTUNITY_EXPIRE_WINDOW : 10 * ONE_MIN,
@@ -42,6 +42,7 @@ module.exports = {
 	STOP_LOSS_CHANGE_PCT : 1.0025,
 	PROFIT_LOSS_CHECK_TIME : 0.5 * ONE_MIN,
 	SELL_RIDE_PROFITS : true,
+	SELL_RIDE_PROFITS_PCT : 0.99,
 	FOLLOW_BTC_MIN_BUY_MEDIAN : 0.66,
 
 	// ANALYSIS SETTINS
@@ -65,11 +66,11 @@ module.exports = {
 	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
 	DEFAULT_SYMBOL_PRICE_CHECK_TIME : DEFAULT_SYMBOL_PRICE_CHECK_TIME,
 	SYMBOLS_PRICE_CHECK_TIME : DEFAULT_SYMBOL_PRICE_CHECK_TIME,
-	PREPUMP_TAKE_PROFIT_MULTIPLIER : 1.5,
-	PREPUMP_STOP_LOSS_MULTIPLIER : 0.75,
-	PREPUMP_BULL_PROFIT_MULTIPLIER : 1.5,
+	PREPUMP_TAKE_PROFIT_MULTIPLIER : 2,
+	PREPUMP_STOP_LOSS_MULTIPLIER : 1,
+	PREPUMP_BULL_PROFIT_MULTIPLIER : 2,
 	PREPUMP_BEAR_PROFIT_MULTIPLIER : 1.5,
-	PREPUMP_BULL_LOSS_MULTIPLIER : 0.75,
+	PREPUMP_BULL_LOSS_MULTIPLIER : 1,
 	PREPUMP_BEAR_LOSS_MULTIPLIER : 0.75,
 	PREPUMP_BULL_RALLY_TIME : 18,
 	PREPUMP_BEAR_RALLY_TIME : 24,

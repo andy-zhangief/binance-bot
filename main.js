@@ -64,6 +64,7 @@ var {
 	STOP_LOSS_CHANGE_PCT,
 	PROFIT_LOSS_CHECK_TIME,
 	SELL_RIDE_PROFITS,
+	SELL_RIDE_PROFITS_PCT,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
 
 	// ANALYSIS SETTINS
@@ -180,6 +181,9 @@ async function init() {
 	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
 	readCoinInfo();
 	while (coinInfo == null) {
+		await sleep(100);
+	}
+	while (client && !prices_data_points_count) {
 		await sleep(100);
 	}
 	pump();
@@ -313,7 +317,7 @@ function initClient() {
 				}
 			}
 			if (message.historicalPrices) {
-				prices = message.historicalPrices.filter((_, i) => i % (SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME) == 0);
+				prices = everyNthElement(message.historicalPrices, SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME);
 				prices_data_points_count = prices.length;
 			}
 		}
@@ -687,7 +691,7 @@ async function waitUntilTimeToBuy() {
 					}
 					ready = true;
 					maBuyPrice = mabuy.slice(-1).pop();
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && maBuyPrice < mean) {
+					if (previousTrend.includes("Down") && maBuyPrice < mean) {
 						// TODO: Optimize this value
 						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice((FOLLOW_BTC_MIN_BUY_MEDIAN-1) * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
@@ -695,7 +699,7 @@ async function waitUntilTimeToBuy() {
 						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (maBuyPrice > mean && maBuyPrice < mean + stdev) {
+						if (maBuyPrice > mean && meanTrend.includes("Up") && maBuyPrice < mean + stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -703,6 +707,18 @@ async function waitUntilTimeToBuy() {
 						} else {
 							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
+					}
+					break;
+				case 7:
+					if (lookback.length < BB_BUY) {
+						break;
+					}
+					ready = true;
+					if (latestPrice < lowstd.slice(-1).pop()) {
+						buy_indicator_reached = true;
+					}
+					if (buy_indicator_reached && latestPrice > lowstd.slice(-1).pop()) {
+						return latestPrice;
 					}
 					break;
 				default:
@@ -761,6 +777,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 			pump()
 			return;
 		}
+		console.log("Sell complete, exiting");
 		process.exit(0); // kill kill kill
 	});
 	return;
@@ -778,6 +795,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	stop_loss_check = 0;
 	timeout_count = 0;
+	sell_indicator_reached = false;
 	mean = 0;
 	stdev = 0;
 	ride_profits = false;
@@ -843,11 +861,19 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
 					}
-					if (ride_profits && latestPrice < lastSellLocalMax * 0.99) {
+					if (ride_profits && latestPrice < lastSellLocalMax * SELL_RIDE_PROFITS_PCT) {
 						lastSellReason = "Sold bcuz price is 1% lower than max"
 						return latestPrice;
 					}
 					// do nothing for now
+					break;
+				case 7:
+					if (latestPrice < highstd.slice(-1).pop()) {
+						sell_indicator_reached = true;
+					}
+					if (sell_indicator_reached && latestPrice < highstd.slice(-1).pop()) {
+						return latestPrice;
+					}
 					break;
 				default:
 					// do nothing
@@ -904,12 +930,30 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 function initializeQs() {
 	if (q.length == 0) {
 		// small digits is to prevent bug in asciichart library if all values are the same
-		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
-		means = new Array(QUEUE_SIZE).fill(latestPrice + 0.0000000001);
-		lowstd = new Array(QUEUE_SIZE).fill(latestPrice - 0.0001);
-		highstd = new Array(QUEUE_SIZE).fill(latestPrice + 0.0001);
-		mabuy = new Array(QUEUE_SIZE).fill(latestPrice + 0.00000001);
-		masell = new Array(QUEUE_SIZE).fill(latestPrice - 0.0000001);
+		historical_prices = getPricesForCoin(coinpair, QUEUE_SIZE * 1000 / SYMBOLS_PRICE_CHECK_TIME);
+		if (!historical_prices.length) {
+			q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
+			means = new Array(QUEUE_SIZE).fill(latestPrice + 0.0000000001);
+			lowstd = new Array(QUEUE_SIZE).fill(latestPrice - 0.0001);
+			highstd = new Array(QUEUE_SIZE).fill(latestPrice + 0.0001);
+			mabuy = new Array(QUEUE_SIZE).fill(latestPrice + 0.00000001);
+			masell = new Array(QUEUE_SIZE).fill(latestPrice - 0.0000001);
+		} else {
+			averageHistorical = average(historical_prices);
+			stdevHistorical = getStandardDeviation(historical_prices);
+			q = new Array(QUEUE_SIZE).fill(averageHistorical);
+			historical_prices.forEach(v => {
+				fillWith = new Array(SYMBOLS_PRICE_CHECK_TIME/1000).fill(v);
+				q.push(...fillWith);
+			});
+			q = q.slice(-QUEUE_SIZE);
+			mabuy = new Array(QUEUE_SIZE).fill(averageHistorical + 0.00000001);
+			masell = new Array(QUEUE_SIZE).fill(averageHistorical - 0.0000001);
+			means = new Array(QUEUE_SIZE).fill(averageHistorical);
+			lowstd =  new Array(QUEUE_SIZE).fill(averageHistorical - 2 * stdevHistorical);
+			highstd =  new Array(QUEUE_SIZE).fill(averageHistorical + 2 * stdevHistorical);
+		}
+		
 	}
 }
 
@@ -923,8 +967,8 @@ async function tick(buying) {
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
-	stdev = getStandardDeviation(q.slice(-lookback.length));
-	mean = average(q.slice(-lookback.length));
+	stdev = getStandardDeviation(everyNthElement(q, 60));
+	mean = average(q);
 	means.push(mean);
 	lowstd.push(mean - 2*stdev);
 	highstd.push(mean + 2*stdev);
@@ -1314,7 +1358,7 @@ function plot(buying) {
 		GRAPH_HEIGHT = process.stdout.rows - TERMINAL_HEIGHT_BUFFER;
 		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
 	}
-	num_points_to_plot = Math.min(lookback.length + 1, PLOT_DATA_POINTS);
+	num_points_to_plot = Math.min(lookback.length, PLOT_DATA_POINTS);
 	if (GRAPH_HEIGHT < 5 || num_points_to_plot < 5) {
 		return;
 	}
@@ -1351,6 +1395,10 @@ function getHistogramData() {
 
 function colorText(color, str) {
 	return asciichart[color] + str + asciichart.reset;
+}
+
+function everyNthElement(array, n) {
+	return array.filter((_, i) => i % (n) == 0);
 }
 
 function msToTime(duration) {
