@@ -58,7 +58,7 @@ var {
 	MIN_OPPORTUNITY_EXPIRE_WINDOW,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
-	BUY_INDICATOR_INC,
+	BUY_SELL_INDICATOR_INC,
 	TIME_TO_CHANGE_PROFIT_LOSS,
 	TAKE_PROFIT_CHANGE_PCT,
 	STOP_LOSS_CHANGE_PCT,
@@ -594,6 +594,7 @@ async function waitUntilTimeToBuy() {
 	previousTrend = "None"
 	starting_price = 0;
 	buy_indicator_reached = false;
+	buy_indicator_almost_reached = false;
 	buy_indicator_check_time = 0;
 	fetching_prices_from_graph_mode = false;
 	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
@@ -701,7 +702,7 @@ async function waitUntilTimeToBuy() {
 						// TODO: Optimize this value
 						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice((FOLLOW_BTC_MIN_BUY_MEDIAN-1) * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
-							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
 						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
@@ -711,7 +712,7 @@ async function waitUntilTimeToBuy() {
 						} else if (meanTrend.includes("Down")) {
 							buy_indicator_reached = false;
 						} else {
-							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
 						}
 					}
 					break;
@@ -720,9 +721,16 @@ async function waitUntilTimeToBuy() {
 						break;
 					}
 					ready = true;
-					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
-						buy_indicator_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice < lowstd.slice(-1).pop()) {
+						buy_indicator_almost_reached = true;
+						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+					}
+					if (buy_indicator_almost_reached && Date.now() > buy_indicator_check_time) {
+						if (latestPrice < lowstd.slice(-1).pop()) {
+							buy_indicator_reached = true;
+							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						}
+						buy_indicator_almost_reached = false;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice > lowstd.slice(-1).pop() && latestPrice < mean - (LOWER_BB_PCT + 0.5) * stdev) {
@@ -812,6 +820,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_check = 0;
 	timeout_count = 0;
 	sell_indicator_reached = false;
+	sell_indicator_almost_reached = false;
 	sell_indicator_check_time = 0;
 	mean = 0;
 	stdev = 0;
@@ -895,9 +904,16 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						return latestPrice;
 					}
 					if (latestPrice < take_profit) {
-						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
-						sell_indicator_reached = true;
-						sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
+							sell_indicator_almost_reached = true;
+							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						}
+						if (sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
+							if (latestPrice < lowstd.slice(-1).pop()) {
+								sell_indicator_reached = true;
+								sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+							}
+							sell_indicator_almost_reached = false;
 						}
 						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
 							if (latestPrice < highstd.slice(-1).pop() && latestPrice > mean + (UPPER_BB_PCT - 0.5) * stdev) {
