@@ -98,6 +98,7 @@ var {
 	MIN_RALLY_TIME,
 	MAX_RALLY_TIME,
 	RALLY_MAX_DELTA,
+	FUTURES_RALLY_MAX_DELTA,
 	RALLY_MIN_DELTA,
 	RALLY_GREEN_RED_RATIO,
 
@@ -328,7 +329,7 @@ async function waitUntilPrepump() {
 	coinpair = "";
 
 	if (futures) {
-		RALLY_MAX_DELTA = 1.03;
+		RALLY_MAX_DELTA = FUTURES_RALLY_MAX_DELTA;
 	}
 
 	while (true) {
@@ -341,6 +342,7 @@ async function waitUntilPrepump() {
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
+			//console.log(lastSellReason);
 			console.log(`You have made ${purchases.length} purchases`);
 			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/ 9);
 			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
@@ -682,7 +684,8 @@ async function waitUntilTimeToBuy() {
 						//return latestPrice;
 					}
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && mabuy.slice(-1).pop() < mean) {
+					maBuyPrice = mabuy.slice(-1).pop();
+					if (previousTrend.includes("Down") && meanTrend.includes("Up") && maBuyPrice < mean) {
 						// TODO: Optimize this value
 						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice(-0.5 * btcHistorical.length).shift()) {
 							buy_indicator_reached = true;
@@ -690,7 +693,7 @@ async function waitUntilTimeToBuy() {
 						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && mabuy.slice(-1).pop() < mean + stdev) {
+						if (maBuyPrice > mean && maBuyPrice < mean + stdev) {
 							lastBuyReason = "DUMP BOUNCE";
 							return latestPrice;
 						} else if (meanTrend.includes("Down")) {
@@ -770,14 +773,14 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	outlierReversion = 0;
 	previousTrend = "None";
 	meanTrend = "None";
-	take_profit_reached = false;
 	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
 	stop_loss_check = 0;
 	timeout_count = 0;
 	mean = 0;
 	stdev = 0;
+	ride_profits = false;
 	take_profit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || Date.now() < timeBeforeSale || (take_profit_reached && latestPrice > mean)) {
+	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
 		if (prepump && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
 			fetchAllPricesAsyncIfReady().catch().finally(() => { 
@@ -795,7 +798,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")}`);
-		if (auto) {
+		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
 					if (latestPrice > highstd[highstd.length-1]) {
@@ -806,8 +809,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 							// This is a good thing
 							// return latestPrice;
 						}
-					} else if (Date.now() < timeBeforeSale) {
-						break;
 					}
 					if (outlierReversion > 0 && --outlierReversion > 0) {
 						break;
@@ -837,8 +838,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
 						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
 					}
-					if (latestPrice > take_profit && !take_profit_reached) {
-						take_profit_reached = true;
+					if (latestPrice > take_profit && !ride_profits) {
+						ride_profits = true;
+					}
+					if ((ride_profits || prevDay["BTCUSDT"] < -1) && latestPrice < lastSellLocalMax * 0.99) {
+						lastSellReason = "Sold bcuz price is 1% lower than max"
+						return latestPrice;
 					}
 					// do nothing for now
 					break;
