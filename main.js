@@ -712,7 +712,7 @@ async function waitUntilTimeToBuy() {
 					}
 					break;
 				case 7:
-					if (lookback.length < BB_BUY) {
+					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / 1000 < QUEUE_SIZE) {
 						break;
 					}
 					ready = true;
@@ -879,6 +879,13 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
 						sell_indicator_reached = true;
 						sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+					}
+					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
+						ride_profits = true;
+					}
+					if (ride_profits && latestPrice < lastSellLocalMax * SELL_RIDE_PROFITS_PCT) {
+						lastSellReason = "Sold bcuz price is 1% lower than max"
+						return latestPrice;
 					}
 					if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
 						if (latestPrice < highstd.slice(-1).pop()) {
