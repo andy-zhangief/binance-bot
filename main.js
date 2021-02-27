@@ -95,6 +95,10 @@ var {
 	PREPUMP_BEAR_LOSS_MULTIPLIER,
 	PREPUMP_BULL_RALLY_TIME,
 	PREPUMP_BEAR_RALLY_TIME,
+	PREPUMP_MAX_UPPER_BB_PCT,
+	PREPUMP_MIN_UPPER_BB_PCT,
+	PREPUMP_MAX_LOWER_BB_PCT,
+	PREPUMP_MIN_LOWER_BB_PCT,
 	PRICES_HISTORY_LENGTH,
 	RALLY_TIME,
 	MIN_RALLY_TIME,
@@ -149,6 +153,7 @@ var {
 	blacklist,
 	balances,
 	coinInfo,
+	coinsInfo,
 	manual_buy,
 	manual_sell,
 	quit_buy,
@@ -164,12 +169,18 @@ var {
 } = require("./const.js");
 
 ///////////////////////// INITIALIZATION ///////////////////////////////////
-
 async function init() {
 	checkValidArgs();
 	initArgumentVariables();
-	initKeybindings();
+	readCoinInfo();
+	while (!coinsInfo) {
+		await sleep(ONE_SEC);
+	}
 	await binance.useServerTime();
+	initKeybindings();
+	if (server) {
+		await prepopulate30mData();
+	}
 	loopGetBalanceAndPrevDayAsync();
 	if (prepump) {
 		waitUntilPrepump();
@@ -177,7 +188,6 @@ async function init() {
 	}
 	coin = getCoin(coinpair);
 	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-	readCoinInfo();
 	while (coinInfo == null) {
 		await sleep(ONE_SEC);
 	}
@@ -343,7 +353,8 @@ async function waitUntilPrepump() {
 	if (futures) {
 		RALLY_MAX_DELTA = FUTURES_RALLY_MAX_DELTA;
 	}
-	LOWER_BB_PCT = -0.1;
+	UPPER_BB_PCT = PREPUMP_MIN_UPPER_BB_PCT;
+	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
 
 	while (true) {
 		await waitUntilFetchPricesAsync();
@@ -372,7 +383,11 @@ async function waitUntilPrepump() {
 		
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || Math.abs(prevDay[rally.sym]) > 20 || coinpair == rally.sym || rally.fail) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
+				rally = null;
+			}
+			is_good_buy = await isAGoodBuyFrom1hGraph(rally.sym);
+			if (!is_good_buy) {
 				rally = null;
 			}
 		}
@@ -400,7 +415,7 @@ async function waitUntilPrepump() {
 			while (coinInfo == null) {
 				await sleep(ONE_SEC);
 			}
-			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
+			opportunity_expired_time = Date.now() + SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW;
 			rally_inc_pct = rally.gain - 1;
 			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
 			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
@@ -523,6 +538,52 @@ function detectCoinRallies() {
 	return rallies.sort((a, b) => a.gain - b.gain);
 }
 
+async function isAGoodBuyFrom1hGraph(sym) {
+	let finished = false;
+	let ticker = [];
+	let totalVolume = 0;
+	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
+		//console.info("candlesticks()", ticks);
+		if (error) {
+			console.log(error);
+			finished = true;
+			return;
+		}
+		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+			ticker.push(open/2 + close/2);
+			totalVolume += parseFloat(volume);
+		})
+		finished = true;
+	}, {limit: 21, endTime: Date.now()});
+	while (!finished) {
+		await sleep(ONE_SEC)
+	}
+	if (!ticker.length) {
+		return false;
+	}
+	let mean = average(ticker);
+	let std = getStandardDeviation(ticker);
+	let last = ticker.pop();
+	if (last < (mean + 0.5 * std) && last > (mean - 1.5 * std) && isUptrend(ticker.slice(-3)) && totalVolume > 5000000)  {
+		return [ticker, totalVolume];
+	}
+	return false;
+}
+
+function scanForGoodBuys() {
+	goodCoins = [];
+	Object.keys(coinsInfo).forEach(async k => {
+		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
+			goodCoin = await isAGoodBuyFrom1hGraph(k);
+			if (goodCoin) {
+				goodCoins.push(k);
+			}
+		}
+	});
+	return goodCoins;
+}
+	
+
 ////////////////////////////////////// BUY ///////////////////////////////////////////////
 
 async function pump() {
@@ -587,7 +648,6 @@ async function waitUntilTimeToBuy() {
 	previousTrend = "None"
 	starting_price = 0;
 	buy_indicator_reached = false;
-	buy_indicator_almost_reached = false;
 	buy_indicator_check_time = 0;
 	fetching_prices_from_graph_mode = false;
 	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
@@ -627,7 +687,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : (buy_indicator_almost_reached ? (colorText("yellow", msToTime(buy_indicator_check_time - Date.now()))) : colorText("red", "N/A"))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}${(!ready && auto) ? colorText("red", " GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -717,16 +777,9 @@ async function waitUntilTimeToBuy() {
 						return 0;
 					}
 					ready = true;
-					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice < lowstd.slice(-1).pop()) {
-						buy_indicator_almost_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
-					}
-					if (buy_indicator_almost_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice < lowstd.slice(-1).pop()) {
-							buy_indicator_reached = true;
-							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
-						}
-						buy_indicator_almost_reached = false;
+					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
+						buy_indicator_reached = true;
+						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice > lowstd.slice(-1).pop()) {
@@ -896,10 +949,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						ride_profits = true;
 						take_profit_hit_time = Date.now();
 					}
-					if (ride_profits && latestPrice < take_profit && Date.now() > take_profit_hit_time + 0.25 * ONE_MIN) {
+					if (ride_profits && latestPrice < take_profit && Date.now() > take_profit_hit_time + 0.5 * ONE_MIN) {
 						return latestPrice;
 					}
-					if (ride_profits && latestPrice > take_profit) {
+					if ((ride_profits && latestPrice > take_profit) || Date.now() > start + 90 * ONE_MIN) {
 						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
 							sell_indicator_reached = true;
 							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
@@ -966,22 +1019,22 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 	}
 	return new Promise((_) => {
 		setTimeout(() => {
-			historical_prices = getPricesForCoin(coinpair, time_elapsed);
-			max_historical = Math.max(purchase.maxPrice, ...historical_prices);
-			historical_profit = max_historical/purchase.buyPrice;
-			new_take_profit = Math.max(average([old_profit_multiplier, historical_profit]), 1.01);
-			//TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
-			PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.75, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
-			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
-			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
-			RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
+			// historical_prices = getPricesForCoin(coinpair, time_elapsed);
+			// max_historical = Math.max(purchase.maxPrice, ...historical_prices);
+			// historical_profit = max_historical/purchase.buyPrice;
+			// new_take_profit = Math.max(average([old_profit_multiplier, historical_profit]), 1.01);
+			// //TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
+			// PREPUMP_TAKE_PROFIT_MULTIPLIER = Math.max(0.75, Math.min(3, ((new_take_profit - 1)/rally_inc_pct).toFixed(4)));
+			// PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
+			// // TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
+			// RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
 			if (purchase.gain > 1) {
-				// Increase UPPER_BB_PCT && LOSER_BB_PCT
-				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
+				// DECREASE UPPER_BB_PCT && INCREASE LOSER_BB_PCT
+				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT - 0.1));
 				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT + 0.1));
 			} else {
-				// Decrease UPPER_BB_PCT && LOWER_BB_PCT
-				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
+				// INCREASE UPPER_BB_PCT && DECREASE LOWER_BB_PCT
+				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT + 0.1));
 				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT - 0.1));
 			}
 		}, TIME_BEFORE_NEW_BUY);
@@ -1052,8 +1105,8 @@ function isUptrend(q2, buffer = 0, kinda = true, stdev = 0) {
 	// if (stdev == 0) {
 	// 	stdev = getLastStdev();
 	// }
-	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < buffer * (kinda ? 3 : 1)
+	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length <= buffer
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length <= buffer * (kinda ? 3 : 1)
 		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
 }
 
@@ -1288,6 +1341,41 @@ async function loopGetBalanceAndPrevDayAsync() {
 	});
 }
 
+async function prepopulate30mData() {
+	if (!coinsInfo) {
+		return;
+	}
+	let newPrices = {};
+	Object.keys(coinsInfo).forEach(async k => {
+		if (k.endsWith("USDT") || k.endsWith("BTC")) {
+			binance.candlesticks(k, "1m", (error, ticks, symbol) => {
+				//console.info("candlesticks()", ticks);
+				if (error) {
+					console.log(error);
+					finished = true;
+					return;
+				}
+				if (!newPrices[k]) {
+					newPrices[k] = [];
+				}
+				ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+					newPrices[k].push(open/2 + close/2);
+				})
+			}, {limit: 30, endTime: Date.now()});
+		}
+	});
+	await sleep(10000);
+	newPricesArray = [];
+	for (i = 0; i < 30; i++) {
+		newPrices10s = {};
+		Object.keys(newPrices).forEach(k => {
+			newPrices10s[k] = newPrices[k][i];
+		});
+		newPricesArray.push(...(Array(6).fill(newPrices10s)));
+	}
+	prices = newPricesArray.concat(prices).slice(-PRICES_HISTORY_LENGTH);
+}
+
 function updateBlacklistFromBalance() {
 	Object.keys(balances).forEach(key => {
 		if (key != "USDT" && parseFloat(balances[key].available) > 0 && !blacklist.includes(key)) {
@@ -1338,7 +1426,8 @@ function readCoinInfo() {
 			console.log("minimums.json read error, fetching data");
 			return;
 		}
-		coinInfo = JSON.parse(data)[coinpair]
+		coinsInfo = JSON.parse(data);
+		coinInfo = coinsInfo[coinpair];
 		if (coinInfo != null) {
 			console.log(coinInfo);
 		}
