@@ -371,7 +371,7 @@ async function waitUntilPrepump() {
 			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/ 9);
 			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
-		rallies = detectCoinRallies();
+		rallies = await detectCoinRallies();
 		if (detection_mode) {
 			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 			continue;
@@ -383,11 +383,7 @@ async function waitUntilPrepump() {
 		
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
-				rally = null;
-			}
-			is_good_buy = await isAGoodBuyFrom1hGraph(rally.sym);
-			if (!is_good_buy) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
 				rally = null;
 			}
 		}
@@ -430,7 +426,7 @@ async function waitUntilPrepump() {
 	}
 }
 
-function detectCoinRallies() {
+async function detectCoinRallies() {
 	lastX = prices.slice(-RALLY_TIME);
 	rallies = [];
 	for (const sym of Object.keys(lastX[0])) {
@@ -529,10 +525,11 @@ function detectCoinRallies() {
 				max: max,
 				gain: gain,
 				first: first,
-				last: last
+				last: last,
+				goodBuy: !!await isAGoodBuyFrom1hGraph(sym),
 			});
 		} else if (test_count > 6 && detection_mode) {
-			rallies.push({sym: sym, first: first, last: last, gain: gain , fail: fail_reasons});
+			rallies.push({sym: sym, first: first, last: last, gain: gain, goodBuy: !!await isAGoodBuyFrom1hGraph(sym), fail: fail_reasons});
 		}
 	}
 	return rallies.sort((a, b) => a.gain - b.gain);

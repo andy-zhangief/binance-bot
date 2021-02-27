@@ -91,7 +91,7 @@ module.exports = {
 	RALLY_MAX_DELTA : 1.04, // don't go for something thats too steep
 	RALLY_MIN_DELTA : 1.01,
 	FUTURES_RALLY_MAX_DELTA : 1.05,
-	RALLY_GREEN_RED_RATIO : 2,
+	RALLY_GREEN_RED_RATIO : 1.5,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
