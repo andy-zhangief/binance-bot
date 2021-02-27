@@ -450,17 +450,17 @@ function detectCoinRallies() {
 		recent_historical_vals = historical_vals.slice(-3 * RALLY_TIME, -RALLY_TIME);
 		sorted_historical_vals = recent_historical_vals.sort();
 		recent_sorted_historical_vals = recent_historical_vals.sort();
-		max_historical = recent_sorted_historical_vals.pop();
-		high_median = sorted_historical_vals.slice(-0.05 * sorted_historical_vals.length).shift();
-		low_median = sorted_historical_vals.slice(0, -0.2 * sorted_historical_vals.length).pop();
+		high_median = sorted_historical_vals.slice(-0.5 * sorted_historical_vals.length).shift();
+		low_median = sorted_historical_vals.slice(0, -0.95 * sorted_historical_vals.length).pop();
 		min_historical = recent_sorted_historical_vals.shift();
+		max_historical = recent_sorted_historical_vals.pop();
 		// Testing
 		test_count = 0;
 		fail_reasons = ""
-		if(red == 0 || green/red >= RALLY_GREEN_RED_RATIO) {
+		if(green == 0 || red/green >= RALLY_GREEN_RED_RATIO) {
 			test_count++;
 		} else {
-			fail_reasons += "ratio " + green/red + " ";
+			fail_reasons += "ratio " + red/green + " ";
 		}
 		if (gain < RALLY_MAX_DELTA) {
 			test_count++;
@@ -472,10 +472,10 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "minDelta " + gain + " ";
 		}
-		if (last > first) {
+		if (last < first) {
 			test_count++;
 		} else {
-			fail_reasons += "last<first " + last + '<' + first + " ";
+			fail_reasons += "last>first " + last + '>' + first + " ";
 		}
 		if (high_median > first) {
 			test_count++;
@@ -488,25 +488,24 @@ function detectCoinRallies() {
 			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
 		}
 		// Rethink this in particular
-		if (max_historical < last) {
+		if (min_historical > last) {
 			test_count++;
 		} else {
-			fail_reasons += "highest>last " + max_historical + '>' + last + " ";
+			fail_reasons += "lowest<last " + min_historical + '<' + last + " ";
 		}
-		if (max_historical/min_historical < gain) {
+		if (max_historical/min_historical > gain) {
 			test_count++;
 		} else {
-			fail_reasons += "historicalgain>gain " + max_historical/min_historical + '>' + gain + " ";
+			fail_reasons += "historicalgain<gain " + max_historical/min_historical + '<' + gain + " ";
 		}
-		if ((red == 0
-			|| green/red >= RALLY_GREEN_RED_RATIO)
+		if ((green == 0 || red/green >= RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
 			&& gain > RALLY_MIN_DELTA
-			&& last > first
+			&& last < first
 			&& high_median > first
-			&& max_historical < last
-			&& max_historical/min_historical < gain
 			&& low_median < first
+			&& min_historical > last
+			&& max_historical/min_historical > gain
 			) {
 			rallies.push({
 				sym: sym,
@@ -893,31 +892,31 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					break;
 				case 7:
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
-						ride_profits = true;
+						//ride_profits = true;
 					}
 					if (ride_profits && latestPrice < lastSellLocalMax * SELL_RIDE_PROFITS_PCT) {
 						lastSellReason = "Sold bcuz price is 1% lower than max"
 						return latestPrice;
 					}
-					if (latestPrice < take_profit) {
-						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
-							sell_indicator_almost_reached = true;
-							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
-						}
-						if (sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < lowstd.slice(-1).pop()) {
-								sell_indicator_reached = true;
-								sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
-							}
-							sell_indicator_almost_reached = false;
-						}
-						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < highstd.slice(-1).pop() && latestPrice > mean + (UPPER_BB_PCT - 0.5) * stdev) {
-								return latestPrice;
-							}
-							sell_indicator_reached = false;
-						}
-					}
+					// if (latestPrice > take_profit && ride_profits) {
+					// 	if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
+					// 		sell_indicator_almost_reached = true;
+					// 		sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
+					// 	}
+					// 	if (sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
+					// 		if (latestPrice < lowstd.slice(-1).pop()) {
+					// 			sell_indicator_reached = true;
+					// 			sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+					// 		}
+					// 		sell_indicator_almost_reached = false;
+					// 	}
+					// 	if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+					// 		if (latestPrice < highstd.slice(-1).pop() && latestPrice > mean + (UPPER_BB_PCT - 0.5) * stdev) {
+					// 			return latestPrice;
+					// 		}
+					// 		sell_indicator_reached = false;
+					// 	}
+					// }
 					break;
 				default:
 					// do nothing
@@ -1438,8 +1437,8 @@ function plot(buying) {
 	{
 		format: formatGraph, 
 		colors: [
-	        asciichart.red,
-	        asciichart.green,
+	        buying ? asciichart.red : asciichart.green,
+	        buying ? asciichart.green : asciichart.red,
 	        asciichart.yellow,
 	        asciichart.lightmagenta,
 	        asciichart.default,
