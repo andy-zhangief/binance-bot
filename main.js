@@ -19,6 +19,7 @@ var binance;
 
 var {
 	// DO NOT CHANGE THESE
+	ONE_SEC,
 	ONE_MIN,
 	APPROX_LOCAL_MIN_MAX_BUFFER_PCT,
 	MIN_COIN_VAL_IN_BTC,
@@ -178,10 +179,10 @@ async function init() {
 	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
 	readCoinInfo();
 	while (coinInfo == null) {
-		await sleep(100);
+		await sleep(ONE_SEC);
 	}
 	while (client && !prices_data_points_count) {
-		await sleep(100);
+		await sleep(ONE_SEC);
 	}
 	pump();
 }
@@ -221,7 +222,7 @@ function initArgumentVariables() {
 	LOOP = !process.argv.includes("--only-buy-once");
 	auto = process.argv.includes("--auto") || prepump;
 	futures = process.argv.includes("--futures");
-	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
+	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 	detection_mode = process.argv.includes("--detect") ? true : false;
 	SHOW_GRAPH = !process.argv.includes("--no-plot");
@@ -348,7 +349,7 @@ async function waitUntilPrepump() {
 		await waitUntilFetchPricesAsync();
 		if (!detection_mode) {
 			console.clear();
-			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
+			console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 			console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
@@ -371,7 +372,7 @@ async function waitUntilPrepump() {
 		
 		while (rallies.length) {
 			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
+			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || Math.abs(prevDay[rally.sym]) > 20 || coinpair == rally.sym || rally.fail) {
 				rally = null;
 			}
 		}
@@ -379,7 +380,7 @@ async function waitUntilPrepump() {
 		if (rally != null && Date.now() > dont_buy_before) {
 			if (!yolo) {
 				// This avoids the race condition if we're waiting to buy anyways
-				await sleep(10000 * Math.random() + 2000);
+				await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
 			}
 			if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
 				continue;
@@ -397,7 +398,7 @@ async function waitUntilPrepump() {
 			synchronizeBlacklist();
 			readCoinInfo();
 			while (coinInfo == null) {
-				await sleep(100);
+				await sleep(ONE_SEC);
 			}
 			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
 			rally_inc_pct = rally.gain - 1;
@@ -407,7 +408,7 @@ async function waitUntilPrepump() {
 			latestPrice = rally.last;
 			pump();
 			while (!SELL_FINISHED) {
-				await sleep(ONE_MIN * 0.5);
+				await sleep(0.5 * ONE_MIN);
 			}
 			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, time_elapsed_since_rally, purchases.slice(-1).pop(), TAKE_PROFIT_MULTIPLIER);
 		}
@@ -429,7 +430,7 @@ function detectCoinRallies() {
 			if (!current) {
 				break;
 			}
-			if (current > last) {
+			if (current >= last) {
 				green++;
 			} else {
 				red++;
@@ -600,7 +601,7 @@ async function waitUntilTimeToBuy() {
 				fetching_prices_from_graph_mode = false;
 				btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
 				lastBTC = btcHistorical.slice(-3);
-				last_btc_q_index = q.length - 1 - Math.floor(2 * SYMBOLS_PRICE_CHECK_TIME/1000);
+				last_btc_q_index = q.length - 1 - Math.floor(2 * SYMBOLS_PRICE_CHECK_TIME/ONE_SEC);
 				if ((q[last_btc_q_index] < q[q.length-1] && lastBTC[0] < lastBTC[lastBTC.length-1]) || (q[last_btc_q_index] > q[q.length-1] && lastBTC[0] > lastBTC[lastBTC.length-1])) {
 					follows_btc_history.push(1);
 				} else {
@@ -709,7 +710,7 @@ async function waitUntilTimeToBuy() {
 					}
 					break;
 				case 7:
-					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / 1000 < QUEUE_SIZE) {
+					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
 					}
 					if (prepump && Date.now() > opportunity_expired_time) {
@@ -728,7 +729,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_almost_reached = false;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice > lowstd.slice(-1).pop() && latestPrice < mean - (LOWER_BB_PCT + 0.5) * stdev) {
+						if (latestPrice > lowstd.slice(-1).pop()) {
 							return latestPrice;
 						}
 						buy_indicator_reached = false;
@@ -815,11 +816,11 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_check = 0;
 	timeout_count = 0;
 	sell_indicator_reached = false;
-	sell_indicator_almost_reached = false;
 	sell_indicator_check_time = 0;
 	mean = 0;
 	stdev = 0;
 	ride_profits = false;
+	take_profit_hit_time = 0;
 	take_profit_check_time = 0;
 	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
 		if ((client || server) && !fetching_prices_from_graph_mode) {
@@ -892,31 +893,24 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					break;
 				case 7:
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
-						//ride_profits = true;
+						ride_profits = true;
+						take_profit_hit_time = Date.now();
 					}
-					if (ride_profits && latestPrice < lastSellLocalMax * SELL_RIDE_PROFITS_PCT) {
-						lastSellReason = "Sold bcuz price is 1% lower than max"
+					if (ride_profits && latestPrice < take_profit && Date.now() > take_profit_hit_time + 0.25 * ONE_MIN) {
 						return latestPrice;
 					}
-					// if (latestPrice > take_profit && ride_profits) {
-					// 	if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
-					// 		sell_indicator_almost_reached = true;
-					// 		sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
-					// 	}
-					// 	if (sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
-					// 		if (latestPrice < lowstd.slice(-1).pop()) {
-					// 			sell_indicator_reached = true;
-					// 			sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
-					// 		}
-					// 		sell_indicator_almost_reached = false;
-					// 	}
-					// 	if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-					// 		if (latestPrice < highstd.slice(-1).pop() && latestPrice > mean + (UPPER_BB_PCT - 0.5) * stdev) {
-					// 			return latestPrice;
-					// 		}
-					// 		sell_indicator_reached = false;
-					// 	}
-					// }
+					if (ride_profits && latestPrice > take_profit) {
+						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
+							sell_indicator_reached = true;
+							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						}
+						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+							if (latestPrice < highstd.slice(-1).pop()) {
+								return latestPrice;
+							}
+							sell_indicator_reached = false;
+						}
+					}
 					break;
 				default:
 					// do nothing
@@ -999,7 +993,7 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 function initializeQs() {
 	if (q.length == 0) {
 		// small digits is to prevent bug in asciichart library if all values are the same
-		historical_prices = getPricesForCoin(coinpair, QUEUE_SIZE * 1000 / SYMBOLS_PRICE_CHECK_TIME);
+		historical_prices = getPricesForCoin(coinpair, QUEUE_SIZE * ONE_SEC / SYMBOLS_PRICE_CHECK_TIME);
 		if (!historical_prices.length) {
 			q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
 			means = new Array(QUEUE_SIZE).fill(latestPrice + 0.0000000001);
@@ -1012,7 +1006,7 @@ function initializeQs() {
 			stdevHistorical = getStandardDeviation(historical_prices);
 			q = new Array(QUEUE_SIZE).fill(averageHistorical);
 			historical_prices.forEach(v => {
-				fillWith = new Array(SYMBOLS_PRICE_CHECK_TIME/1000).fill(v);
+				fillWith = new Array(SYMBOLS_PRICE_CHECK_TIME/ONE_SEC).fill(v);
 				q.push(...fillWith);
 			});
 			q = q.slice(-QUEUE_SIZE);
@@ -1075,13 +1069,13 @@ function isDowntrend(q2, buffer = 0, kinda = true, stdev = 0) {
 ////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
 async function waitUntilFetchPricesAsync() {
 	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
+		await sleep(0.1 * ONE_SEC);
 	}
 	if (!client) {
 		await fetchAllPricesAsync();
 	} else {
 		while (!price_data_received) {
-			await sleep(100);
+			await sleep(0.1 * ONE_SEC);
 		}
 		price_data_received = false;
 	}
@@ -1093,7 +1087,7 @@ async function waitUntilFetchPricesAsync() {
 	++time_elapsed_since_rally;
 	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
 	if (client) {
-		fetchMarketDataTime -= 1000;
+		fetchMarketDataTime -= ONE_SEC;
 	}
 }
 
@@ -1142,7 +1136,7 @@ async function fetchAllPricesAsync() {
 	priceFetch = 0;
 	await getAllPrices();
 	while (priceFetch < 1) {
-		await sleep(100);
+		await sleep(0.1 * ONE_SEC);
 	}
 }
 
@@ -1214,7 +1208,7 @@ async function getLatestPriceAsync(coinpair) {
 			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
 			process.exit(1);
 		}
-		await sleep(100);
+		await sleep(0.1 * ONE_SEC);
 		return await getLatestPriceAsync(coinpair);
 	}
 }
@@ -1474,7 +1468,7 @@ function msToTime(duration) {
 	if (duration < 0) {
 		return 0;
 	}
-	var seconds = Math.floor((duration / 1000) % 60), minutes = Math.floor((duration / (1000 * 60))),
+	var seconds = Math.floor((duration / ONE_SEC) % 60), minutes = Math.floor((duration / (ONE_MIN))),
 	seconds = (seconds < 10) ? "0" + seconds : seconds;
 	return minutes + ":" + seconds;
 }
