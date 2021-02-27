@@ -13,13 +13,7 @@ const SocketModel = require('socket-model');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
-
-const binance = new Binance().options({
-  APIKEY: API_KEY,
-  APISECRET: API_SECRET,
-  recvWindow: ONE_MIN
-  //test: true // comment out when running for real
-});
+var binance;
 
 ////////////////////////////// GLOBALS ///////////////////////////////
 
@@ -172,14 +166,11 @@ var {
 
 async function init() {
 	checkValidArgs();
-	if (binance.getOption("test")) {
-		console.log("testing");
-	}
 	initArgumentVariables();
 	initKeybindings();
 	await binance.useServerTime();
 	loopGetBalanceAndPrevDayAsync();
-	if (coinpair == "PREPUMP") {
+	if (prepump) {
 		waitUntilPrepump();
 		return;
 	}
@@ -216,8 +207,19 @@ function checkValidArgs() {
 
 function initArgumentVariables() {
 	coinpair = process.argv[2].toUpperCase();
+	prepump = process.argv[2].toUpperCase() == "PREPUMP";
+	binance = new Binance().options({
+	  APIKEY: API_KEY,
+	  APISECRET: API_SECRET,
+	  recvWindow: ONE_MIN,
+	  test: process.argv.includes("--test")
+	});
+	if (binance.getOption("test")) {
+		console.log("testing");
+	}
 	yolo = process.argv.includes("--yolo");
-	auto = process.argv.includes("--auto");
+	LOOP = !process.argv.includes("--only-buy-once");
+	auto = process.argv.includes("--auto") || prepump;
 	futures = process.argv.includes("--futures");
 	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
 	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
@@ -336,15 +338,11 @@ function initClient() {
 ///////////////////////////// BEFORE BUY ////////////////////////////////////////
 
 async function waitUntilPrepump() {
-	LOOP = true;
-	auto = true;
-	prepump = true;
-	AFTER_SELL_WAIT_BEFORE_BUYING = true;
 	coinpair = "";
-
 	if (futures) {
 		RALLY_MAX_DELTA = FUTURES_RALLY_MAX_DELTA;
 	}
+	LOWER_BB_PCT = -0.1;
 
 	while (true) {
 		await waitUntilFetchPricesAsync();
@@ -629,7 +627,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc},${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : ""} BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : (buy_indicator_almost_reached ? (colorText("yellow", msToTime(buy_indicator_check_time - Date.now()))) : colorText("red", "N/A"))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : (buy_indicator_almost_reached ? (colorText("yellow", msToTime(buy_indicator_check_time - Date.now()))) : colorText("red", "N/A"))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -987,11 +985,11 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			if (purchase.gain > 1) {
 				// Increase UPPER_BB_PCT && LOSER_BB_PCT
 				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
-				LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
+				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT + 0.1));
 			} else {
 				// Decrease UPPER_BB_PCT && LOWER_BB_PCT
 				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
-				LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
+				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT - 0.1));
 			}
 		}, TIME_BEFORE_NEW_BUY);
 	});
