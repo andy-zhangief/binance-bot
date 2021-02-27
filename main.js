@@ -86,6 +86,8 @@ var {
 	BB_BUY,
 	UPPER_BB_PCT,
 	LOWER_BB_PCT,
+	MAX_BB_PCT,
+	MIN_BB_PCT,
 
 	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
 	DEFAULT_SYMBOL_PRICE_CHECK_TIME,
@@ -454,7 +456,6 @@ function detectCoinRallies() {
 		high_median = sorted_historical_vals.slice(-0.05 * sorted_historical_vals.length).shift();
 		low_median = sorted_historical_vals.slice(0, -0.2 * sorted_historical_vals.length).pop();
 		min_historical = recent_sorted_historical_vals.shift();
-		is_uptrend = isUptrend(last_x_values, 1, true);
 		// Testing
 		test_count = 0;
 		fail_reasons = ""
@@ -476,7 +477,7 @@ function detectCoinRallies() {
 		if (last > first) {
 			test_count++;
 		} else {
-			fail_reasons += "last<first " + last + '>' + first + " ";
+			fail_reasons += "last<first " + last + '<' + first + " ";
 		}
 		if (high_median > first) {
 			test_count++;
@@ -499,11 +500,6 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "historicalgain>gain " + max_historical/min_historical + '>' + gain + " ";
 		}
-		// if (is_uptrend) {
-		// 	test_count++;
-		// } else {
-		// 	fail_reasons += "no uptrend? ";
-		// }
 		if ((red == 0
 			|| green/red >= RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
@@ -513,7 +509,6 @@ function detectCoinRallies() {
 			&& max_historical < last
 			&& max_historical/min_historical < gain
 			&& low_median < first
-			//&& is_uptrend
 			) {
 			rallies.push({
 				sym: sym,
@@ -634,7 +629,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc},${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : ""} BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc},${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}` : ""} BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : (buy_indicator_almost_reached ? (colorText("yellow", msToTime(buy_indicator_check_time - Date.now()))) : colorText("red", "N/A"))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 3:
@@ -720,10 +715,13 @@ async function waitUntilTimeToBuy() {
 					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / 1000 < QUEUE_SIZE) {
 						break;
 					}
+					if (prepump && Date.now() > opportunity_expired_time) {
+						return 0;
+					}
 					ready = true;
 					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice < lowstd.slice(-1).pop()) {
 						buy_indicator_almost_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
 					}
 					if (buy_indicator_almost_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice < lowstd.slice(-1).pop()) {
@@ -906,7 +904,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (latestPrice < take_profit) {
 						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
 							sell_indicator_almost_reached = true;
-							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC/2;
 						}
 						if (sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
 							if (latestPrice < lowstd.slice(-1).pop()) {
@@ -961,12 +959,12 @@ function analyzeDecisionForSingleCoin(purchase) {
 	return new Promise((_) => {
 		if (purchase.gain > 1) {
 			// Increase UPPER_BB_PCT && LOSER_BB_PCT
-			UPPER_BB_PCT = Math.max(1.5, Math.min(2.0, UPPER_BB_PCT + 0.1));
-			LOWER_BB_PCT = Math.max(-2.2, Math.min(-1.8, LOWER_BB_PCT + 0.1));
+			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
+			LOWER_BB_PCT = Math.min(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
 		} else {
 			// Decrease UPPER_BB_PCT && LOWER_BB_PCT
-			UPPER_BB_PCT = Math.max(1.5, Math.min(2.0, UPPER_BB_PCT - 0.1));
-			LOWER_BB_PCT = Math.max(-2.2, Math.min(-1.8, LOWER_BB_PCT - 0.1));
+			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
+			LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
 		}
 	}, TIME_BEFORE_NEW_BUY);
 }
@@ -986,6 +984,15 @@ function analyzeDecisionForPrepump(sym, rally_inc_pct, time_elapsed, purchase, o
 			PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
 			// TODO: Find index of max historical, if before or near purchase, shorten opportunity time, if after then make it longer
 			RALLY_TIME = purchase.gain > 1 ? Math.max(MIN_RALLY_TIME, RALLY_TIME - 1) : Math.min(MAX_RALLY_TIME, RALLY_TIME + 1);
+			if (purchase.gain > 1) {
+				// Increase UPPER_BB_PCT && LOSER_BB_PCT
+				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
+				LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
+			} else {
+				// Decrease UPPER_BB_PCT && LOWER_BB_PCT
+				UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
+				LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
+			}
 		}, TIME_BEFORE_NEW_BUY);
 	});
 }
@@ -1032,7 +1039,7 @@ async function tick(buying) {
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
-	stdev = getStandardDeviation(everyNthElement(q, 60));
+	stdev = getStandardDeviation([...Array(Math.floor(QUEUE_SIZE/60)).keys()].map(v => average(q.slice(v * 60, (v + 1) * 60))));
 	mean = average(q);
 	means.push(mean);
 	lowstd.push(mean + LOWER_BB_PCT * stdev);
