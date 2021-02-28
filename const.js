@@ -118,6 +118,8 @@ module.exports = {
 	auto : false,
 	histogram : false,
 	detection_mode : false,
+	buy_good_buys : false,
+	buy_rallys : true,
 	last_keypress : "",
 	lastTrend : "",
 	lastDepth : {},
