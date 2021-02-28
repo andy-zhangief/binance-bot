@@ -608,10 +608,10 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let mean = average(ticker);
 	let std = getStandardDeviation(ticker);
 	let last3gains = gains.slice(-3);
-	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1);
+	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01);
 	firstGreaterThanLast = Math.abs(1-last3gains[2]) > Math.abs(1-last3gains[0]);
 	middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
-	if ((opens.slice(-3).filter(v => v > (mean + std)).length == 0) && isUptrend(closes.slice(-3), 0, false) && middleIsSmallest && firstGreaterThanLast && gain >= 1.02)  {
+	if ((opens.slice(-3).filter(v => v > (mean + std)).length == 0) && isUptrend(closes.slice(-3), 0, false) && middleIsSmallest && firstGreaterThanLast && gain >= 1.03)  {
 		return {
 			sym: sym,
 			open: opens,
@@ -1024,7 +1024,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						ride_profits = true;
 						take_profit_hit_time = Date.now();
 					}
-					if (ride_profits && latestPrice < take_profit && Date.now() > take_profit_hit_time + 0.5 * ONE_MIN) {
+					if (ride_profits && latestPrice < (take_profit * 0.995) && Date.now() > take_profit_hit_time + 0.5 * ONE_MIN) {
 						return latestPrice;
 					}
 					if ((ride_profits && latestPrice > take_profit) || Date.now() > start + 90 * ONE_MIN) {
