@@ -757,85 +757,6 @@ async function waitUntilTimeToBuy() {
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}${(!ready && auto) ? colorText("red", " GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
-				case 3:
-					if (lookback.length < QUEUE_SIZE) {
-						break; // dont buy before we populate some values first
-					} 
-					ready = true;
-					if (latestPrice < lowstd[lowstd.length-1]) {
-						if (!meanRev) {
-							meanRev = true;
-							meanRevStart = Date.now();
-						} else if (meanRevStart < Date.now() - ONE_MIN){
-							// not sure about this
-							// dont_buy_before = Date.now() + 0.5 * ONE_MIN; // wait until things calm down a bit
-							//meanRevStart = dont_buy_before;
-						}
-					}
-					if (lastBuy <= lastSell 
-						&& Math.abs(mean - latestPrice) < 0.2 * stdev 
-						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						meanBounce = true;
-						meanBounceExpired = Date.now() + ONE_MIN;
-					}
-					if (outlierReversion > 0 && --outlierReversion > 0) {
-						break;
-					}
-					if (lastValueIsOutlier()) {
-						outlierReversion += OUTLIER_INC; // We want to buy before the outlier happens, not after
-						break;
-					}
-					if (meanBounce && Date.now() > meanBounceExpired) {
-						meanBounce = false;
-					}
-					if (latestPrice < highstd[highstd.length-1]
-						&& latestPrice > lowstd[lowstd.length-1]
-						&& meanRev
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastBuyReason = "boulingerbounce"
-						return latestPrice
-					}
-					if (latestPrice > mean + 0.2*stdev 
-						&& meanBounce 
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastBuyReason = "meanbounce"
-						return latestPrice
-					}
-					if (latestPrice < mean - 0.5*stdev) {
-						meanBounce = false;
-					}
-					break;
-				case 6:
-					if (prepump && Date.now() > opportunity_expired_time) {
-						return 0;
-					}
- 					if (lookback.length < BB_BUY) {
-						break;
-					}
-					if (!ready && meanTrend.includes("Up")) {
-						//Leave this commented. It loses too much money
-						//return latestPrice;
-					}
-					ready = true;
-					maBuyPrice = mabuy.slice(-1).pop();
-					if (!buy_indicator_reached && previousTrend.includes("Down") && maBuyPrice < mean) {
-						// TODO: Optimize this value
-						if (!follows_btc || btcHistorical.slice(-1).pop() > btcHistorical.sort().slice((FOLLOW_BTC_MIN_BUY_MEDIAN-1) * btcHistorical.length).shift()) {
-							buy_indicator_reached = true;
-							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
-						}
-					}
-					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (maBuyPrice > mean && meanTrend.includes("Up") && maBuyPrice < mean + stdev) {
-							lastBuyReason = "DUMP BOUNCE";
-							return latestPrice;
-						} else if (meanTrend.includes("Down")) {
-							buy_indicator_reached = false;
-						} else {
-							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
-						}
-					}
-					break;
 				case 7:
 					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
@@ -891,7 +812,8 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 			return;
 		}
 		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
-		console.log("market dump is successful")
+		console.log("market dump is successful");
+		console.log("Last sell is because " + lastSellReason);
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
@@ -910,6 +832,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 				maxPrice: lastSellLocalMax,
 				maxStdev: lastSellLocalMaxStdev,
 				minStdev: lastSellLocalMinStdev,
+				sellReason: lastSellReason,
 				gain: lastSell/lastBuy
 			};
 			purchases.push(purchase);
@@ -948,8 +871,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	mean = 0;
 	stdev = 0;
 	ride_profits = false;
-	take_profit_hit_time = 0;
-	take_profit_check_time = 0;
+	take_profit_hit_check_time = 0;
 	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
 		if ((client || server) && !fetching_prices_from_graph_mode) {
 			fetching_prices_from_graph_mode = true;
@@ -960,6 +882,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		[mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
+			lastSellReason = "manually sold";
 			return latestPrice;
 		}
 		lastSellLocalMax = Math.max(latestPrice, lastSellLocalMax);
@@ -972,60 +895,20 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")} Sell Window: ${sell_indicator_reached ? colorText("green", msToTime(sell_indicator_check_time - Date.now())) : colorText("red", "N/A")}`);
 		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
-				case 3:
-					if (latestPrice > highstd[highstd.length-1]) {
-						if (!meanRev) {
-							meanRev = true;
-							meanRevStart = Date.now();
-						} else if (meanRevStart < Date.now() - ONE_MIN){
-							// This is a good thing
-							// return latestPrice;
-						}
-					}
-					if (outlierReversion > 0 && --outlierReversion > 0) {
-						break;
-					}
-					if (lastValueIsOutlier()) {
-						outlierReversion += OUTLIER_INC; // We want to buy before the outlier happens, not after
-						break;
-					}
-					if (Math.abs(latestPrice - buy_price) < 0.3 * stdev) {
-						// don't buy or sell too small amounts
-						break;
-					}
-					if (latestPrice > mean
-						&& meanRev
-						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastSellReason = "Sold bcuz after bb not uptrend";
-						return latestPrice;
-					} else if ((latestPrice < mean || Math.abs(buy_price - mean) < 0.2 * stdev)
-						&& isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastSellReason = "Sold bcuz mean is down";
-						return latestPrice;
-					}
-					break;
-				case 6:
-					if (Math.floor((Date.now() - start) / TIME_TO_CHANGE_PROFIT_LOSS) > timeout_count) {
-						timeout_count++;
-						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
-						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
-					}
-					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
-						ride_profits = true;
-					}
-					if (ride_profits && latestPrice < lastSellLocalMax * SELL_RIDE_PROFITS_PCT) {
-						lastSellReason = "Sold bcuz price is 1% lower than max"
-						return latestPrice;
-					}
-					// do nothing for now
-					break;
 				case 7:
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
-						take_profit_hit_time = Date.now();
+						take_profit_hit_check_time = Date.now() + 0.5 * ONE_MIN;
 					}
-					if (ride_profits && latestPrice < (take_profit * 0.995) && Date.now() > take_profit_hit_time + 0.5 * ONE_MIN) {
-						return latestPrice;
+					if (ride_profits && Date.now() > take_profit_hit_check_time) {
+						if (latestPrice < (take_profit * 0.995)) {
+							if (Date.now() < take_profit_hit_check_time + ONE_MIN) {
+								ride_profits = false;
+							} else {
+								lastSellReason = "sold because take profit is reached";
+								return latestPrice;
+							}
+						}
 					}
 					if ((ride_profits && latestPrice > take_profit) || Date.now() > start + 90 * ONE_MIN) {
 						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
@@ -1034,6 +917,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						}
 						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
 							if (latestPrice < highstd.slice(-1).pop()) {
+								lastSellReason = "sold because indicator has reached";
 								return latestPrice;
 							}
 							sell_indicator_reached = false;
@@ -1045,20 +929,6 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					break;
 
 			}
-			// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
-			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
-			// if (latestPrice > take_profit && !take_profit_reached) {
-			// 	take_profit_reached = true;
-			// 	take_profit_check_time = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			// } else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
-			// 	return latestPrice;
-			// }
-			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
-			// if (latestPrice < stop_loss && stop_loss_check == 0) {
-			// 	stop_loss_check = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			// } else if (latestPrice > stop_loss) {
-			// 	stop_loss_check = 0;
-			// }
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
@@ -1289,12 +1159,11 @@ async function getPrevDay() {
 			// TODO: Better error handling
 			return;
 		}
-  	// console.info(prevDay); // view all data
 		for ( let obj of pd ) {
 		    let symbol = obj.symbol;
 		    prevDay[symbol] = obj.priceChangePercent;
 		}
-		setMultiplersFromPreviousDayBTCPrices();
+		//setMultiplersFromPreviousDayBTCPrices();
 	});
 }
 
