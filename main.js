@@ -714,7 +714,8 @@ async function waitUntilTimeToBuy() {
 	starting_price = 0;
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
-	buy_indicator_buffer = buy_good_buys ? 3 * ONE_MIN : ONE_MIN;
+	buy_indicator_buffer_add = buy_good_buys ? 5 * ONE_MIN : ONE_MIN;
+	buy_indicator_buffer = buy_indicator_buffer_add;
 	fetching_prices_from_graph_mode = false;
 	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
 	follows_btc = false;
@@ -842,14 +843,21 @@ async function waitUntilTimeToBuy() {
 					if (prepump && Date.now() > opportunity_expired_time) {
 						return 0;
 					}
+					lastLowstd =  lowstd.slice(-1).pop();
 					ready = true;
-					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
+					if (!buy_indicator_reached && latestPrice < lastLowstd) {
 						buy_indicator_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
+						if (buy_indicator_buffer) {
+							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - ONE_MIN) ;
+						}
 						buy_indicator_buffer = 0;
 					}
+					if (!buy_indicator_reached && latestPrice > mean) {
+						buy_indicator_buffer = buy_indicator_buffer_add;
+					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice > lowstd.slice(-1).pop()) {
+						if (latestPrice > lastLowstd && latestPrice < mean ) {
 							return latestPrice;
 						}
 						buy_indicator_reached = false;
