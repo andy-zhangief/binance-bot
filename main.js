@@ -338,7 +338,6 @@ function initClient() {
 					}
 					blacklist = message.blacklist;
 					console.log(`Updated Blacklist: ${blacklist}`);
-					
 				}
 			}
 			if (message.historicalPrices) {
@@ -411,10 +410,10 @@ async function waitUntilPrepump() {
 			while (coinInfo == null) {
 				await sleep(ONE_SEC);
 			}
-			opportunity_expired_time = Date.now() + SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW;
+			opportunity_expired_time = Date.now() + (buy_good_buys ? 60 * ONE_MIN : SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW);
 			rally_inc_pct = rally.gain - 1;
-			TAKE_PROFIT_MULTIPLIER = Math.min(1.1, (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1);
-			STOP_LOSS_MULTIPLIER = Math.max(0.95, 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1));
+			TAKE_PROFIT_MULTIPLIER = Math.max(1.02, Math.min(1.1, (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1));
+			STOP_LOSS_MULTIPLIER = Math.min(0.99, Math.max(0.95, 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1)));
 			time_elapsed_since_rally = 0;
 			latestPrice = rally.last;
 			pump();
@@ -435,9 +434,6 @@ async function getGoodBuy() {
 			if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
 				goodBuy == null
 			}
-		}
-		if (goodBuy != null) {
-			goodBuy.gain = Math.max(...goodBuy.gains.slice(-3));
 		}
 		return goodBuy;
 	}
@@ -611,12 +607,16 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	}
 	let mean = average(ticker);
 	let std = getStandardDeviation(ticker);
-	if ((closes.slice(-3).filter(v => v > (mean + std)).length == 0) && isUptrend(closes.slice(-3), 0, false))  {
+	let last3gains = gains.slice(-3);
+	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1);
+	firstGreaterThanLast = Math.abs(1-last3gains[2]) > Math.abs(1-last3gains[0]);
+	middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
+	if ((opens.slice(-3).filter(v => v > (mean + std)).length == 0) && isUptrend(closes.slice(-3), 0, false) && middleIsSmallest && firstGreaterThanLast && gain >= 1.02)  {
 		return {
 			sym: sym,
 			open: opens,
 			close: closes,
-			gains: gains,
+			gain: gain,
 			last: last,
 			volume: totalVolume,
 		};
@@ -630,7 +630,13 @@ async function scanForGoodBuys() {
 		if (coinsInfo[k].status != "TRADING") {
 			return;
 		}
-		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("UPUSDT") && !k.includes("DOWNUSDT") && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
+		if (futures && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
+			return;
+		}
+		if (!futures && (k.includes("UPUSDT") || k.includes("DOWNUSDT"))) {
+			return;
+		}
+		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			await sleep(ONE_SEC);
 			goodCoin = await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
@@ -708,6 +714,7 @@ async function waitUntilTimeToBuy() {
 	starting_price = 0;
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
+	buy_indicator_buffer = buy_good_buys ? 3 * ONE_MIN : ONE_MIN;
 	fetching_prices_from_graph_mode = false;
 	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
 	follows_btc = false;
@@ -838,7 +845,8 @@ async function waitUntilTimeToBuy() {
 					ready = true;
 					if (!buy_indicator_reached && latestPrice < lowstd.slice(-1).pop()) {
 						buy_indicator_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
+						buy_indicator_buffer = 0;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice > lowstd.slice(-1).pop()) {
