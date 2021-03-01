@@ -426,7 +426,7 @@ async function waitUntilPrepump() {
 }
 
 async function getGoodBuy() {
-	if (prices_data_points_count % 60 == 3) {
+	if (prices_data_points_count % 30 == 3) {
 		goodBuys = await scanForGoodBuys();
 		goodBuy = null;
 		while (goodBuys.length) {
