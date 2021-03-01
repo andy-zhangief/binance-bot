@@ -644,13 +644,13 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let std = getStandardDeviation(ticker);
 	let last3gains = gains.slice(-3);
 	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01);
-	let lastGreaterThanFirst = Math.abs(1-last3gains[2]) > Math.abs(1-last3gains[0]);
+	let increasingGains = isUptrend(last3gains, 0, false);
 	let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
 	let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
 	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
 	let startOfRally = !isUptrend(closes.slice(-4), 0, false) && isUptrend(closes.slice(-3), 0, false);
 	let minCombinedGainForLast3CandlesReached = gain >= GOOD_BUY_MIN_GAIN;
-	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && lastGreaterThanFirst && lastWickShorterThanBody && minCombinedGainForLast3CandlesReached)  {
+	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastWickShorterThanBody && minCombinedGainForLast3CandlesReached)  {
 		return {
 			sym: sym,
 			gain: gain,
