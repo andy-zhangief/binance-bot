@@ -377,7 +377,8 @@ async function waitUntilPrepump() {
 			console.log(`Blacklist: ${blacklist}`);
 			//console.log(lastSellReason);
 			console.log(`You have made ${purchases.length} purchases`);
-			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/ 9);
+			last_purchase_obj = purchases.slice(-1).pop();
+			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
 		rally = null;
