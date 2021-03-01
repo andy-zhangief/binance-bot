@@ -910,7 +910,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 							}
 						}
 					}
-					if ((ride_profits && latestPrice > take_profit) || Date.now() > start + 90 * ONE_MIN) {
+					if (ride_profits && latestPrice > take_profit) {
 						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
 							sell_indicator_reached = true;
 							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
