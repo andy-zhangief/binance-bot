@@ -648,9 +648,9 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
 	let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
 	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
-	let closesUptrend = isUptrend(closes.slice(-3), 0, false);
+	let startOfRally = !isUptrend(closes.slice(-4), 0, false) && isUptrend(closes.slice(-3), 0, false);
 	let minCombinedGainForLast3CandlesReached = gain >= GOOD_BUY_MIN_GAIN;
-	if (opensBelowOneStdPlusMean && closesUptrend && middleIsSmallest && lastGreaterThanFirst && lastWickShorterThanBody && minCombinedGainForLast3CandlesReached)  {
+	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && lastGreaterThanFirst && lastWickShorterThanBody && minCombinedGainForLast3CandlesReached)  {
 		return {
 			sym: sym,
 			gain: gain,
