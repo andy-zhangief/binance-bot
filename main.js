@@ -52,6 +52,7 @@ var {
 	OPPORTUNITY_EXPIRE_WINDOW,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
+	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
 	BUY_SELL_INDICATOR_INC,
 	TIME_TO_CHANGE_PROFIT_LOSS,
@@ -412,7 +413,7 @@ async function waitUntilPrepump() {
 			while (coinInfo == null) {
 				await sleep(ONE_SEC);
 			}
-			opportunity_expired_time = Date.now() + (buy_good_buys ? 60 * ONE_MIN : SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW);
+			opportunity_expired_time = Date.now() + (buy_good_buys ? GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW : SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW);
 			rally_inc_pct = rally.gain - 1;
 			TAKE_PROFIT_MULTIPLIER = Math.max(1.02, Math.min(1.1, (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1));
 			STOP_LOSS_MULTIPLIER = Math.min(0.99, Math.max(0.95, 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1)));
