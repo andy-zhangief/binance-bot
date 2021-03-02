@@ -565,7 +565,7 @@ async function getGoodBuy() {
 	if (prices_data_points_count % 30 == 3) {
 		goodBuys = await scanForGoodBuys();
 		if (detection_mode) {
-			//console.clear();
+			console.clear();
 			console.log("Detection Mode Active");
 			console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 			console.log(`Good buys: ${JSON.stringify(goodBuys, null, 2)}`);
@@ -615,7 +615,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let lows = [];
 	let last = 0;
 	let totalVolume = 0;
-	await sleep(Math.random() * ONE_MIN);
+	await sleep(ONE_SEC);
 	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
 		if (error) {
 			console.log(error);
@@ -645,12 +645,14 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let last3gains = gains.slice(-3);
 	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01);
 	let increasingGains = isUptrend(last3gains, 0, false);
+	let lastGainGreaterThanFirst = Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[0]);
 	let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
 	let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
 	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
 	let startOfRally = !isUptrend(closes.slice(-4), 0, false) && isUptrend(closes.slice(-3), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastWickShorterThanBody && goodBuyGainIsValid)  {
+	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? 2500000 : 50);
+	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastGainGreaterThanFirst && lastWickShorterThanBody && goodBuyGainIsValid && volumeIsOk)  {
 		return {
 			sym: sym,
 			gain: gain,
@@ -814,9 +816,9 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 	lastSellLocalMax = 0;
 	lastSellLocalMaxStdev = 0;
 	lastSellLocalMinStdev = 0;
+	buy_time = Date.now();
 	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
 	manual_sell = false;
-	buy_time = Date.now();
 	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
 	binance.marketSell(coinpair, quantity, (error, response) => {
 		if (error) {
