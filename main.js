@@ -257,18 +257,29 @@ function initKeybindings() {
 	readline.emitKeypressEvents(process.stdin);
 	process.stdin.setRawMode(true);
 	process.stdin.on('keypress', (str, key) => {
-		if (key.ctrl && key.name === 'c') {
-			// I should write log data to file for analytics
-			process.exit(0); // eslint-disable-line no-process-exit
+		if (key.ctrl) {
+			switch (key.name) {
+				case 'c': 
+					// I should write log data to file for analytics
+					process.exit(0); // eslint-disable-line no-process-exit
+					break;
+				case "b":
+					// b is for buy
+					manual_buy = true;
+					break;
+				case "s":
+					// s is for sell
+					manual_sell = true;
+					break;
+				default:
+					break;
+			}
+			
 		}
 		switch (str) {
 			case "a":
 				// a is to toggle auto
 				auto = !auto;
-				break;
-			case "b":
-				// b is for buy
-				manual_buy = true;
 				break;
 			case "c":
 				// c is to clear blacklist
@@ -284,10 +295,6 @@ function initKeybindings() {
 			case "q":
 				// q to quit early when looking for prepumps
 				quit_buy = true;
-				break;
-			case "s":
-				// s is for sell
-				manual_sell = true;
 				break;
 			case "g":
 				SHOW_GRAPH = !SHOW_GRAPH;
