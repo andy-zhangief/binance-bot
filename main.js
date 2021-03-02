@@ -108,6 +108,7 @@ var {
 	RALLY_MIN_DELTA,
 	RALLY_GREEN_RED_RATIO,
 	GOOD_BUY_MIN_GAIN,
+	GOOD_BUY_MAX_GAIN,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count,
@@ -148,7 +149,6 @@ var {
 	fetch_balance_time,
 	prices_data_points_count,
 	SELL_FINISHED,
-	priceFetch,
 	time_elapsed_since_rally,
 	prices,
 	prevDay,
@@ -615,7 +615,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let lows = [];
 	let last = 0;
 	let totalVolume = 0;
-	await sleep(ONE_SEC);
+	await sleep(Math.random() * ONE_MIN);
 	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
 		if (error) {
 			console.log(error);
@@ -649,8 +649,8 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
 	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
 	let startOfRally = !isUptrend(closes.slice(-4), 0, false) && isUptrend(closes.slice(-3), 0, false);
-	let minCombinedGainForLast3CandlesReached = gain >= GOOD_BUY_MIN_GAIN;
-	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastWickShorterThanBody && minCombinedGainForLast3CandlesReached)  {
+	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastWickShorterThanBody && goodBuyGainIsValid)  {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1142,26 +1142,26 @@ async function fetchAllPricesAsyncIfReady() {
 }
 
 async function fetchAllPricesAsync() {
-	priceFetch = 0;
-	await getAllPrices();
-	while (priceFetch < 1) {
-		await sleep(0.1 * ONE_SEC);
-	}
+	await getAllPrices().catch((err) => console.error(err));
 }
 
 async function getAllPrices() {
-	binance.bookTickers((error, ticker) => {
-		if (error) {
-			while (++fail_counter >= 100) {
-				console.log("TOO MANY FAILS GETTING PRICES");
-				process.exit(1);
+	return new Promise((resolve, reject) => {
+		binance.bookTickers((error, ticker) => {
+			if (error) {
+				while (++fail_counter >= 100) {
+					console.log("TOO MANY FAILS GETTING PRICES");
+					process.exit(1);
+				}
+				reject();
+				return;
 			}
-			return;
-		}
-		fail_counter = 0;
-		priceFetch++;
-		serverPrices = ticker;
+			fail_counter = 0;
+			serverPrices = ticker;
+			resolve();
+		});
 	});
+	
 }
 
 async function getPrevDay() {

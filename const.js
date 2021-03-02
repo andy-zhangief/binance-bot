@@ -93,6 +93,7 @@ module.exports = {
 	FUTURES_RALLY_MAX_DELTA : 1.05,
 	RALLY_GREEN_RED_RATIO : 1.5,
 	GOOD_BUY_MIN_GAIN : 1.03,
+	GOOD_BUY_MAX_GAIN : 1.07,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
@@ -133,7 +134,6 @@ module.exports = {
 	fetch_balance_time : 0,
 	prices_data_points_count : 0,
 	SELL_FINISHED : false,
-	priceFetch : 0,
 	time_elapsed_since_rally : 0,
 	prices : [],
 	prevDay : {},
