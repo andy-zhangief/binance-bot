@@ -288,7 +288,7 @@ function initKeybindings() {
 				// s is for sell
 				manual_sell = true;
 				break;
-			case "p":
+			case "g":
 				SHOW_GRAPH = !SHOW_GRAPH;
 				break;
 			default:
@@ -299,7 +299,7 @@ function initKeybindings() {
 
 function initServer() {
 	// TODO: listen for client DC message and sell coin if client is holding
-	server = SocketModel.createServer( { socketFile: SOCKETFILE} );
+	server = SocketModel.createServer( { socketFile: SOCKETFILE, removeSocketFileOnStart: true} );
 	server.onMessage(function(obj) {
 		if (obj.message) {
 			message = JSON.parse(obj.message)
@@ -316,7 +316,7 @@ function initServer() {
 		}
 	});
 	server.onClientConnection((socket) => {
-		server.getWriter().send(JSON.stringify({historicalPrices: prices}), socket);
+		server.getWriter().send(JSON.stringify({historicalPrices: prices, blacklist: blacklist}), socket);
 	});
 	server.start();
 	getExchangeInfo();
@@ -433,6 +433,7 @@ async function getRally() {
 		console.clear();
 		console.log("Detection Mode Active");
 		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
+		console.log(`Blacklist: ${blacklist}`);
 		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
 		return;
 	}
@@ -568,6 +569,7 @@ async function getGoodBuy() {
 			console.clear();
 			console.log("Detection Mode Active");
 			console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
+			console.log(`Blacklist: ${blacklist}`);
 			console.log(`Good buys: ${JSON.stringify(goodBuys, null, 2)}`);
 			return;
 		}
@@ -642,17 +644,18 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	}
 	let mean = average(ticker);
 	let std = getStandardDeviation(ticker);
-	let last3gains = gains.slice(-3);
+	let last3gains = gains.slice(-4, -1);
 	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01);
 	let increasingGains = isUptrend(last3gains, 0, false);
-	let lastGainGreaterThanFirst = Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[0]);
-	let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
-	let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
-	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
-	let startOfRally = !isUptrend(closes.slice(-4), 0, false) && isUptrend(closes.slice(-3), 0, false);
+	// let lastGainGreaterThanFirst = Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[0]);
+	// let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
+	// let middleIsSmallest = Math.abs(1 - last3gains[0]) > Math.abs(1 - last3gains[1]) && Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[1]);
+	let opensBelowOneStdPlusMean = (opens.slice(-4, -1).filter(v => v > (mean + std)).length == 0);
+	let startOfRally = !isUptrend(closes.slice(-5), 0, false) && isUptrend(closes.slice(-4), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? 2500000 : 50);
-	if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastGainGreaterThanFirst && lastWickShorterThanBody && goodBuyGainIsValid && volumeIsOk)  {
+	// if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastGainGreaterThanFirst && lastWickShorterThanBody && goodBuyGainIsValid && volumeIsOk)  {
+	if (opensBelowOneStdPlusMean && startOfRally && goodBuyGainIsValid && volumeIsOk && increasingGains) {
 		return {
 			sym: sym,
 			gain: gain,
