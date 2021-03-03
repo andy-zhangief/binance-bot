@@ -154,7 +154,7 @@ var {
 	opportunity_expired_time,
 	fetch_balance_time,
 	prices_data_points_count,
-	SELL_FINISHED,
+	TRANSACTION_COMPLETE,
 	prices,
 	prevDay,
 	serverPrices,
@@ -384,7 +384,7 @@ async function initClient() {
 			}
 			if (message.blacklist) {
 				if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !SELL_FINISHED) {
+					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !TRANSACTION_COMPLETE) {
 						quit_buy = true;
 					}
 					blacklist = message.blacklist;
@@ -405,7 +405,6 @@ async function initClient() {
 				quit_buy = true;
 				await sleep(5 * ONE_SEC);
 				transaction = message.transaction;
-				SELL_FINISHED = false;
 				ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, false, transaction.sym);
 			}
 		}
@@ -427,7 +426,7 @@ async function waitUntilPrepump() {
 	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
 	detection_mode && (console.clear() || console.log("Detection Mode Active"));
 	while (true) {
-		if (SELL_FINISHED) {
+		if (TRANSACTION_COMPLETE) {
 			await waitUntilFetchPricesAsync();
 			if (!detection_mode) {
 				console.clear();
@@ -477,7 +476,7 @@ async function waitUntilPrepump() {
 				pump();
 			}
 		} else {
-			await sleep(ONE_MIN);
+			await sleep(10 * ONE_SEC);
 		}
 	}
 }
@@ -725,7 +724,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 
 async function pump() {
 	console.log("Buying " + coinpair);
-	SELL_FINISHED = false;
+	TRANSACTION_COMPLETE = false;
 	if (BUY_LOCAL_MIN && !yolo) {
 		manual_buy = false;
 		quit_buy = false;
@@ -736,7 +735,7 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
-		SELL_FINISHED = true; // never bought
+		TRANSACTION_COMPLETE = true; // never bought
 		blacklist = blacklist.filter(i => i !== coin);
 		synchronizeBlacklist();
 		if (!LOOP) {
@@ -841,6 +840,7 @@ async function waitUntilTimeToBuy() {
 //////////////////////////////////////////// SELL ///////////////////////////////////////////////
 
 async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = false, sym = coinpair) {
+	TRANSACTION_COMPLETE = false;
 	if (!immediately) {
 		lastSellLocalMax = 0;
 		buy_time = Date.now();
@@ -855,6 +855,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 			console.log("Market sell error, please sell on Binance.com manually");
 			return;
 		}
+		TRANSACTION_COMPLETE = true;
 		if (server && immediately) {
 			return;
 		}
@@ -867,7 +868,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
-		SELL_FINISHED = true;
 		lastSell = sell_price * response.executedQty;
 		pnl += lastSell - lastBuy;
 		pnl = Math.round(pnl*10000000)/10000000;

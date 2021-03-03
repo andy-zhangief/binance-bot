@@ -139,7 +139,7 @@ module.exports = {
 	opportunity_expired_time : 0,
 	fetch_balance_time : 0,
 	prices_data_points_count : 0,
-	SELL_FINISHED : true,
+	TRANSACTION_COMPLETE : true,
 	prices : [],
 	prevDay : {},
 	serverPrices : [],
