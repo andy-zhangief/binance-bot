@@ -16,12 +16,11 @@ module.exports = {
 	PCT_BUY : 0.01, // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 	TAKE_PROFIT_MULTIPLIER : 1.04, // Only change for single coinpair trading, will be unset if prepump is enabled
 	STOP_LOSS_MULTIPLIER : 0.98, // Only change for single coinpair trading, will be unset if prepump is enabled
-	RUNTIME : 10 * ONE_MIN, //mins
-	USE_TIMEOUT : false, // Automatically sell when RUNTIME is reached
 	POLL_INTERVAL : 720,// roughly 1 second
 	LOOP : true, // false for single buy and quit
 	DEFAULT_BASE_CURRENCY : "USDT",
 	FETCH_BALANCE_INTERVAL : 60 * ONE_MIN,
+	CLIENT_DISCONNECT_SELL_TIMEOUT : 5 * ONE_MIN,
 
 	// GRAPH SETTINGS
 	SHOW_GRAPH : true,
@@ -140,7 +139,7 @@ module.exports = {
 	opportunity_expired_time : 0,
 	fetch_balance_time : 0,
 	prices_data_points_count : 0,
-	SELL_FINISHED : false,
+	SELL_FINISHED : true,
 	prices : [],
 	prevDay : {},
 	serverPrices : [],
@@ -162,4 +161,5 @@ module.exports = {
 	coin : "",
 	follows_btc : false,
 	follows_btc_history : new Array(10).fill(0.5),
+	init_complete : false,
 }
