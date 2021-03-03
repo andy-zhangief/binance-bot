@@ -325,7 +325,7 @@ async function initServer() {
 				delete server.transactionHistory[message.sym];
 			}
 			if (message.connect) {
-				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && !value.reconnected)).pop()];
+				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
 				if (transaction) {
 					transaction.id = message.id;
 					console.log(colorText("green", `Client has reconnected and will continue to sell ${transaction.sym}`));
@@ -710,10 +710,11 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let increasingGains = isUptrend(last3gains, 0, false);
 	let opensBelowOneStdPlusMean = (opens.slice(-4, -1).filter(v => v > (mean + std)).length == 0);
-	let startOfRally = !isUptrend(closes.slice(-5), 0, false) && isUptrend(closes.slice(-4), 0, false);
+	let lastWickIsShorterThanBody = (closes.slice(-2).shift() - opens.slice(-2).shift()) > (highs.slice(-2).shift() - closes.slice(-2).shift());
+	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
-	if (opensBelowOneStdPlusMean && startOfRally && goodBuyGainIsValid && volumeIsOk && increasingGains) {
+	if (opensBelowOneStdPlusMean && increasingCloses && goodBuyGainIsValid && volumeIsOk && increasingGains && lastWickIsShorterThanBody) {
 		return {
 			sym: sym,
 			gain: gain,
