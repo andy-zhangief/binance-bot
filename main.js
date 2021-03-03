@@ -1,6 +1,8 @@
 const {
 	API_KEY,
-	API_SECRET
+	API_SECRET,
+	MAX_OVERRIDE_BTC,
+	MAX_OVERRIDE_USDT
 } = require("./secrets.js")
 
 const fs = require('fs');
@@ -11,369 +13,451 @@ const SocketModel = require('socket-model');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
+var binance;
 
-// DO NOT CHANGE THESE
-const ONE_MIN = 60000;
-const APPROX_LOCAL_MIN_MAX_BUFFER_PCT = 0.069420;
-const MIN_COIN_VAL_IN_BTC = 0.00000200;
-const TERMINAL_HEIGHT_BUFFER = 4;
-const TERMINAL_WIDTH_BUFFER = 18;
-const SOCKETFILE = '/tmp/binance-bot.sock'
-const binance = new Binance().options({
-  APIKEY: API_KEY,
-  APISECRET: API_SECRET,
-  recvWindow: ONE_MIN
-  //test: true // comment out when running for real
-});
+////////////////////////////// GLOBALS ///////////////////////////////
 
+var {
+	// DO NOT CHANGE THESE
+	ONE_SEC,
+	ONE_MIN,
+	APPROX_LOCAL_MIN_MAX_BUFFER_PCT,
+	MIN_COIN_VAL_IN_BTC,
+	TERMINAL_HEIGHT_BUFFER,
+	TERMINAL_WIDTH_BUFFER,
+	SOCKETFILE,
 
-// TODO: Move const to new file
-// TODO: Create web interface
-// MAKE SURE TO HAVE BNB IN YOUR ACCOUNT
-// IMPORTANT SETTINGS YOU SHOULD CHANGE
-const MAX_OVERRIDE_BTC = 0.001;
-const MAX_OVERRIDE_USDT = 40;
-// BE CAREFUL USING THIS. IT WILL USE A PERCENTAGE OF THE ACCOUNT'S ENTIRE BASE CURRENCY
-// DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
-const PCT_BUY = 0.01;
-var TAKE_PROFIT_MULTIPLIER = 1.05; // Only change for single coinpair trading, will be unset if prepump is enabled
-var STOP_LOSS_MULTIPLIER = 0.985; // Only change for single coinpair trading, will be unset if prepump is enabled
-const RUNTIME = 10 * ONE_MIN; //mins
-const USE_TIMEOUT = false; // Automatically sell when RUNTIME is reached
-const POLL_INTERVAL = 720;// roughly 1 second
-var LOOP = false; // false for single buy and quit
-var DEFAULT_BASE_CURRENCY = "USDT";
-const FETCH_BALANCE_INTERVAL = 60 * ONE_MIN;
+	// NOT SURE WHAT I SHOULD LABEL THIS AS. TODO: CHANGE THIS LABEL
+	PCT_BUY,
+	TAKE_PROFIT_MULTIPLIER,
+	STOP_LOSS_MULTIPLIER,
+	RUNTIME,
+	USE_TIMEOUT,
+	POLL_INTERVAL,
+	LOOP,
+	DEFAULT_BASE_CURRENCY,
+	FETCH_BALANCE_INTERVAL,
 
-// GRAPH SETTINGS
-const SHOW_GRAPH = true;
-const AUTO_ADJUST_GRAPH = true;
-const GRAPH_PADDING = '                ';
-var GRAPH_HEIGHT = 32;
-var PLOT_DATA_POINTS = 120; // Play around with this value. It can be as high as QUEUE_SIZE
+	// GRAPH SETTINGS
+	SHOW_GRAPH,
+	AUTO_ADJUST_GRAPH,
+	GRAPH_PADDING,
+	GRAPH_HEIGHT,
+	PLOT_DATA_POINTS, 
 
+	// BUY SELL SETTINGS
+	BUY_SELL_STRATEGY,
+	TIME_BEFORE_NEW_BUY,
+	AFTER_SELL_WAIT_BEFORE_BUYING,
+	OPPORTUNITY_EXPIRE_WINDOW,
+	MIN_OPPORTUNITY_EXPIRE_WINDOW,
+	MAX_OPPORTUNITY_EXPIRE_WINDOW,
+	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
+	BUY_LOCAL_MIN,
+	BUY_SELL_INDICATOR_INC,
+	TIME_TO_CHANGE_PROFIT_LOSS,
+	TAKE_PROFIT_CHANGE_PCT,
+	STOP_LOSS_CHANGE_PCT,
+	PROFIT_LOSS_CHECK_TIME,
+	SELL_RIDE_PROFITS,
+	SELL_RIDE_PROFITS_PCT,
+	FOLLOW_BTC_MIN_BUY_MEDIAN,
 
-// BUY SELL SETTINGS
-const BUY_SELL_STRATEGY = 6; // 3 = buy boulinger bounce, 6 is wait until min and buy bounce
-const TIME_BEFORE_NEW_BUY = ONE_MIN;
-var BUFFER_AFTER_FAIL = true;
-const OPPORTUNITY_EXPIRE_WINDOW = 10 * ONE_MIN;
-const BUY_LOCAL_MIN = true;
-const BUY_INDICATOR_INC = 0.25 * ONE_MIN;
-const TIME_TO_CHANGE_PROFIT_LOSS = 30 * ONE_MIN;
-const TAKE_PROFIT_CHANGE_PCT = 1.01;
-const STOP_LOSS_CHANGE_PCT = 1.01;
-const PROFIT_LOSS_CHECK_TIME = 0.5 * ONE_MIN;
+	// ANALYSIS SETTINS
+	ANALYSIS_TIME,
+	ANALYSIS_BUFFER,
+	BUY_SELL_INC,
+	MIN_BUY_SELL_BUF,
+	MAX_BUY_SELL_BUF,
 
-// ANALYSIS SETTINS
-var ANALYZE = false;
-const ANALYSIS_TIME = 60; //Seconds
-const ANALYSIS_BUFFER = 5;
-const BUY_SELL_INC = 2;
-const MIN_BUY_SELL_BUF = 10;
-const MAX_BUY_SELL_BUF = 60;
+	// QUEUE SETTINGS
+	QUEUE_SIZE,
+	MIN_QUEUE_SIZE,
+	LOOKBACK_SIZE,
+	LOOKBACK_TREND_LIMIT,
+	MIN_TREND_STDEV_MULTIPLIER,
+	OUTLIER_STDEV_MULTIPLIER,
+	OUTLIER_INC,
+	BB_SELL,
+	BB_BUY,
+	UPPER_BB_PCT,
+	LOWER_BB_PCT,
+	MAX_BB_PCT,
+	MIN_BB_PCT,
 
-// QUEUE SETTINGS
-const QUEUE_SIZE = 1200; // 20m
-const MIN_QUEUE_SIZE = 50;
-const LOOKBACK_SIZE = 10000;
-const LOOKBACK_TREND_LIMIT = 500;
-const MIN_TREND_STDEV_MULTIPLIER = 0.2;
-const OUTLIER_STDEV_MULTIPLIER = 0.5;
-const OUTLIER_INC = 5;
-var BB_SELL = 10;
-var BB_BUY = 20;
+	// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
+	DEFAULT_SYMBOL_PRICE_CHECK_TIME,
+	SYMBOLS_PRICE_CHECK_TIME,
+	PREPUMP_TAKE_PROFIT_MULTIPLIER,
+	PREPUMP_STOP_LOSS_MULTIPLIER,
+	PREPUMP_BULL_PROFIT_MULTIPLIER,
+	PREPUMP_BEAR_PROFIT_MULTIPLIER,
+	PREPUMP_BULL_LOSS_MULTIPLIER,
+	PREPUMP_BEAR_LOSS_MULTIPLIER,
+	PREPUMP_BULL_RALLY_TIME,
+	PREPUMP_BEAR_RALLY_TIME,
+	PREPUMP_MAX_UPPER_BB_PCT,
+	PREPUMP_MIN_UPPER_BB_PCT,
+	PREPUMP_MAX_LOWER_BB_PCT,
+	PREPUMP_MIN_LOWER_BB_PCT,
+	PREPUMP_MAX_PROFIT_MULTIPLIER,
+	PREPUMP_MIN_PROFIT_MULTIPLIER,
+	PREPUMP_MAX_LOSS_MULTIPLIER,
+	PREPUMP_MIN_LOSS_MULTIPLIER,
+	PRICES_HISTORY_LENGTH,
+	RALLY_TIME,
+	MIN_RALLY_TIME,
+	MAX_RALLY_TIME,
+	RALLY_MAX_DELTA,
+	FUTURES_RALLY_MAX_DELTA,
+	RALLY_MIN_DELTA,
+	RALLY_GREEN_RED_RATIO,
+	GOOD_BUY_MIN_GAIN,
+	GOOD_BUY_MAX_GAIN,
+	MIN_48H_BTC,
+	MIN_48H_USDT,
+	GOOD_BUY_SEED_MAX,
+	GOOD_BUY_SEED,
 
-// PRICE CHECK SETTINGS (BEFORE BUY GRAPH)
-var SYMBOLS_PRICE_CHECK_TIME = 10 * 1000;
-var PREPUMP_TAKE_PROFIT_MULTIPLIER = 2;
-var PREPUMP_STOP_LOSS_MULTIPLIER = 1;
-const PRICES_HISTORY_LENGTH = 180; // * SYMBOLS_PRICE_CHECK_TIME
-const RALLY_TIME = 18; // * SYMBOLS_PRICE_CHECK_TIME
-var RALLY_MAX_DELTA = 1.02; // don't go for something thats too steep
-var RALLY_MIN_DELTA = 1.01;
-const RALLY_GREEN_RED_RATIO = 1.5;
+	// DONT TOUCH THESE GLOBALS
+	dump_count,
+	latestPrice,
+	q,
+	lowstd,
+	highstd,
+	lookback,
+	means,
+	mabuy,
+	masell,
+	fetchMarketDataTime,
+	lastBuy,
+	lastSell,
+	supports,
+	resistances,
+	lastBuyReason,
+	lastSellReason,
+	lastSellLocalMax,
+	BUY_TS,
+	SELL_TS,
+	auto,
+	histogram,
+	detection_mode,
+	buy_good_buys,
+	buy_rallys,
+	last_keypress,
+	lastTrend,
+	lastDepth,
+	fail_counter,
+	dont_buy_before,
+	prepump,
+	pnl,
+	purchases,
+	opportunity_expired_time,
+	fetch_balance_time,
+	prices_data_points_count,
+	SELL_FINISHED,
+	prices,
+	prevDay,
+	serverPrices,
+	blacklist,
+	balances,
+	coinInfo,
+	coinsInfo,
+	manual_buy,
+	manual_sell,
+	quit_buy,
+	yolo,
+	futures,
+	silent,
+	server,
+	client,
+	price_data_received,
+	fetching_prices_from_graph_mode,
+	coinpair,
+	coin
+} = require("./const.js");
 
-// DONT TOUCH THESE GLOBALS
-dump_count = 0;
-latestPrice = 0;
-q = [];
-lowstd = [];
-highstd = [];
-lookback = [];
-means = [];
-mabuy = [];
-masell = [];
-fetchMarketDataTime = 0;
-lastBuy = 0;
-lastSell = 0;
-supports = {};
-resistances = {};
-lastBuyReason = "";
-lastSellReason = "";
-BUY_TS = 0;
-SELL_TS = 0;
-auto = false;
-histogram = false;
-detection_mode = false;
-last_keypress = "";
-lastTrend = "";
-lastDepth = {};
-fail_counter = 0;
-dont_buy_before = 0;
-prepump = false;
-pnl = 0;
-opportunity_expired_time = 0;
-fetch_balance_time = 0;
-prices_data_points_count = 0;
-SELL_FINISHED = false;
-priceFetch = 0;
-time_elapsed_since_rally = 0;
-prices = [];
-prevDay = {};
-serverPrices = [];
-blacklist = [];
-override_blacklist = false;
-balances = {};
-coinInfo = null;
-manual_buy = false;
-manual_sell = false;
-quit_buy = false;
-yolo = false;
-server = null;
-client = null;
-price_data_received = false;
-coinpair = process.argv[2].toUpperCase();
-coin = "";
-
-////////////////////////// CODE STARTS ////////////////////////
-
-if (!process.argv[2] || !(process.argv[2].trim() == "prepump" || process.argv[2].endsWith("USDT") || process.argv[2].endsWith("BTC"))) {
-	console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
-	console.log("Optional parameters:");
-	console.log("--base=BTC|USDT to select base trading currency");
-	console.log("--detect to only detect rallying coins");
-	process.exit(1);
-}
-
-// Read Keystrokes
-readline.emitKeypressEvents(process.stdin);
-process.stdin.setRawMode(true);
-process.stdin.on('keypress', (str, key) => {
-	if (key.ctrl && key.name === 'c') {
-		// I should write log data to file for analytics
-		process.exit(0); // eslint-disable-line no-process-exit
-	}
-	switch (str) {
-		case "a":
-			// a is to toggle auto
-			auto = !auto;
-			break;
-		case "b":
-			// b is for buy
-			manual_buy = true;
-			break;
-		case "e":
-			// e to extend the opportunity window
-			opportunity_expired_time += 5 * ONE_MIN;
-			break;
-		case "q":
-			// q to quit early when looking for prepumps
-			quit_buy = true;
-			break;
-		case "s":
-			// s is for sell
-			manual_sell = true;
-			break;
-		// case "p":
-		// 	console.log(getPricesForCoin("BTCUSDT", 10));
-		// 	break;
-		default:
-			break;
-	}
-});
-
+///////////////////////// INITIALIZATION ///////////////////////////////////
 async function init() {
-	if (binance.getOption("test")) {
-		console.log("testing");
-	}
-	initClientServer();
-	await binance.useServerTime();
-	loopGetBalanceAsync();
-	if (coinpair == "PREPUMP") {
+	console.clear();
+	checkValidArgs();
+	await initArgumentVariables();
+	await readCoinInfo();
+	initKeybindings();
+	loopGetBalanceAndPrevDayAsync();
+	if (prepump) {
 		waitUntilPrepump();
 		return;
-		// will not execute any more code after this
 	}
-	
-	coin = getCoin(coinpair);
-	baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-
-	//await getExchangeInfo(coinpair);
-	readCoinInfo(); // pretty unchanging. Call getExchangeInfo to update file
-	while (coinInfo == null) {
-		await sleep(100);
-	}
-	override_blacklist = true;
-	//console.log(`You have ${getBalance(baseCurrency)} ${baseCurrency} in your account`);
 	pump();
 }
 
-function initClientServer() {
-	if (process.argv.includes("--server")) {
-		server = SocketModel.createServer( { socketFile: SOCKETFILE} );
-		server.onMessage(function(obj) {
-			if (obj.message) {
-				message = JSON.parse(obj.message)
-				if (message.blacklist) {
-					if (Math.abs(message.blacklist.length - blacklist.length) == 1) {
-						blacklist = message.blacklist;
-					} else {
-						blacklist.push(...message.blacklist);
-						blacklist = _.uniq(blacklist);
-					}
-					synchronizeBlacklist();
-				}
-				
-			}
-		});
-		server.onClientConnection((socket) => {
-			server.getWriter().send(JSON.stringify({historicalPrices: prices}), socket);
-		});
-		server.start();
-	} else if (process.argv.includes("--client")) {
-		client = SocketModel.createClient( { socketFile: SOCKETFILE } );
-		client.onMessage(function(obj) {
-			if (obj.message) {
-				message = JSON.parse(obj.message)
-				if (message.prices && message.timestamp && message.interval) {
-					if (!fetchMarketDataTime || parseInt(message.timestamp) > fetchMarketDataTime) {
-						serverPrices = message.prices;
-						price_data_received = true;
-					}
-				}
-				if (message.blacklist) {
-					if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-						blacklist = message.blacklist;
-						console.log(`Updated Blacklist: ${blacklist}`);
-						if (blacklist.includes(coin) && auto && !SELL_FINISHED) {
-							quit_buy = true;
-						}
-					}
-				}
-				if (message.historicalPrices) {
-					prices = message.historicalPrices;
-					prices_data_points_count = prices.length;
-				}
-			}
-		});
-		client.start();
+function checkValidArgs() {
+	if (!process.argv[2]
+		|| !(process.argv[2].trim().toUpperCase() == "PREPUMP" 
+		|| process.argv[2].toUpperCase().endsWith("USDT") 
+		|| process.argv[2].toUpperCase().endsWith("BTC"))) {
+		console.log("Usage: node main prepump POLL_INTERVAL_IN_SECONDS or node main YOUR_COIN_PAIR (Not recommended)");
+		console.log("Optional parameters:");
+		console.log("--auto to start in auto mode");
+		console.log("--base=BTC|USDT to select base trading currency");
+		console.log("--detect to only detect rallying coins");
+		console.log("--server to initialize a server. Only initialize one server at a time");
+		console.log("--client to initialize a client. Clients will sync price data and blacklist with the server");
+		console.log("--yolo to buy immediately after detecting a rally");
+		console.log("--no-plot to skip displaying the graph on the buy/sell screen");
+		console.log("--silent for no noise indicator when buying or selling");
+		process.exit(1);
 	}
 }
 
+async function initArgumentVariables() {
+	coinpair = process.argv[2].toUpperCase();
+	prepump = process.argv[2].toUpperCase() == "PREPUMP";
+	if (!prepump) {
+		coin = getCoin(coinpair);
+		DEFAULT_BASE_CURRENCY = coinpair.includes("USDT") ? "USDT" : "BTC";
+	}
+	binance = new Binance().options({
+	  APIKEY: API_KEY,
+	  APISECRET: API_SECRET,
+	  recvWindow: ONE_MIN,
+	  test: process.argv.includes("--test")
+	});
+	await binance.useServerTime();
+	if (binance.getOption("test")) {
+		console.log("testing");
+	}
+	if (prepump) {
+		yolo = process.argv.includes("--yolo");
+		futures = process.argv.includes("--futures");
+		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
+		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
+		buy_rallys = process.argv.includes("--rallys");
+		buy_good_buys = !buy_rallys;
+		detection_mode = process.argv.includes("--detect") ? true : false;
+	}
+	LOOP = !process.argv.includes("--only-buy-once");
+	auto = process.argv.includes("--auto") || prepump;
+	SHOW_GRAPH = !process.argv.includes("--no-plot");
+	silent = process.argv.includes("--silent");
+	// TODO: Check if server is already started
+	process.argv.includes("--server") && !process.argv.includes("--client") && await initServer();
+	if (server && SYMBOLS_PRICE_CHECK_TIME != DEFAULT_SYMBOL_PRICE_CHECK_TIME) {
+		console.warn("Servers must have default symbol price check time. Configure this in const.js");
+		SYMBOLS_PRICE_CHECK_TIME = DEFAULT_SYMBOL_PRICE_CHECK_TIME;
+	}
+	!process.argv.includes("--server") && process.argv.includes("--client") && await initClient();
+}
+
+function initKeybindings() {
+	readline.emitKeypressEvents(process.stdin);
+	process.stdin.setRawMode(true);
+	process.stdin.on('keypress', (str, key) => {
+		if (key.ctrl) {
+			switch (key.name) {
+				case 'c': 
+					// I should write log data to file for analytics
+					process.exit(0); // eslint-disable-line no-process-exit
+					break;
+				case "b":
+					// b is for buy
+					manual_buy = true;
+					break;
+				case "s":
+					// s is for sell
+					manual_sell = true;
+					break;
+				default:
+					break;
+			}
+		}
+		switch (str) {
+			case "a":
+				// a is to toggle auto
+				auto = !auto;
+				break;
+			case "c":
+				// c is to clear blacklist
+				if (server) {
+					blacklist = [];
+					updateBlacklistFromBalance();
+				}
+				break;
+			case "e":
+				// e to extend the opportunity window
+				opportunity_expired_time += 5 * ONE_MIN;
+				break;
+			case "q":
+				// q to quit early when looking for prepumps
+				quit_buy = true;
+				break;
+			case "g":
+				SHOW_GRAPH = !SHOW_GRAPH;
+				break;
+			default:
+				break;
+		}
+	});
+}
+
+async function initServer() {
+	// TODO: listen for client DC message and sell coin if client is holding
+	server = SocketModel.createServer( { socketFile: SOCKETFILE, removeSocketFileOnStart: true} );
+	server.onMessage(function(obj) {
+		if (obj.message) {
+			message = JSON.parse(obj.message)
+			if (message.blacklist) {
+				if (Math.abs(message.blacklist.length - blacklist.length) == 1) {
+					blacklist = message.blacklist;
+				} else {
+					blacklist.push(...message.blacklist);
+					blacklist = _.uniq(blacklist);
+				}
+				synchronizeBlacklist();
+			}
+			
+		}
+	});
+	server.onClientConnection((socket) => {
+		server.getWriter().send(JSON.stringify({historicalPrices: prices, blacklist: blacklist}), socket);
+	});
+	server.start();
+	await getExchangeInfo();
+	await prepopulate30mData();
+}
+
+async function initClient() {
+	client = SocketModel.createClient( { socketFile: SOCKETFILE } );
+	client.onMessage(function(obj) {
+		if (obj.message) {
+			message = JSON.parse(obj.message)
+			if (message.prices && message.timestamp && message.interval) {
+				if (!fetchMarketDataTime || parseInt(message.timestamp) >= fetchMarketDataTime) {
+					serverPrices = message.prices;
+					price_data_received = true;
+				}
+			}
+			if (message.blacklist) {
+				if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
+					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !SELL_FINISHED) {
+						quit_buy = true;
+					}
+					blacklist = message.blacklist;
+					console.log(`Updated Blacklist: ${blacklist}`);
+				}
+			}
+			if (message.historicalPrices) {
+				prices = everyNthElement(message.historicalPrices, SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME);
+				prices = prices.map(o => {
+					n = {};
+					Object.keys(o).forEach(k => n[k] = parseFloat(o[k]));
+					return n;
+				});
+				prices_data_points_count = prices.length;
+			}
+		}
+	});
+	client.start();
+	while (!prices_data_points_count) {
+		await sleep(ONE_SEC);
+	}
+}
+
+///////////////////////////// BEFORE BUY ////////////////////////////////////////
+
 async function waitUntilPrepump() {
-	//await getExchangeInfo(coinpair);
-	LOOP = true;
-	auto = true;
-	prepump = true;
-	override_blacklist = false;
-	BUFFER_AFTER_FAIL = true;
-	// Testing only, change this!!!!
-	yolo = process.argv.includes("--yolo");
 	coinpair = "";
-	SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * 1000 : SYMBOLS_PRICE_CHECK_TIME;
-	DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
-	detection_mode = process.argv.includes("--detect") ? true : false;
+	if (futures) {
+		RALLY_MAX_DELTA = FUTURES_RALLY_MAX_DELTA;
+	}
+	UPPER_BB_PCT = PREPUMP_MIN_UPPER_BB_PCT;
+	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
+	console.clear();
 	while (true) {
 		await waitUntilFetchPricesAsync();
 		if (!detection_mode) {
 			console.clear();
-			console.log(`Waiting for rallies, Data points: ${prices_data_points_count}`);
+			console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
+			console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
-			console.log(`Rally Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
+			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
 			console.log(`Blacklist: ${blacklist}`);
-		}
-		rallies = detectCoinRallies();
-		if (detection_mode) {
-			rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
-			continue;
-		}
-
-		if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
-			continue;
+			//console.log(lastSellReason);
+			console.log(`You have made ${purchases.length} purchases`);
+			last_purchase_obj = purchases.slice(-1).pop();
+			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
+			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
 		rally = null;
-		if (!yolo) {
-			// This avoids the race condition if we're waiting to buy anyways
-			await sleep(10000 * Math.random() + 5000);
+		if (buy_rallys) {
+			rally = await getRally();
+		} else if (buy_good_buys) {
+			rally = await getGoodBuy();
 		}
-		while (rallies.length) {
-			rally = rallies.shift();
-			if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail) {
-				rally = null;
-			}
-		}
-
 		if (rally != null && Date.now() > dont_buy_before) {
+			if (!yolo) {
+				// This avoids the race condition if we're waiting to buy anyways
+				await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
+			}
+			if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
+				console.log("not enough data");
+				continue;
+			}
+			if (blacklist.includes(getCoin(rally.sym))) {
+				continue;
+			}
 			coinpair = rally.sym;
 			coin = getCoin(coinpair);
-			baseCurrency = coinpair.includes("USDT") ? "USDT" : "BTC";
-			readCoinInfo();
 			SELL_FINISHED = false;
 			lookback = [];
 			q = [];
 			blacklist.push(coin);
 			synchronizeBlacklist();
-			while (coinInfo == null) {
-				await sleep(100);
-			}
-			beep();
-			opportunity_expired_time = Date.now() + OPPORTUNITY_EXPIRE_WINDOW;
+			await readCoinInfo();
+			opportunity_expired_time = Date.now() + (buy_good_buys ? GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW : SYMBOLS_PRICE_CHECK_TIME/DEFAULT_SYMBOL_PRICE_CHECK_TIME * OPPORTUNITY_EXPIRE_WINDOW);
 			rally_inc_pct = rally.gain - 1;
-			TAKE_PROFIT_MULTIPLIER = (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1;
-			STOP_LOSS_MULTIPLIER = 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1);
-			time_elapsed_since_rally = 0;
+			TAKE_PROFIT_MULTIPLIER = Math.max(PREPUMP_MIN_PROFIT_MULTIPLIER, Math.min(PREPUMP_MAX_PROFIT_MULTIPLIER, (rally_inc_pct * PREPUMP_TAKE_PROFIT_MULTIPLIER) + 1));
+			STOP_LOSS_MULTIPLIER = Math.min(PREPUMP_MAX_LOSS_MULTIPLIER, Math.max(PREPUMP_MIN_LOSS_MULTIPLIER, 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1)));
+			latestPrice = rally.last;
 			pump();
 			while (!SELL_FINISHED) {
-				await sleep(ONE_MIN * 0.5);
+				await sleep(30 * ONE_SEC);
 			}
-			setTimeout(() => {
-				analyzeDecisionForPrepump(rally_inc_pct, time_elapsed_since_rally);
-			}, ONE_MIN)
-			
+			analyzeDecisionForPrepump(rally.sym, rally_inc_pct, purchases.slice(-1).pop(), TAKE_PROFIT_MULTIPLIER);
 		}
 	}
 }
 
-function parseServerPrices() {
-	while (prices.length >= PRICES_HISTORY_LENGTH) {
-		prices.shift();
+////////////////////////////////////////////////////////DEPRECATED/////////////////////////////////////////////////////
+async function getRally() {
+	rallies = await detectCoinRallies();
+	if (detection_mode) {
+		console.clear();
+		console.log("Detection Mode Active");
+		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
+		console.log(`Blacklist: ${blacklist}`);
+		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
+		return;
 	}
-	newPrices = {};
-	serverPrices.forEach(v => {
-		// don't touch futures
-		if (!v || !v.symbol || !v.symbol.endsWith(DEFAULT_BASE_CURRENCY) || v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT")) {
-			return;
+
+	if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
+		return;
+	}
+
+	rally = null;
+	
+	while (rallies.length) {
+		rally = rallies.shift();
+		if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
+			rally = null;
 		}
-		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
-			return;
-		}
-		newPrices[v.symbol] = v.askPrice;
-	});
-	prices.push(newPrices);
+	}
+	return rally;
 }
 
-function getPricesForCoin(sym, timeframe) {
-	recent_prices = prices.slice(-timeframe);
-	res = [];
-	for (i = 0; i < recent_prices.length; i++) {
-		res.push(parseFloat(recent_prices[i][sym]));
-	}
-	return res.filter(a => a);
-}
-
-function detectCoinRallies() {
+async function detectCoinRallies() {
 	lastX = prices.slice(-RALLY_TIME);
 	rallies = [];
 	for (const sym of Object.keys(lastX[0])) {
@@ -388,7 +472,7 @@ function detectCoinRallies() {
 			if (!current) {
 				break;
 			}
-			if (current > last) {
+			if (current >= last) {
 				green++;
 			} else {
 				red++;
@@ -401,25 +485,25 @@ function detectCoinRallies() {
 		if (green + red != RALLY_TIME - 1) {
 			break;
 		}
+		// TODO: Rethink where start/end values should be in comparison to sorted historical
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		historical_vals = getPricesForCoin(sym, PRICES_HISTORY_LENGTH).slice(0, -RALLY_TIME);
+		historical_vals = getPricesForCoin(sym).slice(0, -RALLY_TIME);
 		recent_historical_vals = historical_vals.slice(-3 * RALLY_TIME, -RALLY_TIME);
 		sorted_historical_vals = recent_historical_vals.sort();
 		recent_sorted_historical_vals = recent_historical_vals.sort();
-		max_historical = recent_sorted_historical_vals.pop();
-		high_median = sorted_historical_vals.slice(-0.05 * sorted_historical_vals.length).shift();
-		low_median = sorted_historical_vals.slice(0, -0.2 * sorted_historical_vals.length).pop();
+		high_median = sorted_historical_vals.slice(-0.5 * sorted_historical_vals.length).shift();
+		low_median = sorted_historical_vals.slice(0, -0.95 * sorted_historical_vals.length).pop();
 		min_historical = recent_sorted_historical_vals.shift();
-		is_uptrend = isUptrend(last_x_values, 1, true);
-		// Testing
+		max_historical = recent_sorted_historical_vals.pop();
+
 		test_count = 0;
 		fail_reasons = ""
-		if(red == 0 || green/red >= RALLY_GREEN_RED_RATIO) {
+		if(green == 0 || red/green >= RALLY_GREEN_RED_RATIO) {
 			test_count++;
 		} else {
-			fail_reasons += "ratio " + green/red + " ";
+			fail_reasons += "ratio " + red/green + " ";
 		}
 		if (gain < RALLY_MAX_DELTA) {
 			test_count++;
@@ -431,10 +515,10 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "minDelta " + gain + " ";
 		}
-		if (last > first) {
+		if (last < first) {
 			test_count++;
 		} else {
-			fail_reasons += "last<first " + last + '>' + first + " ";
+			fail_reasons += "last>first " + last + '>' + first + " ";
 		}
 		if (high_median > first) {
 			test_count++;
@@ -446,31 +530,25 @@ function detectCoinRallies() {
 		} else {
 			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
 		}
-		if (max_historical < last) {
+		// Rethink this in particular
+		if (min_historical > last) {
 			test_count++;
 		} else {
-			fail_reasons += "highest>last " + max_historical + '>' + last + " ";
+			fail_reasons += "lowest<last " + min_historical + '<' + last + " ";
 		}
-		if (max_historical/min_historical < gain) {
+		if (max_historical/min_historical > gain) {
 			test_count++;
 		} else {
-			fail_reasons += "historicalgain>gain " + max_historical/min_historical + '>' + gain + " ";
+			fail_reasons += "historicalgain<gain " + max_historical/min_historical + '<' + gain + " ";
 		}
-		// if (is_uptrend) {
-		// 	test_count++;
-		// } else {
-		// 	fail_reasons += "no uptrend? ";
-		// }
-		if ((red == 0
-			|| green/red >= RALLY_GREEN_RED_RATIO)
+		if ((green == 0 || red/green >= RALLY_GREEN_RED_RATIO)
 			&& gain < RALLY_MAX_DELTA
 			&& gain > RALLY_MIN_DELTA
-			&& last > first
+			&& last < first
 			&& high_median > first
-			&& max_historical < last
-			&& max_historical/min_historical < gain
 			&& low_median < first
-			//&& is_uptrend
+			&& min_historical > last
+			&& max_historical/min_historical > gain
 			) {
 			rallies.push({
 				sym: sym,
@@ -478,83 +556,123 @@ function detectCoinRallies() {
 				max: max,
 				gain: gain,
 				first: first,
-				last: last
+				last: last,
+				goodBuy: !!await isAGoodBuyFrom1hGraph(sym),
 			});
-		} else if (test_count > 6) {
-			rallies.push({sym: sym, first: first, last: last, gain: gain , fail: fail_reasons});
+		} else if (test_count > 6 && detection_mode) {
+			rallies.push({sym: sym, first: first, last: last, gain: gain, goodBuy: !!await isAGoodBuyFrom1hGraph(sym), fail: fail_reasons});
 		}
 	}
 	return rallies.sort((a, b) => a.gain - b.gain);
 }
 
-async function waitUntilFetchPricesAsync() {
-	while(Date.now() < fetchMarketDataTime) {
-		await sleep(100);
-	}
-	if (!client) {
-		await fetchAllPricesAsync();
-	} else {
-		while (!price_data_received) {
-			await sleep(100);
-		}
-		price_data_received = false;
-	}
-	if (server) {
-		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
-	}
-	parseServerPrices();
-	++prices_data_points_count;
-	++time_elapsed_since_rally;
-	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
-	if (client) {
-		fetchMarketDataTime -= 1000;
-	}
-}
+////////////////////////////////////////////////////////NOT DEPRECATED/////////////////////////////////////////////////////
 
-async function fetchAllPricesAsyncIfReady() {
-	return new Promise(async (resolve) => {
-		await waitUntilFetchPricesAsync();
-		resolve();
-	});
-}
-
-async function fetchAllPricesAsync() {
-	priceFetch = 0;
-	await getAllPrices();
-	while (priceFetch < 1) {
-		await sleep(100);
-	}
-}
-
-async function getAllPrices() {
-	binance.bookTickers((error, ticker) => {
-		if (error) {
-			while (++fail_counter >= 100) {
-				console.log("TOO MANY FAILS GETTING PRICES");
-				process.exit(1);
-			}
+async function getGoodBuy() {
+	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
+		goodBuys = await scanForGoodBuys();
+		if (detection_mode) {
+			console.clear();
+			console.log("Detection Mode Active");
+			console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
+			console.log(`Blacklist: ${blacklist}`);
+			console.log(`Good buys: ${JSON.stringify(goodBuys, null, 2)}`);
 			return;
 		}
-		fail_counter = 0;
-		priceFetch++;
-		serverPrices = ticker;
-	});
+		goodBuy = null;
+		while (goodBuys.length) {
+			goodBuy = goodBuys.shift();
+			if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
+				goodBuy == null
+			}
+		}
+		return goodBuy;
+	}
 }
 
-async function getPrevDay() {
-	binance.prevDay(false, (error, pd) => {
-  	// console.info(prevDay); // view all data
-		for ( let obj of pd ) {
-		    let symbol = obj.symbol;
-		    prevDay[symbol] = obj.priceChangePercent;
+async function scanForGoodBuys() {
+	goodCoins = [];
+	promises = Object.keys(coinsInfo).map(async k => {
+		if (coinsInfo[k].status != "TRADING") {
+			return;
+		}
+		if (futures && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
+			return;
+		}
+		if (!futures && (k.includes("UPUSDT") || k.includes("DOWNUSDT"))) {
+			return;
+		}
+		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
+			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests
+			await sleep(Math.random() * 10 * ONE_SEC);
+			goodCoin = await isAGoodBuyFrom1hGraph(k);
+			if (goodCoin) {
+				goodCoins.push(goodCoin);
+			}
 		}
 	});
+	await Promise.raceAll(promises, 15 * ONE_SEC, null);
+	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
+async function isAGoodBuyFrom1hGraph(sym) {
+	let finished = false;
+	let ticker = [];
+	let closes = [];
+	let opens = [];
+	let gains = [];
+	let highs = [];
+	let lows = [];
+	let last = 0;
+	let totalVolume = 0;
+	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
+		if (error) {
+			console.log(error);
+			finished = true;
+			return;
+		}
+		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+			ticker.push(open/2 + close/2);
+			opens.push(parseFloat(open));
+			closes.push(parseFloat(close));
+			highs.push(parseFloat(high));
+			lows.push(parseFloat(low));
+			gains.push(close/open);
+			totalVolume += parseFloat(volume) * (open/2 + close/2);
+		})
+		last = closes.slice(-1).pop();
+		finished = true;
+	}, {limit: 48, endTime: Date.now()});
+	while (!finished) {
+		await sleep(ONE_SEC)
+	}
+	if (!ticker.length) {
+		return false;
+	}
+	let mean = average(ticker.slice(-21));
+	let std = getStandardDeviation(ticker.slice(-21));
+	let last3gains = gains.slice(-4, -1);
+	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
+	let increasingGains = isUptrend(last3gains, 0, false);
+	let opensBelowOneStdPlusMean = (opens.slice(-4, -1).filter(v => v > (mean + std)).length == 0);
+	let startOfRally = !isUptrend(closes.slice(-5), 0, false) && isUptrend(closes.slice(-4), 0, false);
+	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
+	if (opensBelowOneStdPlusMean && startOfRally && goodBuyGainIsValid && volumeIsOk && increasingGains) {
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
+	}
+	return false;
+}	
+
+////////////////////////////////////// BUY ///////////////////////////////////////////////
 
 async function pump() {
-	//buy code here
-	console.log("pump");
+	console.log("Buying " + coinpair);
 	if (BUY_LOCAL_MIN && !yolo) {
 		manual_buy = false;
 		quit_buy = false;
@@ -573,12 +691,14 @@ async function pump() {
 			process.exit(0);
 		}
 		console.log("BUY WINDOW EXPIRED");
+		lastBuy = 0;
+		lastSell = 0;
 		dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
 		return;
 	}
 	console.log(`last price for ${coinpair} is : ${latestPrice}`);
-	override = baseCurrency == "USDT" ? MAX_OVERRIDE_USDT : MAX_OVERRIDE_BTC
-	let quantity = ((override > 0 ? override : PCT_BUY * getBalance(baseCurrency)) / latestPrice).toFixed(4);
+	override = DEFAULT_BASE_CURRENCY == "USDT" ? MAX_OVERRIDE_USDT : MAX_OVERRIDE_BTC
+	let quantity = ((override > 0 ? override : PCT_BUY * getBalance(DEFAULT_BASE_CURRENCY)) / latestPrice).toFixed(4);
 	quantity = quantity - quantity % coinInfo.stepSize
 	quantity = parseFloat(quantity.toPrecision(4));
 	console.log(`Buying ${quantity} ${coin}`);
@@ -588,70 +708,24 @@ async function pump() {
 			process.exit(1);
 		}
 		beep();
-		console.log("pump is successful")
+		console.log("Buy is successful")
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
 		BUY_TS = 0;
-		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
-		lastBuy = price * response.executedQty;
+		buy_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		lastBuy = buy_price * response.executedQty;
 		actualquantity = response.executedQty // replace with bought quantity
-		ndump((price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), price, (price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
+		ndump((buy_price * TAKE_PROFIT_MULTIPLIER).toPrecision(4), buy_price, (buy_price * STOP_LOSS_MULTIPLIER).toPrecision(4), actualquantity);
 	});
-}
-
-async function ndump(take_profit, buy_price, stop_loss, quantity) {
-	waiting = true;
-	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
-	manual_sell = false;
-	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
-	binance.marketSell(coinpair, quantity, (error, response) => {
-		if (error) {
-			console.log(`MARKET DUMP ERROR: ${error.body}`);
-			console.log("Market sell error, please sell on Binance.com manually");
-			return;
-		}
-		price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
-		console.log("market dump is successful")
-		console.info("Market sell response", response);
-		console.info("order id: " + response.orderId);
-		SELL_TS = 0;
-		SELL_FINISHED = true;
-		lastSell = price * response.executedQty;
-		pnl += lastSell - lastBuy;
-		pnl = Math.round(pnl*10000000)/10000000;
-		if (LOOP) {
-			beep();
-			if (BUFFER_AFTER_FAIL) {
-				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
-			}
-			if (prepump) {
-				removeFromBlacklistLater(coin);
-				return;
-			}
-			ANALYZE = true;
-			pump()
-			return;
-		}
-		process.exit(0); // kill kill kill
-	});
-	return;
 }
 
 async function waitUntilTimeToBuy() {
-	//TODO: clean this up
-	count = 0;
-	meanRev = false;
-	meanBounce = false;
-	meanRevStart = 0;
-	outlierReversion = 0;
-	localMin = Infinity;
-	localMinTicks = 0;
 	ready = false;
 	previousTrend = "None"
-	starting_price = 0;
 	buy_indicator_reached = false;
 	buy_indicator_check_time = 0;
-	fetching_prices = false;
+	buy_indicator_buffer_add = buy_good_buys ? 5 * ONE_MIN : ONE_MIN;
+	buy_indicator_buffer = buy_indicator_buffer_add;
 	while (true) {
 		var [mean, stdev] = await tick(true);
 		console.clear();
@@ -661,89 +735,38 @@ async function waitUntilTimeToBuy() {
 		if (quit_buy) {
 			return 0;
 		}
-		if(starting_price == 0) {
-			starting_price = latestPrice;
-		}
 		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}, Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))} ${!ready ? colorText("red", "GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}${(!ready && auto) ? colorText("red", " GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
-				case 3:
-					if (lookback.length < QUEUE_SIZE) {
-						break; // dont buy before we populate some values first
-					} 
-					ready = true;
-					if (latestPrice < lowstd[lowstd.length-1]) {
-						if (!meanRev) {
-							meanRev = true;
-							meanRevStart = Date.now();
-						} else if (meanRevStart < Date.now() - ONE_MIN){
-							// not sure about this
-							// dont_buy_before = Date.now() + 0.5 * ONE_MIN; // wait until things calm down a bit
-							//meanRevStart = dont_buy_before;
-						}
-					}
-					if (lastBuy <= lastSell 
-						&& Math.abs(mean - latestPrice) < 0.2 * stdev 
-						&& isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						meanBounce = true;
-						meanBounceExpired = Date.now() + ONE_MIN;
-					}
-					if (outlierReversion > 0 && --outlierReversion > 0) {
+				case 7:
+					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
 					}
-					if (lastValueIsOutlier()) {
-						outlierReversion += OUTLIER_INC; // We want to buy before the outlier happens, not after
-						break;
-					}
-					if (meanBounce && Date.now() > meanBounceExpired) {
-						meanBounce = false;
-					}
-					if (latestPrice < highstd[highstd.length-1]
-						&& latestPrice > lowstd[lowstd.length-1]
-						&& meanRev
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastBuyReason = "boulingerbounce"
-						return latestPrice
-					}
-					if (latestPrice > mean + 0.2*stdev 
-						&& meanBounce 
-						&& isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastBuyReason = "meanbounce"
-						return latestPrice
-					}
-					if (latestPrice < mean - 0.5*stdev) {
-						meanBounce = false;
-					}
-					break;
-				case 6:
 					if (prepump && Date.now() > opportunity_expired_time) {
 						return 0;
 					}
- 					if (lookback.length < BB_BUY) {
-						break;
-					}
-					if (!ready && meanTrend.includes("Up")) {
-						//Leave this commented. It loses too much money
-						//return latestPrice;
-					}
+					lastLowstd =  lowstd.slice(-1).pop();
 					ready = true;
-					if (previousTrend.includes("Down") && meanTrend.includes("Up") && latestPrice < mean) {
+					if (!buy_indicator_reached && latestPrice < lastLowstd) {
 						buy_indicator_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
+						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
+						if (buy_indicator_buffer) {
+							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - ONE_MIN) ;
+						}
+						buy_indicator_buffer = 0;
+					}
+					if (!buy_indicator_reached && latestPrice > mean) {
+						buy_indicator_buffer = buy_indicator_buffer_add;
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (meanTrend.includes("Up") && latestPrice < mean + stdev) {
-							lastBuyReason = "DUMP BOUNCE";
+						if (latestPrice > lastLowstd && latestPrice < mean ) {
 							return latestPrice;
-						} else if (meanTrend.includes("Down")) {
-							buy_indicator_reached = false;
-						} else {
-							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						}
+						buy_indicator_reached = false;
 					}
 					break;
 				default:
@@ -753,174 +776,210 @@ async function waitUntilTimeToBuy() {
 		if (SHOW_GRAPH) {
 			plot(true);
 		}
-		if (prepump && !fetching_prices) {
-			fetching_prices = true;
-			fetchAllPricesAsyncIfReady().catch().finally(() => { 
-				fetching_prices = false;
-			});
-		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
+}
+
+//////////////////////////////////////////// SELL ///////////////////////////////////////////////
+
+async function ndump(take_profit, buy_price, stop_loss, quantity) {
+	waiting = true;
+	lastSellLocalMax = 0;
+	buy_time = Date.now();
+	manual_sell = false;
+	latestPrice = await waitUntilTimeToSell(parseFloat(take_profit), parseFloat(stop_loss), parseFloat(buy_price));
+	manual_sell = false;
+	console.log((latestPrice > take_profit || Math.abs(1-take_profit/latestPrice) < 0.005) ? "taking profit" : "stopping loss");
+	binance.marketSell(coinpair, quantity, (error, response) => {
+		if (error) {
+			console.log(`MARKET DUMP ERROR: ${error.body}`);
+			console.log("Market sell error, please sell on Binance.com manually");
+			return;
+		}
+		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
+		console.log("Sell is successful");
+		console.log("Last sell is because " + lastSellReason);
+		console.info("Market sell response", response);
+		console.info("order id: " + response.orderId);
+		SELL_TS = 0;
+		SELL_FINISHED = true;
+		lastSell = sell_price * response.executedQty;
+		pnl += lastSell - lastBuy;
+		pnl = Math.round(pnl*10000000)/10000000;
+		if (LOOP) {
+			beep();
+			purchase = {
+				sym: coinpair,
+				buy: lastBuy,
+				buyPrice: buy_price,
+				buy_time: new Date(buy_time).toLocaleTimeString("en-US"),
+				sell: lastSell,
+				sellPrice: sell_price,
+				sell_time: new Date(Date.now()).toLocaleTimeString("en-US"),
+				maxPrice: lastSellLocalMax,
+				sellReason: lastSellReason,
+				gain: lastSell/lastBuy
+			};
+			purchases.push(purchase);
+			lastSellLocalMax = 0;
+			if (AFTER_SELL_WAIT_BEFORE_BUYING) {
+				dont_buy_before = Date.now() + TIME_BEFORE_NEW_BUY;
+			}
+			if (prepump) {
+				removeFromBlacklistLater(coin);
+				return;
+			}
+			analyzeDecisionForSingleCoin(purchase);
+			pump();
+			return;
+		}
+		console.log("Sell complete, exiting");
+		process.exit(0);
+	});
+	return;
 }
 
 async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	start = Date.now();
 	end = Date.now() + RUNTIME;
-	count = 0;
-	meanRev = false;
-	meanRevStart = 0;
-	outlierReversion = 0;
 	previousTrend = "None";
-	meanTrend = "None";
-	take_profit_reached = false;
-	timeBeforeSale = Date.now() + ONE_MIN; // Believe in yourself!
-	stop_loss_check = 0;
-	timeout_count = 0;
-	take_profit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit)) {
+	timeBeforeSale = Date.now() + ONE_MIN;
+	sell_indicator_reached = false;
+	sell_indicator_check_time = 0;
+	ride_profits = false;
+	take_profit_hit_check_time = 0;
+	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
+			lastSellReason = "manually sold";
 			return latestPrice;
 		}
+		lastSellLocalMax = Math.max(latestPrice, lastSellLocalMax);
 		meanTrend = isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")}`);
-		if (auto) {
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")} Sell Window: ${sell_indicator_reached ? colorText("green", msToTime(sell_indicator_check_time - Date.now())) : colorText("red", "N/A")}`);
+		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
-				case 3:
-					if (latestPrice > highstd[highstd.length-1]) {
-						if (!meanRev) {
-							meanRev = true;
-							meanRevStart = Date.now();
-						} else if (meanRevStart < Date.now() - ONE_MIN){
-							// This is a good thing
-							// return latestPrice;
+				case 7:
+					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
+						ride_profits = true;
+						take_profit_hit_check_time = Date.now() + 0.5 * ONE_MIN;
+					}
+					if (ride_profits && Date.now() > take_profit_hit_check_time) {
+						if (latestPrice < (take_profit * 0.995)) {
+							lastSellReason = "sold because take profit is reached";
+							return latestPrice;
 						}
-					} else if (Date.now() < timeBeforeSale) {
-						break;
 					}
-					if (outlierReversion > 0 && --outlierReversion > 0) {
-						break;
+					if (ride_profits && latestPrice > take_profit) {
+						if (!sell_indicator_reached && latestPrice > highstd.slice(-1).pop()) {
+							sell_indicator_reached = true;
+							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						}
+						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+							if (latestPrice < highstd.slice(-1).pop()) {
+								lastSellReason = "sold because indicator has reached";
+								return latestPrice;
+							}
+							sell_indicator_reached = false;
+						}
 					}
-					if (lastValueIsOutlier()) {
-						outlierReversion += OUTLIER_INC; // We want to buy before the outlier happens, not after
-						break;
-					}
-					if (Math.abs(latestPrice - buy_price) < 0.3 * stdev) {
-						// don't buy or sell too small amounts
-						break;
-					}
-					if (latestPrice > mean
-						&& meanRev
-						&& !isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastSellReason = "Sold bcuz after bb not uptrend";
-						return latestPrice;
-					} else if ((latestPrice < mean || Math.abs(buy_price - mean) < 0.2 * stdev)
-						&& isDowntrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)) {
-						lastSellReason = "Sold bcuz mean is down";
-						return latestPrice;
-					}
-					break;
-				case 6:
-					if (Math.floor((Date.now() - start) / TIME_TO_CHANGE_PROFIT_LOSS) > timeout_count) {
-						timeout_count++;
-						take_profit = Math.round(take_profit * TAKE_PROFIT_CHANGE_PCT * 10000)/10000;
-						stop_loss = Math.round(stop_loss * STOP_LOSS_CHANGE_PCT * 10000)/10000;
-					}
-					// do nothing for now
 					break;
 				default:
-					// do nothing
 					break;
-
 			}
-			// This code block catches the edge case where a massive price drop happens after a steep incline once we reach take profit. 
-			// This way we take the maximum profit while avoiding holding the bag if the price ever drops below take_profit
-			// if (latestPrice > take_profit && !take_profit_reached) {
-			// 	take_profit_reached = true;
-			// 	take_profit_check_time = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			// } else if (take_profit_reached && Date.now() > take_profit_check_time && latestPrice < take_profit) {
-			// 	return latestPrice;
-			// }
-			// This code is to prevent people from barely breaking your stop loss with a big sell/buy. May result in bigger losses
-			// if (latestPrice < stop_loss && stop_loss_check == 0) {
-			// 	stop_loss_check = Date.now() + PROFIT_LOSS_CHECK_TIME;
-			// } else if (latestPrice > stop_loss) {
-			// 	stop_loss_check = 0;
-			// }
-		}
-		if (Date.now() > end && USE_TIMEOUT) {
-			console.log(`${RUNTIME}m expired without hitting take profit or stop loss`);
-			lastSellReason = "Sold bcuz timeout";
-			return latestPrice;
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
 		}
-		if (prepump) {
-			fetchAllPricesAsyncIfReady();
-		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
-	lastSellReason = "Sold bcuz take profit or stop loss hit";
+	lastSellReason = "Sold because stop loss was hit";
 	return latestPrice
 }
 
-// Unused
-function analyzeDecision() {
-	// 4 cases: bought too early, bought too late, sold too early, sold too late
-	ANALYZE = false;
-	LB_BUY_TS = -BUY_TS - 1;
-	LB_SELL_TS = -SELL_TS - 1;
-	buy_val = lookback.slice(LB_BUY_TS)[0];
-	sell_val = lookback.slice(LB_SELL_TS)[0];
-	BUY_LOOKBACK = lookback.slice(-LB_BUY_TS - ANALYSIS_TIME, -LB_BUY_TS + ANALYSIS_TIME + 1);
-	SELL_LOOKBACK = lookback.slice(-LB_SELL_TS - ANALYSIS_TIME, -LB_SELL_TS + ANALYSIS_TIME + 1);
-	buy_min = Infinity;
-	sell_max = 0;
-	buy_min_idx = 0;
-	sell_max_idx = 0;
-	for (i = 0; i < BUY_LOOKBACK.length; i++) {
-		if (BUY_LOOKBACK[i] < buy_min) {
-			buy_min = BUY_LOOKBACK[i];
-			buy_min_idx = i;
+///////////////////////// AFTER SELL //////////////////////////////////////
+
+function analyzeDecisionForSingleCoin(purchase) {
+	if (!purchase || !purchase.sym) {
+		return;
+	}
+	return new Promise((_) => {
+		if (purchase.gain > 1) {
+			// Increase UPPER_BB_PCT && LOSER_BB_PCT
+			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
+			LOWER_BB_PCT = Math.min(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
+		} else {
+			// Decrease UPPER_BB_PCT && LOWER_BB_PCT
+			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
+			LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
 		}
-		if (SELL_LOOKBACK[i] > sell_max) {
-			sell_max = SELL_LOOKBACK[i];
-			sell_max_idx = i;
-		}
-	}
-	bot_idx = BUY_LOOKBACK.length/2-0.5;
-	sold_idx = SELL_LOOKBACK.length/2-0.5;
-	if (buy_min_idx < bot_idx - BB_BUY - ANALYSIS_BUFFER) {
-		// it means we bought too late
-		BB_BUY = Math.max(BB_BUY - BUY_SELL_INC, MIN_BUY_SELL_BUF);
-	} else if (buy_min_idx > bot_idx) {
-		// it means we made a bad buy
-		BB_BUY = Math.min(BB_BUY + BUY_SELL_INC, MAX_BUY_SELL_BUF);
-	}
-	if (sell_max_idx < sold_idx - BB_SELL - ANALYSIS_BUFFER) {
-		// it means we sold too late
-		BB_SELL = Math.max(BB_SELL - BUY_SELL_INC, MIN_BUY_SELL_BUF);
-	} else if (sell_max_idx > sold_idx) {
-		// it means we made a bad sell
-		BB_SELL = Math.min(BB_SELL + BUY_SELL_INC, MAX_BUY_SELL_BUF);
-	}
+	}, TIME_BEFORE_NEW_BUY);
 }
 
-function analyzeDecisionForPrepump(rally_inc_pct, time_elapsed) {
-	historical_prices = getPricesForCoin(coinpair, time_elapsed);
-	max_historical = Math.max(...historical_prices);
-	historical_profit = max_historical/lastBuy;
-	new_take_profit = Math.max(average([TAKE_PROFIT_MULTIPLIER, historical_profit]), 1.01);
-	PREPUMP_TAKE_PROFIT_MULTIPLIER = ((new_take_profit - 1)/rally_inc_pct).toFixed(4);
-	PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_TAKE_PROFIT_MULTIPLIER/2;
+function analyzeDecisionForPrepump(sym, rally_inc_pct, purchase, old_profit_multiplier) {
+	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
+		return;
+	}
+	return new Promise((_) => {
+		// Currently this does nothing
+		setTimeout(() => {
+			if (purchase.gain > 1) {
+				// DECREASE UPPER_BB_PCT && INCREASE LOSER_BB_PCT
+				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT - 0.1));
+				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT + 0.1));
+			} else {
+				// INCREASE UPPER_BB_PCT && DECREASE LOWER_BB_PCT
+				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT + 0.1));
+				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT - 0.1));
+			}
+		}, TIME_BEFORE_NEW_BUY);
+	});
+}
+
+/////////////////////////// HELPER FUNCTIONS DURING BUY/SELL ///////////////////////////
+
+function initializeQs() {
+	if (q.length == 0) {
+		// small digits is to prevent bug in asciichart library if all values are the same
+		historical_prices = getPricesForCoin(coinpair, QUEUE_SIZE * ONE_SEC / SYMBOLS_PRICE_CHECK_TIME);
+		if (!historical_prices.length) {
+			q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
+			means = new Array(QUEUE_SIZE).fill(latestPrice + 0.0000000001);
+			lowstd = new Array(QUEUE_SIZE).fill(latestPrice - 0.0001);
+			highstd = new Array(QUEUE_SIZE).fill(latestPrice + 0.0001);
+			mabuy = new Array(QUEUE_SIZE).fill(latestPrice + 0.00000001);
+			masell = new Array(QUEUE_SIZE).fill(latestPrice - 0.0000001);
+		} else {
+			averageHistorical = average(historical_prices);
+			stdevHistorical = getStandardDeviation(historical_prices);
+			q = new Array(QUEUE_SIZE).fill(averageHistorical);
+			historical_prices.forEach(v => {
+				fillWith = new Array(SYMBOLS_PRICE_CHECK_TIME/ONE_SEC).fill(v);
+				q.push(...fillWith);
+			});
+			q = q.slice(-QUEUE_SIZE);
+			mabuy = new Array(QUEUE_SIZE).fill(averageHistorical + 0.00000001);
+			masell = new Array(QUEUE_SIZE).fill(averageHistorical - 0.0000001);
+			means = new Array(QUEUE_SIZE).fill(averageHistorical);
+			lowstd =  new Array(QUEUE_SIZE).fill(averageHistorical + LOWER_BB_PCT * stdevHistorical);
+			highstd =  new Array(QUEUE_SIZE).fill(averageHistorical + UPPER_BB_PCT * stdevHistorical);
+		}
+		
+	}
 }
 
 async function tick(buying) {
+	if ((client || server) && !fetching_prices_from_graph_mode) {
+		fetching_prices_from_graph_mode = true;
+		fetchAllPricesAsyncIfReady().catch().finally(() => { 
+			symbolFollowsBTCUSDT(coinpair);
+			fetching_prices_from_graph_mode = false;
+		});
+	}
 	await sleep(POLL_INTERVAL);
 	//lastDepth = await getMarketDepth(coinpair);
 	bidask = await getBidAsk(coinpair);
@@ -930,75 +989,200 @@ async function tick(buying) {
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
-	stdev = getStandardDeviation(q.slice(-lookback.length));
-	mean = average(q.slice(-lookback.length));
+	stdev = getStandardDeviation([...Array(Math.floor(QUEUE_SIZE/60)).keys()].map(v => average(q.slice(v * 60, (v + 1) * 60))));
+	mean = average(q);
 	means.push(mean);
-	lowstd.push(mean - 2*stdev);
-	highstd.push(mean + 2*stdev);
+	lowstd.push(mean + LOWER_BB_PCT * stdev);
+	highstd.push(mean + UPPER_BB_PCT * stdev);
 	mabuy.push(average(lookback.slice(-BB_BUY)));
 	masell.push(average(lookback.slice(-BB_SELL)));
 	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && mabuy.shift() != 0 && masell.shift() != 0;
 	return [mean, stdev]
 }
 
-function initializeQs() {
-	if (q.length == 0) {
-		q = new Array(QUEUE_SIZE).fill(latestPrice); // for graph visualization
-		means = new Array(QUEUE_SIZE).fill(q[0]);
-		lowstd = new Array(QUEUE_SIZE).fill(q[0]);
-		highstd = new Array(QUEUE_SIZE).fill(q[0]);
-		mabuy = new Array(QUEUE_SIZE).fill(q[0]);
-		masell = new Array(QUEUE_SIZE).fill(q[0]);
+function pushToLookback(latestPrice) {
+	lookback.push(latestPrice);
+	if (lookback.length > LOOKBACK_SIZE) {
+		lookback.shift();
 	}
 }
 
-// The old function
+function isUptrend(q2, buffer = 0, kinda = true, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
+	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length <= buffer
+		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length <= buffer * (kinda ? 3 : 1)
+		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+}
+
+function isDowntrend(q2, buffer = 0, kinda = true, stdev = 0) {
+	// if (stdev == 0) {
+	// 	stdev = getLastStdev();
+	// }
+	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length <= buffer
+		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length <= buffer * (kinda ? 3 : 1)
+		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+}
+
+function symbolFollowsBTCUSDT(sym) {
+	if (q.length < 30) {
+		return false;
+	}
+	btcHistorical = getPricesForCoin("BTCUSDT");
+	lastBTC = btcHistorical.slice(-3);
+	last_btc_q_index = q.length - 1 - Math.floor(2 * SYMBOLS_PRICE_CHECK_TIME/ONE_SEC);
+	if ((q[last_btc_q_index] < q[q.length-1] && lastBTC[0] < lastBTC[lastBTC.length-1]) || (q[last_btc_q_index] > q[q.length-1] && lastBTC[0] > lastBTC[lastBTC.length-1])) {
+		follows_btc_history.push(1);
+	} else {
+		follows_btc_history.push(0);
+	}
+	follows_btc_history.shift();
+	follows_btc = average(follows_btc_history) >= 0.7;
+	return follows_btc;
+}
+
+////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
+async function waitUntilFetchPricesAsync() {
+	while(Date.now() < fetchMarketDataTime) {
+		await sleep(0.1 * ONE_SEC);
+	}
+	if (!client) {
+		await fetchAllPricesAsync();
+	} else {
+		while (!price_data_received) {
+			await sleep(0.1 * ONE_SEC);
+		}
+		price_data_received = false;
+	}
+	if (server) {
+		server.broadcast(JSON.stringify({prices: serverPrices, timestamp: Date.now(), interval: SYMBOLS_PRICE_CHECK_TIME}));
+	}
+	parseServerPrices();
+	++prices_data_points_count;
+	fetchMarketDataTime = Date.now() + SYMBOLS_PRICE_CHECK_TIME;
+	if (client) {
+		fetchMarketDataTime -= ONE_SEC;
+	}
+}
+
+function parseServerPrices() {
+	while (prices.length >= PRICES_HISTORY_LENGTH) {
+		prices.shift();
+	}
+	newPrices = {};
+	serverPrices.forEach(v => {
+		if (!v || !v.symbol || (!server && !v.symbol.endsWith(DEFAULT_BASE_CURRENCY))) {
+			return;
+		}
+		if (!detection_mode) {
+			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
+				return;
+			}
+			if (futures && !v.symbol.includes("DOWNUSDT") && !v.symbol.includes("UPUSDT")) {
+				return;
+			}
+		}
+		newPrices[v.symbol] = v.askPrice;
+	});
+	prices.push(newPrices);
+}
+
+function getPricesForCoin(sym, timeframe = PRICES_HISTORY_LENGTH) {
+	recent_prices = prices.slice(-timeframe);
+	res = [];
+	for (i = 0; i < recent_prices.length; i++) {
+		res.push(parseFloat(recent_prices[i][sym]));
+	}
+	return res.filter(a => a);
+}
+
+async function fetchAllPricesAsyncIfReady() {
+	return new Promise(async (resolve) => {
+		await waitUntilFetchPricesAsync();
+		resolve();
+	});
+}
+
+async function fetchAllPricesAsync() {
+	await getAllPrices().catch((err) => console.error(err));
+}
+
+async function getAllPrices() {
+	return new Promise((resolve, reject) => {
+		binance.bookTickers((error, ticker) => {
+			if (error) {
+				while (++fail_counter >= 100) {
+					console.log("TOO MANY FAILS GETTING PRICES");
+					process.exit(1);
+				}
+				reject();
+				return;
+			}
+			fail_counter = 0;
+			serverPrices = ticker;
+			resolve();
+		});
+	});
+	
+}
+
+async function getPrevDay() {
+	binance.prevDay(false, (error, pd) => {
+		if (error || !pd) {
+			// TODO: Better error handling
+			return;
+		}
+		for ( let obj of pd ) {
+		    let symbol = obj.symbol;
+		    prevDay[symbol] = obj.priceChangePercent;
+		}
+		//setMultiplersFromPreviousDayBTCPrices();
+	});
+}
+
+function setMultiplersFromPreviousDayBTCPrices() {
+	if (prevDay['BTCUSDT']) {
+		prevDayBTC = prevDay['BTCUSDT'];
+		if (parseFloat(prevDayBTC) > 0) {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BEAR_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BULL_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BEAR_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BULL_LOSS_MULTIPLIER;
+			}
+			if (RALLY_TIME == PREPUMP_BEAR_RALLY_TIME) {
+				RALLY_TIME = PREPUMP_BULL_RALLY_TIME;
+			}
+		} else {
+			if (PREPUMP_TAKE_PROFIT_MULTIPLIER == PREPUMP_BULL_PROFIT_MULTIPLIER) {
+				PREPUMP_TAKE_PROFIT_MULTIPLIER = PREPUMP_BEAR_PROFIT_MULTIPLIER;
+			}
+			if (PREPUMP_STOP_LOSS_MULTIPLIER == PREPUMP_BULL_LOSS_MULTIPLIER) {
+				PREPUMP_STOP_LOSS_MULTIPLIER = PREPUMP_BEAR_LOSS_MULTIPLIER;
+			}
+			if (RALLY_TIME == PREPUMP_BULL_RALLY_TIME) {
+				RALLY_TIME = PREPUMP_BEAR_RALLY_TIME;
+			}
+		}
+	}
+}
+
+// DEPRECATED
 async function getLatestPriceAsync(coinpair) {
 	try {
 		let ticker = await binance.prices(coinpair);
 		fail_counter = 0;
 		return ticker[coinpair];
 	} catch (e) {
+		console.log("Failure getting latest price", e);
 		if (++fail_counter >= 100) {
 			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
 			process.exit(1);
 		}
-		await sleep(100);
+		await sleep(0.1 * ONE_SEC);
 		return await getLatestPriceAsync(coinpair);
 	}
-}
-
-// this never resolves
-async function loopGetBalanceAsync() {
-	return new Promise(async (resolve) => {
-		while (true) {
-			// This is sketchy but I have no idea how to do proper concurrency
-			while (Date.now() < fetch_balance_time) {
-				await sleep(ONE_MIN);
-			}
-			fetching_balance = true;
-			binance.balance((error, b) => {
-				if ( error ) {
-					fetching_balance = false;
-					fetch_balance_time = Date.now() + ONE_MIN;
-					console.log(error);
-					return;
-				}
-				balances = b;
-				Object.keys(b).forEach(key => {
-					if (key != "USDT" && parseFloat(b[key].available) > 0 && !blacklist.includes(key)) {
-						blacklist.push(key)
-					}
-				})
-				fetching_balance = false;
-				fetch_balance_time = Date.now() + FETCH_BALANCE_INTERVAL;
-			});
-			while (fetching_balance) {
-				await sleep(ONE_MIN);
-			}
-		}
-		
-	});
 }
 
 async function getBidAsk(coinpair) {
@@ -1007,7 +1191,7 @@ async function getBidAsk(coinpair) {
 		fail_counter = 0;
 		return bidask
 	} catch (e) {
-		console.log(e);
+		console.log("Failure getting bid ask", e);
 		if (++fail_counter >= 100) {
 			console.log(`Too many fails fetching bid/ask prices of ${coinpair}, exiting`);
 			process.exit(1);
@@ -1024,8 +1208,8 @@ async function getMarketDepth(coinpair) {
 		fail_counter = 0;
 		return depth;
 	} catch (e) {
+		console.log("Failure getting market depth", e);
 		if (++fail_counter >= 100) {
-			console.log(e);
 			console.log(`Too many fails fetching market depth of ${coinpair},`);
 			process.exit(1);
 		}
@@ -1047,23 +1231,105 @@ function parseDepth(depth) {
 	});
 }
 
-function isUptrend(q2, buffer, kinda = true, stdev = 0) {
-	// if (stdev == 0) {
-	// 	stdev = getLastStdev();
-	// }
-	return q2.slice(0, q2.length-1).filter(v => v > q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v < q2[0]).length < (buffer * kinda ? 3 : 1)
-		&& q2[q2.length-1] - q2[0] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+// this never resolves
+async function loopGetBalanceAndPrevDayAsync() {
+	return new Promise(async (resolve) => {
+		while (true) {
+			while (Date.now() < fetch_balance_time) {
+				await sleep(ONE_MIN);
+			}
+			getPrevDay();
+			fetching_balance = true;
+			binance.balance((error, b) => {
+				if ( error ) {
+					fetching_balance = false;
+					fetch_balance_time = Date.now() + ONE_MIN;
+					console.log(error);
+					return;
+				}
+				balances = b;
+				updateBlacklistFromBalance();
+				fetching_balance = false;
+				fetch_balance_time = Date.now() + FETCH_BALANCE_INTERVAL;
+			});
+			while (fetching_balance) {
+				await sleep(ONE_MIN);
+			}
+		}
+	});
 }
 
-function isDowntrend(q2, buffer, kinda = true, stdev = 0) {
-	// if (stdev == 0) {
-	// 	stdev = getLastStdev();
-	// }
-	return q2.slice(0, q2.length-1).filter(v => v < q2[q2.length-1]).length < buffer
-		&& q2.slice(1-q2.length).filter(v => v > q2[0]).length < (buffer * kinda ? 3 : 1)
-		&& q2[0] - q2[q2.length-1] > MIN_TREND_STDEV_MULTIPLIER * stdev;
+async function prepopulate30mData() {
+	if (!coinsInfo) {
+		console.log("Need to fetch exchangeInfo");
+		process.exit(1);
+	}
+	let newPrices = {};
+	promises = Object.keys(coinsInfo).map(async k => {
+		return new Promise(async (resolve) => {
+			if (coinsInfo[k].status != "TRADING") {
+				resolve();
+				return;
+			}
+			await(Math.random() * 10 * ONE_SEC);
+			if (k.endsWith("USDT") || k.endsWith("BTC")) {
+				binance.candlesticks(k, "1m", (error, ticks, symbol) => {
+					if (error) {
+						console.log(error);
+						resolve();
+						return;
+					}
+					if (!newPrices[k]) {
+						newPrices[k] = [];
+					}
+					ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+						newPrices[k].push(open/2 + close/2);
+					})
+					resolve();
+				}, {limit: 30, endTime: Date.now()});
+			}
+		});
+	});
+	await Promise.raceAll(promises, 15 * ONE_SEC, null);
+	newPricesArray = [];
+	for (i = 0; i < 30; i++) {
+		newPrices10s = {};
+		Object.keys(newPrices).forEach(k => {
+			newPrices10s[k] = newPrices[k][i];
+		});
+		newPricesArray.push(...(Array(6).fill(newPrices10s)));
+	}
+	prices = newPricesArray.concat(prices).slice(-PRICES_HISTORY_LENGTH);
+	prices_data_points_count = prices.length;
 }
+
+function updateBlacklistFromBalance() {
+	Object.keys(balances).forEach(key => {
+		if (key != "USDT" && parseFloat(balances[key].available) > 0 && !blacklist.includes(key)) {
+			blacklist.push(key)
+		}
+	});
+	if (server) {
+		synchronizeBlacklist();
+	}
+}
+
+function removeFromBlacklistLater(coin) {
+	setTimeout(() => {
+		blacklist = blacklist.filter(i => i !== coin);
+		synchronizeBlacklist();
+	}, (buy_good_buys ? 60 * ONE_MIN : 5 * ONE_MIN));
+}
+
+function synchronizeBlacklist() {
+	if (server) {
+		server.broadcast(JSON.stringify({blacklist: blacklist}));
+	}
+	if (client) {
+		client.send(JSON.stringify({blacklist: blacklist}));
+	}
+}
+
 
 function getBalance(coin) {
 	if (!balances[coin]) {
@@ -1080,29 +1346,40 @@ function getCoin(coinpair) {
 	return coinpair.slice(0, -3);
 }
 
-function pushToLookback(latestPrice) {
-	lookback.push(latestPrice);
-	if (lookback.length > LOOKBACK_SIZE) {
-		lookback.shift();
-	}
-}
-
-function readCoinInfo() {
-	fs.readFile("minimums.json", function(err, data){
-		if (err) {
-			console.log("minimums.json read error");
-			process.exit(1);
+async function readCoinInfo() {
+	return new Promise(async (resolve) => {
+		if (coinsInfo) {
+			coinInfo = coinsInfo[coinpair];
+			resolve();
+			return;
 		}
-		coinInfo = JSON.parse(data)[coinpair]
-		if (coinInfo != null) {
-			console.log(coinInfo);
+		fs.readFile("minimums.json", function(err, data){
+			if (err) {
+				getExchangeInfo();
+				console.log("minimums.json read error, fetching data");
+				return;
+			}
+			coinsInfo = JSON.parse(data);
+			coinInfo = coinsInfo[coinpair];
+			if (coinInfo != null) {
+				console.log(coinInfo);
+			}
+		});
+		while (!coinsInfo) {
+			await sleep(0.1 * ONE_SEC);
 		}
-	});
+		resolve();
+	}); 
 }
 
 async function getExchangeInfo() {
-	await binance.exchangeInfo(function(error, data) {
+	finished = false;
+	binance.exchangeInfo(async (error, data) => {
 		let minimums = {};
+		if (error) {
+			console.log("Error fetching exchange Info");
+			process.exit(1);
+		}
 		for ( let obj of data.symbols ) {
 			let filters = {status: obj.status};
 			for ( let filter of obj.filters ) {
@@ -1118,31 +1395,21 @@ async function getExchangeInfo() {
 					filters.maxQty = filter.maxQty;
 				}
 			}
-			//filters.baseAssetPrecision = obj.baseAssetPrecision;
-			//filters.quoteAssetPrecision = obj.quoteAssetPrecision;
 			filters.orderTypes = obj.orderTypes;
 			filters.icebergAllowed = obj.icebergAllowed;
 			minimums[obj.symbol] = filters;
 		}
-		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), function(err){});
+		fs.writeFile("minimums.json", JSON.stringify(minimums, null, 4), async (err) => {
+			await readCoinInfo();
+			finished = true;
+		});
 	});
-}
-
-function removeFromBlacklistLater(coin) {
-	setTimeout(() => {
-		blacklist = blacklist.filter(i => i !== coin);
-		synchronizeBlacklist();
-	}, 30 * ONE_MIN);
-}
-
-function synchronizeBlacklist() {
-	if (server) {
-		server.broadcast(JSON.stringify({blacklist: blacklist}));
-	}
-	if (client) {
-		client.send(JSON.stringify({blacklist: blacklist}));
+	while (!finished) {
+		await sleep(ONE_SEC);
 	}
 }
+
+/////////////////////////////// MATH /////////////////////////////////////////////////
 
 function lastValueIsOutlier() {
 	stdev = getLastStdev();
@@ -1156,18 +1423,15 @@ function getLastStdev() {
 }
 
 function getStandardDeviation(values){
-  var avg = average(values);
-  
-  var squareDiffs = values.map(function(value){
-    var diff = value - avg;
-    var sqrDiff = diff * diff;
-    return sqrDiff;
-  });
-  
-  var avgSquareDiff = average(squareDiffs);
-
-  var stdDev = Math.sqrt(avgSquareDiff);
-  return stdDev;
+	var avg = average(values);
+	var squareDiffs = values.map(function(value){
+		var diff = value - avg;
+		var sqrDiff = diff * diff;
+		return sqrDiff;
+	});
+	var avgSquareDiff = average(squareDiffs);
+	var stdDev = Math.sqrt(avgSquareDiff);
+	return stdDev;
 }
 
 function average(data){
@@ -1179,8 +1443,10 @@ function average(data){
   return avg;
 }
 
+/////////////////////////////// GRAPHING /////////////////////////////////////////////////
+
 function formatGraph(x, i) {
-	return (GRAPH_PADDING + x.toFixed (10)).slice (-GRAPH_PADDING.length);
+	return ("" + x + GRAPH_PADDING).slice (0, GRAPH_PADDING.length);
 }
 
 function plot(buying) {
@@ -1188,50 +1454,63 @@ function plot(buying) {
 		GRAPH_HEIGHT = process.stdout.rows - TERMINAL_HEIGHT_BUFFER;
 		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
 	}
-	points = [highstd.slice(-PLOT_DATA_POINTS), lowstd.slice(-PLOT_DATA_POINTS), means.slice(-PLOT_DATA_POINTS), (buying ? mabuy : masell).slice(-PLOT_DATA_POINTS), q.slice(-PLOT_DATA_POINTS)];
+	num_points_to_plot = Math.min(lookback.length, PLOT_DATA_POINTS);
+	if (GRAPH_HEIGHT < 5 || num_points_to_plot < 5) {
+		return;
+	}
+	points = [highstd.slice(-num_points_to_plot), lowstd.slice(-num_points_to_plot), means.slice(-num_points_to_plot), (buying ? mabuy : masell).slice(-num_points_to_plot), q.slice(-num_points_to_plot)];
 	console.log (
-	asciichart.plot(points, 
-	{
-		format: formatGraph, 
-		colors: [
-	        asciichart.red,
-	        asciichart.green,
-	        asciichart.yellow,
-	        asciichart.lightmagenta,
-	        asciichart.default,
-	    ],
-		padding: GRAPH_PADDING, 
-		height: GRAPH_HEIGHT
-	}));
+		asciichart.plot(points, {
+			format: formatGraph, 
+			colors: [
+		        buying ? asciichart.red : asciichart.green,
+		        buying ? asciichart.green : asciichart.red,
+		        asciichart.yellow,
+		        asciichart.lightmagenta,
+		        asciichart.default,
+		    ],
+			padding: GRAPH_PADDING, 
+			height: GRAPH_HEIGHT
+		})
+	);
 }
 
-function getHistogramData() {
-	histogramRed = Object.values(resistances);
-	histogramGreen = Object.values(supports).reverse();
-	firstRed = histogramRed[0];
-	firstGreen = histogramGreen[histogramGreen.length-1];
-	histogramRed = (histogramRed.map(x => [x,x])).flat();
-	histogramGreen = (histogramGreen.map(x => [x,x])).flat();
-	blankGreen = new Array(parseInt(PLOT_DATA_POINTS/5)).fill(0);
-	blankRed = new Array(parseInt(PLOT_DATA_POINTS/5 + histogramGreen.length)).fill(0);
-	return [blankGreen.concat(histogramGreen), blankRed.concat(histogramRed), firstGreen, firstRed];
+
+/////////////////////////////// MISC /////////////////////////////////////////////////
+
+Promise.delay = function(t, val) {
+    return new Promise(resolve => {
+        setTimeout(resolve.bind(null, val), t);
+    });
+}
+
+Promise.raceAll = function(promises, timeoutTime, timeoutVal) {
+    return Promise.all(promises.map(p => {
+        return Promise.race([p, Promise.delay(timeoutTime, timeoutVal)])
+    }));
 }
 
 function colorText(color, str) {
 	return asciichart[color] + str + asciichart.reset;
 }
 
+function everyNthElement(array, n) {
+	return array.filter((_, i) => i % (n) == 0);
+}
+
 function msToTime(duration) {
 	if (duration < 0) {
 		return 0;
 	}
-	var seconds = Math.floor((duration / 1000) % 60), minutes = Math.floor((duration / (1000 * 60))),
+	var seconds = Math.floor((duration / ONE_SEC) % 60), minutes = Math.floor((duration / (ONE_MIN))),
 	seconds = (seconds < 10) ? "0" + seconds : seconds;
 	return minutes + ":" + seconds;
 }
 
 function beep() {
-	console.log("\007");
+	if (!silent) {
+		console.log("\007");
+	}
 }
 
 function sleep(ms) {

@@ -20,7 +20,7 @@ It is best to run several instances of this bot at once to reduce variance. It h
 
 To run: `node main prepump [optional price check timeframe in seconds]` e.g `node main prepump` or `node main prepump 20` (free to play around with this value) or `node main [COINPAIR]` e.g `node main BTCUSDT` (NOT RECOMMENDED).
 
-The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press `b` or `s` respectively.
+The bot starts in auto mode, which means it will automatically buy and sell when it detects an opportunity. To toggle, press `a`. To manually buy and sell, press ctrl + `b` or `s` respectively.
 
 Press `q` to exit the buy graph screen and look for other opportunities. Press `e` to extend the opportunity window for a particular coin.
 
