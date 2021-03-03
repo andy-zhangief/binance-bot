@@ -238,7 +238,7 @@ async function initArgumentVariables() {
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 		buy_rallys = process.argv.includes("--rallys");
 		buy_good_buys = !buy_rallys;
-		detection_mode = process.argv.includes("--detect") ? true : false;
+		detection_mode = process.argv.includes("--detect");
 	}
 	LOOP = !process.argv.includes("--only-buy-once");
 	auto = process.argv.includes("--auto") || prepump;
@@ -305,7 +305,6 @@ function initKeybindings() {
 }
 
 async function initServer() {
-	// TODO: listen for client DC message and sell coin if client is holding
 	server = SocketModel.createServer( { socketFile: SOCKETFILE, sendConnectMessage: true} );
 	server.onMessage(function(obj) {
 		if (obj.message) {
@@ -405,6 +404,11 @@ async function initClient() {
 				quit_buy = true;
 				await sleep(5 * ONE_SEC);
 				transaction = message.transaction;
+				coinpair = transaction.sym;
+				coin = getCoin(coinpair);
+				latestPrice = getPricesForCoin(coinpair).pop();
+				lookback = [];
+				q = [];
 				ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, false, transaction.sym);
 			}
 		}
@@ -735,7 +739,7 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
-		TRANSACTION_COMPLETE = true; // never bought
+		TRANSACTION_COMPLETE = true;
 		blacklist = blacklist.filter(i => i !== coin);
 		synchronizeBlacklist();
 		if (!LOOP) {
@@ -766,7 +770,7 @@ async function pump() {
 		BUY_TS = 0;
 		buy_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		lastBuy = buy_price * response.executedQty;
-		actualquantity = response.executedQty // replace with bought quantity
+		actualquantity = response.executedQty;
 		take_profit = (buy_price * TAKE_PROFIT_MULTIPLIER).toPrecision(4);
 		stop_loss = (buy_price * STOP_LOSS_MULTIPLIER).toPrecision(4);
 		if (client) {
@@ -1137,6 +1141,9 @@ function parseServerPrices() {
 	newPrices = {};
 	serverPrices.forEach(v => {
 		if (!v || !v.symbol || (!server && !v.symbol.endsWith(DEFAULT_BASE_CURRENCY))) {
+			return;
+		}
+		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
 			return;
 		}
 		if (!detection_mode) {
