@@ -625,7 +625,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let lows = [];
 	let last = 0;
 	let totalVolume = 0;
-	await sleep(ONE_SEC);
+	await sleep(Math.random() * ONE_MIN);
 	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
 		if (error) {
 			console.log(error);
@@ -643,17 +643,17 @@ async function isAGoodBuyFrom1hGraph(sym) {
 		})
 		last = closes.slice(-1).pop();
 		finished = true;
-	}, {limit: 21, endTime: Date.now()});
+	}, {limit: 48, endTime: Date.now()});
 	while (!finished) {
 		await sleep(ONE_SEC)
 	}
 	if (!ticker.length) {
 		return false;
 	}
-	let mean = average(ticker);
-	let std = getStandardDeviation(ticker);
+	let mean = average(ticker.slice(-21));
+	let std = getStandardDeviation(ticker.slice(-21));
 	let last3gains = gains.slice(-4, -1);
-	let gain = last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01);
+	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let increasingGains = isUptrend(last3gains, 0, false);
 	// let lastGainGreaterThanFirst = Math.abs(1 - last3gains[2]) > Math.abs(1 - last3gains[0]);
 	// let lastWickShorterThanBody = (2 * (highs.slice(-1).pop() - closes.slice(-1).pop())) < (closes.slice(-1).pop() - opens.slice(-1).pop());
@@ -661,7 +661,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let opensBelowOneStdPlusMean = (opens.slice(-4, -1).filter(v => v > (mean + std)).length == 0);
 	let startOfRally = !isUptrend(closes.slice(-5), 0, false) && isUptrend(closes.slice(-4), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? 2500000 : 50);
+	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? 5000000 : 100);
 	// if (opensBelowOneStdPlusMean && startOfRally && middleIsSmallest && increasingGains && lastGainGreaterThanFirst && lastWickShorterThanBody && goodBuyGainIsValid && volumeIsOk)  {
 	if (opensBelowOneStdPlusMean && startOfRally && goodBuyGainIsValid && volumeIsOk && increasingGains) {
 		return {
@@ -873,7 +873,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity) {
 				return;
 			}
 			analyzeDecisionForSingleCoin(purchase);
-			pump()
+			pump();
 			return;
 		}
 		console.log("Sell complete, exiting");
@@ -959,7 +959,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
-	lastSellReason = "Sold bcuz take profit or stop loss hit";
+	lastSellReason = "Sold because stop loss was hit";
 	return latestPrice
 }
 
