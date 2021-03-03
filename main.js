@@ -323,19 +323,20 @@ async function initServer() {
 				server.transactionHistory[message.sym] = message;
 			}
 			if (message.sold) {
-				server.transactionHistory[message.sym] = null;
+				delete server.transactionHistory[message.sym];
 			}
 			if (message.connect) {
-				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value.args && _.isEqual(value.args, message.args) && !value.reconnected)).pop()];
+				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && !value.reconnected)).pop()];
 				if (transaction) {
 					transaction.id = message.id;
-					console.log(colorText("green", `Client has reconnected and will continue to sell ${sym}`));
+					console.log(colorText("green", `Client has reconnected and will continue to sell ${transaction.sym}`));
 					server.getWriter().send({transaction: transaction}, server.getClients().filter(o => o.id === message.id).pop());
 					transaction.reconnected = true;
 				}
 			}
 		}
 	});
+
 	server.transactionHistory = {};
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
@@ -347,7 +348,14 @@ async function initServer() {
 		if (transaction) {
 			transaction.reconnected = false;
 			console.log(colorText("red", `Client has disconnected after buying ${sym}. Reconnect within ${CLIENT_DISCONNECT_SELL_TIMEOUT/ONE_MIN} minutes to avoid server from automatically selling`));
-			let p1 = sleep(CLIENT_DISCONNECT_SELL_TIMEOUT).then(() => {
+			let p1 = sleep(CLIENT_DISCONNECT_SELL_TIMEOUT);
+			let p2 = new Promise(async resolve => {
+				while (!server.transactionHistory[sym] || !server.transactionHistory[sym].reconnected) {
+					await sleep(ONE_SEC);
+				}
+				resolve();
+			});
+			Promise.race([p1, p2]).then(() => {
 				transaction = server.transactionHistory[sym];
 				if (transaction && !transaction.reconnected) {
 					console.log(colorText("red", `Client has not reconnected, selling ${transaction.quantity} ${sym} at market price`));
@@ -355,13 +363,6 @@ async function initServer() {
 					server.transactionHistory[sym] = null;
 				}
 			});
-			let p2 = new Promise(async resolve => {
-				while (!server.transactionHistory[sym] || !server.transactionHistory[sym].reconnected) {
-					await sleep(ONE_SEC);
-				}
-				resolve();
-			});
-			Promise.race([p1, p2]);
 		}
 	});
 
@@ -404,7 +405,6 @@ async function initClient() {
 				quit_buy = true;
 				await sleep(5 * ONE_SEC);
 				transaction = message.transaction;
-				console.log(message);
 				SELL_FINISHED = false;
 				ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, false, transaction.sym);
 			}
