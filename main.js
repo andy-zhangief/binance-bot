@@ -174,7 +174,9 @@ var {
 	price_data_received,
 	fetching_prices_from_graph_mode,
 	coinpair,
-	coin
+	coin,
+	follows_btc, 
+	follows_btc_history,
 } = require("./const.js");
 
 ///////////////////////// INITIALIZATION ///////////////////////////////////
@@ -380,6 +382,7 @@ async function waitUntilPrepump() {
 			console.clear();
 			console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
 			console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
+			console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 			console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
 			console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
 			console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
@@ -387,7 +390,7 @@ async function waitUntilPrepump() {
 			//console.log(lastSellReason);
 			console.log(`You have made ${purchases.length} purchases`);
 			last_purchase_obj = purchases.slice(-1).pop();
-			recent_purchases = purchases.slice(-(process.stdout.rows - 9)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
+			recent_purchases = purchases.slice(-(process.stdout.rows - 10)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 			console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 		}
 		rally = null;
