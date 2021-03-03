@@ -489,7 +489,7 @@ async function detectCoinRallies() {
 		gain = max/min;
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
-		historical_vals = getPricesForCoin(sym, PRICES_HISTORY_LENGTH).slice(0, -RALLY_TIME);
+		historical_vals = getPricesForCoin(sym).slice(0, -RALLY_TIME);
 		recent_historical_vals = historical_vals.slice(-3 * RALLY_TIME, -RALLY_TIME);
 		sorted_historical_vals = recent_historical_vals.sort();
 		recent_sorted_historical_vals = recent_historical_vals.sort();
@@ -611,7 +611,7 @@ async function scanForGoodBuys() {
 			}
 		}
 	});
-	await Promise.all(promises)
+	await Promise.raceAll(promises, 15 * ONE_SEC, null);
 	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
@@ -1029,7 +1029,7 @@ function symbolFollowsBTCUSDT(sym) {
 	if (q.length < 30) {
 		return false;
 	}
-	btcHistorical = getPricesForCoin("BTCUSDT", PRICES_HISTORY_LENGTH);
+	btcHistorical = getPricesForCoin("BTCUSDT");
 	lastBTC = btcHistorical.slice(-3);
 	last_btc_q_index = q.length - 1 - Math.floor(2 * SYMBOLS_PRICE_CHECK_TIME/ONE_SEC);
 	if ((q[last_btc_q_index] < q[q.length-1] && lastBTC[0] < lastBTC[lastBTC.length-1]) || (q[last_btc_q_index] > q[q.length-1] && lastBTC[0] > lastBTC[lastBTC.length-1])) {
@@ -1075,9 +1075,6 @@ function parseServerPrices() {
 		if (!v || !v.symbol || (!server && !v.symbol.endsWith(DEFAULT_BASE_CURRENCY))) {
 			return;
 		}
-		if (v.symbol.endsWith("BTC") && v.askPrice < MIN_COIN_VAL_IN_BTC) {
-			return;
-		}
 		if (!detection_mode) {
 			if (!futures && (v.symbol.includes("DOWNUSDT") || v.symbol.includes("UPUSDT"))) {
 				return;
@@ -1091,7 +1088,7 @@ function parseServerPrices() {
 	prices.push(newPrices);
 }
 
-function getPricesForCoin(sym, timeframe) {
+function getPricesForCoin(sym, timeframe = PRICES_HISTORY_LENGTH) {
 	recent_prices = prices.slice(-timeframe);
 	res = [];
 	for (i = 0; i < recent_prices.length; i++) {
@@ -1269,27 +1266,31 @@ async function prepopulate30mData() {
 	}
 	let newPrices = {};
 	promises = Object.keys(coinsInfo).map(async k => {
-		if (coinsInfo[k].status != "TRADING") {
-			return;
-		}
-		await(Math.random() * 10 * ONE_SEC);
-		if (k.endsWith("USDT") || k.endsWith("BTC")) {
-			binance.candlesticks(k, "1m", (error, ticks, symbol) => {
-				if (error) {
-					console.log(error);
-					finished = true;
-					return;
-				}
-				if (!newPrices[k]) {
-					newPrices[k] = [];
-				}
-				ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
-					newPrices[k].push(open/2 + close/2);
-				})
-			}, {limit: 30, endTime: Date.now()});
-		}
+		return new Promise(async (resolve) => {
+			if (coinsInfo[k].status != "TRADING") {
+				resolve();
+				return;
+			}
+			await(Math.random() * 10 * ONE_SEC);
+			if (k.endsWith("USDT") || k.endsWith("BTC")) {
+				binance.candlesticks(k, "1m", (error, ticks, symbol) => {
+					if (error) {
+						console.log(error);
+						resolve();
+						return;
+					}
+					if (!newPrices[k]) {
+						newPrices[k] = [];
+					}
+					ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+						newPrices[k].push(open/2 + close/2);
+					})
+					resolve();
+				}, {limit: 30, endTime: Date.now()});
+			}
+		});
 	});
-	await Promise.all(promises);
+	await Promise.raceAll(promises, 15 * ONE_SEC, null);
 	newPricesArray = [];
 	for (i = 0; i < 30; i++) {
 		newPrices10s = {};
@@ -1348,6 +1349,7 @@ function getCoin(coinpair) {
 async function readCoinInfo() {
 	return new Promise(async (resolve) => {
 		if (coinsInfo) {
+			coinInfo = coinsInfo[coinpair];
 			resolve();
 			return;
 		}
@@ -1475,6 +1477,18 @@ function plot(buying) {
 
 
 /////////////////////////////// MISC /////////////////////////////////////////////////
+
+Promise.delay = function(t, val) {
+    return new Promise(resolve => {
+        setTimeout(resolve.bind(null, val), t);
+    });
+}
+
+Promise.raceAll = function(promises, timeoutTime, timeoutVal) {
+    return Promise.all(promises.map(p => {
+        return Promise.race([p, Promise.delay(timeoutTime, timeoutVal)])
+    }));
+}
 
 function colorText(color, str) {
 	return asciichart[color] + str + asciichart.reset;
