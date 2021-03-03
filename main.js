@@ -375,7 +375,7 @@ async function waitUntilPrepump() {
 	}
 	UPPER_BB_PCT = PREPUMP_MIN_UPPER_BB_PCT;
 	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
-	console.clear();
+	detection_mode && console.clear() || console.log("Detection Mode Active");
 	while (true) {
 		await waitUntilFetchPricesAsync();
 		if (!detection_mode) {
@@ -1356,10 +1356,15 @@ async function readCoinInfo() {
 			resolve();
 			return;
 		}
-		fs.readFile("minimums.json", function(err, data){
+		fs.readFile("minimums.json", async (err, data) => {
 			if (err) {
-				getExchangeInfo();
-				console.log("minimums.json read error, fetching data");
+				if (++fail_counter >= 100) {
+					console.log("Too many failures getting coin info");
+					process.exit(1);
+				}
+				await getExchangeInfo();
+				await readCoinInfo();
+				resolve();
 				return;
 			}
 			coinsInfo = JSON.parse(data);
@@ -1371,6 +1376,7 @@ async function readCoinInfo() {
 		while (!coinsInfo) {
 			await sleep(0.1 * ONE_SEC);
 		}
+		fail_counter = 0;
 		resolve();
 	}); 
 }
