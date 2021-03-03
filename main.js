@@ -326,31 +326,28 @@ async function initServer() {
 				server.transactionHistory[message.sym] = null;
 			}
 			if (message.connect) {
-				transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value.args && _.isEqual(value.args, message.args) && !value.reconnected)).pop()];
+				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value.args && _.isEqual(value.args, message.args) && !value.reconnected)).pop()];
 				if (transaction) {
 					transaction.id = message.id;
 					console.log(colorText("green", `Client has reconnected and will continue to sell ${sym}`));
 					server.getWriter().send({transaction: transaction}, server.getClients().filter(o => o.id === message.id).pop());
 					transaction.reconnected = true;
-					server.promises[transaction.sym].reject = true;
 				}
 			}
 		}
 	});
 	server.transactionHistory = {};
-	server.promises = {};
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
 	});
 
 	server.onClientDisconnect((connection) => {
-		sym = Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && value.id == connection.id)).pop();
-		transaction = server.transactionHistory[sym];
+		let sym = Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && value.id == connection.id)).pop();
+		let transaction = server.transactionHistory[sym];
 		if (transaction) {
 			transaction.reconnected = false;
 			console.log(colorText("red", `Client has disconnected after buying ${sym}. Reconnect within ${CLIENT_DISCONNECT_SELL_TIMEOUT/ONE_MIN} minutes to avoid server from automatically selling`));
-			server.promises[sym] = {};
-			let p1 = sleep(5 * ONE_MIN).then(() => {
+			let p1 = sleep(CLIENT_DISCONNECT_SELL_TIMEOUT).then(() => {
 				transaction = server.transactionHistory[sym];
 				if (transaction && !transaction.reconnected) {
 					console.log(colorText("red", `Client has not reconnected, selling ${transaction.quantity} ${sym} at market price`));
@@ -359,12 +356,12 @@ async function initServer() {
 				}
 			});
 			let p2 = new Promise(async resolve => {
-				while (!server.promises[sym] || !server.promises[sym].reject) {
-					await sleep(1000);
+				while (!server.transactionHistory[sym] || !server.transactionHistory[sym].reconnected) {
+					await sleep(ONE_SEC);
 				}
 				resolve();
 			});
-			server.promises[sym] = Promise.race([p1, p2]);
+			Promise.race([p1, p2]);
 		}
 	});
 
@@ -428,7 +425,7 @@ async function waitUntilPrepump() {
 	}
 	UPPER_BB_PCT = PREPUMP_MIN_UPPER_BB_PCT;
 	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
-	detection_mode && console.clear() || console.log("Detection Mode Active");
+	detection_mode && (console.clear() || console.log("Detection Mode Active"));
 	while (true) {
 		if (SELL_FINISHED) {
 			await waitUntilFetchPricesAsync();
@@ -467,7 +464,6 @@ async function waitUntilPrepump() {
 				}
 				coinpair = rally.sym;
 				coin = getCoin(coinpair);
-				SELL_FINISHED = false;
 				lookback = [];
 				q = [];
 				blacklist.push(coin);
@@ -479,13 +475,9 @@ async function waitUntilPrepump() {
 				STOP_LOSS_MULTIPLIER = Math.min(PREPUMP_MAX_LOSS_MULTIPLIER, Math.max(PREPUMP_MIN_LOSS_MULTIPLIER, 1/((rally_inc_pct * PREPUMP_STOP_LOSS_MULTIPLIER) + 1)));
 				latestPrice = rally.last;
 				pump();
-				while (!SELL_FINISHED) {
-					await sleep(30 * ONE_SEC);
-				}
-				analyzeDecisionForPrepump(rally.sym, rally_inc_pct, purchases.slice(-1).pop(), TAKE_PROFIT_MULTIPLIER);
 			}
 		} else {
-			await sleep(30 * ONE_SEC);
+			await sleep(ONE_MIN);
 		}
 	}
 }
@@ -733,6 +725,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 
 async function pump() {
 	console.log("Buying " + coinpair);
+	SELL_FINISHED = false;
 	if (BUY_LOCAL_MIN && !yolo) {
 		manual_buy = false;
 		quit_buy = false;
