@@ -360,7 +360,7 @@ async function initServer() {
 				if (transaction && !transaction.reconnected) {
 					console.log(colorText("red", `Client has not reconnected, selling ${transaction.quantity} ${sym} at market price`));
 					ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, true, transaction.sym);
-					server.transactionHistory[sym] = null;
+					delete server.transactionHistory[sym];
 				}
 			});
 		}
