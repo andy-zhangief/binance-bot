@@ -1,7 +1,7 @@
 ONE_SEC = 1000;
 ONE_MIN = 60 * ONE_SEC;
 DEFAULT_SYMBOL_PRICE_CHECK_TIME = 10 * 1000;
-
+GOOD_BUY_SEED_MAX = 60;
 module.exports = {
 	// DO NOT CHANGE THESE
 	ONE_SEC : ONE_SEC,
@@ -85,6 +85,10 @@ module.exports = {
 	PREPUMP_MIN_UPPER_BB_PCT : 0.5,
 	PREPUMP_MAX_LOWER_BB_PCT : -0.5,
 	PREPUMP_MIN_LOWER_BB_PCT : -0.5,
+	PREPUMP_MAX_PROFIT_MULTIPLIER : 1.1,
+	PREPUMP_MIN_PROFIT_MULTIPLIER : 1.02,
+	PREPUMP_MAX_LOSS_MULTIPLIER : 0.99,
+	PREPUMP_MIN_LOSS_MULTIPLIER : 0.95,
 	PRICES_HISTORY_LENGTH : 180, // * SYMBOLS_PRICE_CHECK_TIME
 	RALLY_TIME : 18, // * SYMBOLS_PRICE_CHECK_TIME
 	MIN_RALLY_TIME: 12,
@@ -95,6 +99,10 @@ module.exports = {
 	RALLY_GREEN_RED_RATIO : 1.5,
 	GOOD_BUY_MIN_GAIN : 1.03,
 	GOOD_BUY_MAX_GAIN : 1.08,
+	MIN_48H_BTC : 100,
+	MIN_48H_USDT : 5000000,
+	GOOD_BUY_SEED_MAX : GOOD_BUY_SEED_MAX,
+	GOOD_BUY_SEED : Math.floor(Math.random() * GOOD_BUY_SEED_MAX),
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
@@ -114,8 +122,6 @@ module.exports = {
 	lastBuyReason : "",
 	lastSellReason : "",
 	lastSellLocalMax: 0,
-	lastSellLocalMaxStdev : 0,
-	lastSellLocalMinStdev : 0,
 	BUY_TS : 0,
 	SELL_TS : 0,
 	auto : false,
@@ -135,7 +141,6 @@ module.exports = {
 	fetch_balance_time : 0,
 	prices_data_points_count : 0,
 	SELL_FINISHED : false,
-	time_elapsed_since_rally : 0,
 	prices : [],
 	prevDay : {},
 	serverPrices : [],
@@ -155,4 +160,6 @@ module.exports = {
 	fetching_prices_from_graph_mode : false,
 	coinpair : "",
 	coin : "",
+	follows_btc : false,
+	follows_btc_history : new Array(10).fill(0.5),
 }
