@@ -260,13 +260,8 @@ function initKeybindings() {
 		if (key.ctrl) {
 			switch (key.name) {
 				case 'c': 
-					// I should write log data to file for analytics
 					if (server) {
-						logFile = "logs/log_" + Date.now() + ".json";
-						fs.writeFile(logFile, JSON.stringify(server.transactionLog, null, 2), async (err) => {
-							console.log(`Transaction log of all clients written to ${logFile}`);
-							process.exit(0);
-						});
+						writeTransactionLogFileAndExit();
 					} else {
 						process.exit(0);
 					}
@@ -914,10 +909,10 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		
 		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty;
 		if (client) {
-			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, price: sell_price, quantity: quantity, args: process.argv});
+			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity, args: process.argv});
 		}
 		if (server && immediately) {
-			server.transactionLog.push({id: "server market sell", sold: true, ts: new Date(Date.now()), sym: sym, price: sell_price, quantity: quantity})
+			server.transactionLog.push({id: "server market sell", sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity})
 			return;
 		}
 		console.log("Sell is successful");
@@ -1540,6 +1535,47 @@ async function getExchangeInfo() {
 	while (!finished) {
 		await sleep(ONE_SEC);
 	}
+}
+
+function writeTransactionLogFileAndExit() {
+	logFile = "logs/log_" + Date.now() + ".csv";
+	buySellPair = [];
+	buys = [];
+	server.transactionLog.forEach((item) => {
+		if (item.bought) {
+			buys.push(item);
+			return;
+		}
+		if (item.sold) {
+			buy = buys.filter(i => i.sym === item.sym && i.quantity === item.quantity).pop();
+			if (!buy) {
+				return;
+			}
+			buys = buys.filter(i => i.sym !== item.sym || i.quantity !== item.quantity);
+			buySellPair.push({
+				sym: item.sym,
+				time_bought: buy.ts,
+				buy_price: buy.buy_price,
+				quantity: item.quantity,
+				take_profit: buy.take_profit,
+				stop_loss: buy.stop_loss,
+				time_sold: item.ts,
+				sell_price: item.sell_price,
+				gain: buy.buy_price/item.sell_price,
+				args: "\"" + buy.args + "\"",
+			});
+		}
+	});
+	if (!buySellPair.length) {
+		console.log(`No transactions have taken place`);
+		process.exit(0);
+	}
+	str = Object.keys(buySellPair[0]).join(",");
+	buySellPair.forEach(row => str += "\n" + Object.values(row).join(","));
+	fs.writeFile(logFile, str, async (err) => {
+		console.log(`Transaction log of all clients written to ${logFile}`);
+		process.exit(0);
+	});
 }
 
 /////////////////////////////// MATH /////////////////////////////////////////////////
