@@ -117,6 +117,8 @@ var {
 	MIN_48H_USDT,
 	GOOD_BUY_SEED_MAX,
 	GOOD_BUY_SEED,
+	GOOD_BUY_PROFIT_MULTIPLIER,
+	GOOD_BUY_LOSS_MULTIPLIER,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count,
@@ -192,6 +194,7 @@ async function init() {
 		waitUntilPrepump();
 		return;
 	}
+
 	pump();
 }
 
@@ -238,6 +241,10 @@ async function initArgumentVariables() {
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 		buy_good_buys = process.argv.includes("--goodbuys");
 		buy_rallys = !buy_good_buys;
+		if (buy_good_buys) {
+			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
+			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
+		}
 		detection_mode = process.argv.includes("--detect");
 	}
 	LOOP = !process.argv.includes("--only-buy-once");
@@ -434,6 +441,7 @@ async function waitUntilPrepump() {
 	}
 	UPPER_BB_PCT = PREPUMP_MIN_UPPER_BB_PCT;
 	LOWER_BB_PCT = PREPUMP_MIN_LOWER_BB_PCT;
+
 	detection_mode && (console.clear() || console.log("Detection Mode Active"));
 	while (true) {
 		if (TRANSACTION_COMPLETE) {
@@ -548,7 +556,7 @@ async function detectCoinRallies() {
 		first = lastX[0][sym];
 		last = lastX[lastX.length-1][sym];
 		historical_vals = getPricesForCoin(sym).slice(0, -RALLY_TIME);
-		recent_historical_vals = historical_vals.slice(-3 * RALLY_TIME, -RALLY_TIME);
+		recent_historical_vals = historical_vals.slice(-2.5 * RALLY_TIME, -RALLY_TIME);
 		sorted_historical_vals = recent_historical_vals.sort();
 		recent_sorted_historical_vals = recent_historical_vals.sort();
 		high_median = sorted_historical_vals.slice(-0.5 * sorted_historical_vals.length).shift();
@@ -659,8 +667,8 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 	let mean = average(ticker);
 	let std = getStandardDeviation(ticker);
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
-	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
-	if (increasingCloses && opensBelowOneStdPlusMean) {
+	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
+	if (increasingCloses && opensBelowMean) {
 		return true;
 	}
 	return false;
@@ -754,12 +762,12 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let last3gains = gains.slice(-4, -1);
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let increasingGains = isUptrend(last3gains, 0, false);
-	let opensBelowOneStdPlusMean = (opens.slice(-4).filter(v => v > (mean + std)).length == 0);
+	let opensBelowMean = (opens.slice(-4).filter(v => v > (mean)).length == 0);
 	let lastWickIsShorterThanBody = (closes.slice(-2).shift() - opens.slice(-2).shift()) > (highs.slice(-2).shift() - closes.slice(-2).shift());
 	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
-	if (opensBelowOneStdPlusMean && increasingCloses && goodBuyGainIsValid && volumeIsOk && increasingGains && lastWickIsShorterThanBody) {
+	if (opensBelowMean && increasingCloses && goodBuyGainIsValid && volumeIsOk && increasingGains && lastWickIsShorterThanBody) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1561,7 +1569,7 @@ function writeTransactionLogFileAndExit() {
 				stop_loss: buy.stop_loss,
 				time_sold: item.ts,
 				sell_price: item.sell_price,
-				gain: buy.buy_price/item.sell_price,
+				gain: buy.sell_price/item.buy_price,
 				args: "\"" + buy.args + "\"",
 			});
 		}
