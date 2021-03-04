@@ -236,8 +236,8 @@ async function initArgumentVariables() {
 		futures = process.argv.includes("--futures");
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
-		buy_rallys = process.argv.includes("--rallys");
-		buy_good_buys = !buy_rallys;
+		buy_good_buys = process.argv.includes("--goodbuys");
+		buy_rallys = !buy_good_buys;
 		detection_mode = process.argv.includes("--detect");
 	}
 	LOOP = !process.argv.includes("--only-buy-once");
@@ -261,7 +261,15 @@ function initKeybindings() {
 			switch (key.name) {
 				case 'c': 
 					// I should write log data to file for analytics
-					process.exit(0); // eslint-disable-line no-process-exit
+					if (server) {
+						logFile = "logs/log_" + Date.now() + ".json";
+						fs.writeFile(logFile, JSON.stringify(server.transactionLog, null, 2), async (err) => {
+							console.log(`Transaction log of all clients written to ${logFile}`);
+							process.exit(0);
+						});
+					} else {
+						process.exit(0);
+					}
 					break;
 				case "b":
 					// b is for buy
@@ -320,9 +328,11 @@ async function initServer() {
 			}
 			if (message.bought) {
 				server.transactionHistory[message.sym] = message;
+				server.transactionLog.push(message);
 			}
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
+				server.transactionLog.push(message);
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
@@ -337,6 +347,7 @@ async function initServer() {
 	});
 
 	server.transactionHistory = {};
+	server.transactionLog = [];
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
 	});
@@ -437,14 +448,11 @@ async function waitUntilPrepump() {
 				console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
 				console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 				console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
-				console.log("BTCUSDT is : " + colorText(prevDay["BTCUSDT"] > 0 ? "green" : "red", prevDay["BTCUSDT"] + "%"));
-				console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}`);
+				console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)} from ${purchases.length} purchases`);
 				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
-				console.log(`Blacklist: ${blacklist}`);
 				//console.log(lastSellReason);
-				console.log(`You have made ${purchases.length} purchases`);
 				last_purchase_obj = purchases.slice(-1).pop();
-				recent_purchases = purchases.slice(-(process.stdout.rows - 10)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
+				recent_purchases = purchases.slice(-(process.stdout.rows - 7)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 				console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 			}
 			rally = null;
@@ -493,7 +501,7 @@ async function getRally() {
 		console.log("Detection Mode Active");
 		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 		console.log(`Blacklist: ${blacklist}`);
-		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies, null, 4)}`);
+		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies.filter(v => v.goodBuy), null, 4)}`);
 		return;
 	}
 
@@ -552,7 +560,6 @@ async function detectCoinRallies() {
 		low_median = sorted_historical_vals.slice(0, -0.95 * sorted_historical_vals.length).pop();
 		min_historical = recent_sorted_historical_vals.shift();
 		max_historical = recent_sorted_historical_vals.pop();
-
 		test_count = 0;
 		fail_reasons = ""
 		if(green == 0 || red/green >= RALLY_GREEN_RED_RATIO) {
@@ -603,8 +610,7 @@ async function detectCoinRallies() {
 			&& high_median > first
 			&& low_median < first
 			&& min_historical > last
-			&& max_historical/min_historical > gain
-			) {
+			&& max_historical/min_historical > gain) {
 			rallies.push({
 				sym: sym,
 				min: min,
@@ -612,13 +618,57 @@ async function detectCoinRallies() {
 				gain: gain,
 				first: first,
 				last: last,
-				goodBuy: !!await isAGoodBuyFrom1hGraph(sym),
+				goodBuy: await isAGoodBuyFrom1hGraphForRally(sym),
 			});
 		} else if (test_count > 6 && detection_mode) {
-			rallies.push({sym: sym, first: first, last: last, gain: gain, goodBuy: !!await isAGoodBuyFrom1hGraph(sym), fail: fail_reasons});
+			rallies.push({sym: sym, first: first, last: last, goodBuy: await isAGoodBuyFrom1hGraphForRally(sym), gain: gain, fail: fail_reasons});
 		}
 	}
 	return rallies.sort((a, b) => a.gain - b.gain);
+}
+
+async function isAGoodBuyFrom1hGraphForRally(sym) {
+	let finished = false;
+	let ticker = [];
+	let closes = [];
+	let opens = [];
+	let gains = [];
+	let highs = [];
+	let lows = [];
+	let last = 0;
+	let totalVolume = 0;
+	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
+		if (error) {
+			console.log(error);
+			finished = true;
+			return;
+		}
+		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+			ticker.push(open/2 + close/2);
+			opens.push(parseFloat(open));
+			closes.push(parseFloat(close));
+			highs.push(parseFloat(high));
+			lows.push(parseFloat(low));
+			gains.push(close/open);
+			totalVolume += parseFloat(volume) * (open/2 + close/2);
+		})
+		last = closes.slice(-1).pop();
+		finished = true;
+	}, {limit: 48, endTime: Date.now()});
+	while (!finished) {
+		await sleep(ONE_SEC)
+	}
+	if (!ticker.length) {
+		return false;
+	}
+	let mean = average(ticker);
+	let std = getStandardDeviation(ticker);
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
+	let opensBelowOneStdPlusMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
+	if (increasingCloses && opensBelowOneStdPlusMean) {
+		return true;
+	}
+	return false;
 }
 
 ////////////////////////////////////////////////////////NOT DEPRECATED/////////////////////////////////////////////////////
@@ -709,7 +759,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let last3gains = gains.slice(-4, -1);
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let increasingGains = isUptrend(last3gains, 0, false);
-	let opensBelowOneStdPlusMean = (opens.slice(-4, -1).filter(v => v > (mean + std)).length == 0);
+	let opensBelowOneStdPlusMean = (opens.slice(-4).filter(v => v > (mean + std)).length == 0);
 	let lastWickIsShorterThanBody = (closes.slice(-2).shift() - opens.slice(-2).shift()) > (highs.slice(-2).shift() - closes.slice(-2).shift());
 	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
@@ -723,7 +773,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 		};
 	}
 	return false;
-}	
+}
 
 ////////////////////////////////////// BUY ///////////////////////////////////////////////
 
@@ -775,7 +825,7 @@ async function pump() {
 		take_profit = (buy_price * TAKE_PROFIT_MULTIPLIER).toPrecision(4);
 		stop_loss = (buy_price * STOP_LOSS_MULTIPLIER).toPrecision(4);
 		if (client) {
-			client.send({id: client.connectionID, bought: true, sym: coinpair, quantity: actualquantity, buy_price: buy_price, take_profit: take_profit, stop_loss: stop_loss, args: process.argv});
+			client.send({id: client.connectionID, bought: true, ts: new Date(Date.now()), sym: coinpair, quantity: actualquantity, buy_price: buy_price, take_profit: take_profit, stop_loss: stop_loss, args: process.argv});
 		}
 		ndump(take_profit, buy_price, stop_loss, actualquantity);
 	});
@@ -861,13 +911,15 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 			return;
 		}
 		TRANSACTION_COMPLETE = true;
+		
+		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty;
+		if (client) {
+			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, price: sell_price, quantity: quantity, args: process.argv});
+		}
 		if (server && immediately) {
+			server.transactionLog.push({id: "server market sell", sold: true, ts: new Date(Date.now()), sym: sym, price: sell_price, quantity: quantity})
 			return;
 		}
-		if (client) {
-			client.send({id: client.connectionID, sold: true, sym: sym, quantity: quantity, args: process.argv});
-		}
-		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		console.log("Sell is successful");
 		console.log("Last sell is because " + lastSellReason);
 		console.info("Market sell response", response);
