@@ -168,6 +168,7 @@ var {
 	manual_sell,
 	quit_buy,
 	yolo,
+	yolo58,
 	futures,
 	silent,
 	server,
@@ -235,7 +236,8 @@ async function initArgumentVariables() {
 		console.log("testing");
 	}
 	if (prepump) {
-		yolo = process.argv.includes("--yolo");
+		yolo = process.argv.includes("--yolo") || process.argv.includes("--yolo58");
+		yolo58 = process.argv.includes("--yolo58");
 		futures = process.argv.includes("--futures");
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
@@ -462,7 +464,7 @@ async function waitUntilPrepump() {
 			if (buy_rallys) {
 				rally = await getRally();
 			} else if (buy_good_buys) {
-				rally = await getGoodBuy();
+				rally = await maybeGetGoodBuys();
 			}
 			if (rally != null && Date.now() > dont_buy_before) {
 				if (!yolo) {
@@ -676,26 +678,32 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 
 ////////////////////////////////////////////////////////NOT DEPRECATED/////////////////////////////////////////////////////
 
-async function getGoodBuy() {
-	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
-		goodBuys = await scanForGoodBuys();
-		if (detection_mode) {
-			console.clear();
-			console.log("Detection Mode Active");
-			console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
-			console.log(`Blacklist: ${blacklist}`);
-			console.log(`Good buys: ${JSON.stringify(goodBuys, null, 2)}`);
-			return;
-		}
-		goodBuy = null;
-		while (goodBuys.length) {
-			goodBuy = goodBuys.shift();
-			if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
-				goodBuy == null
-			}
-		}
-		return goodBuy;
+async function maybeGetGoodBuys() {
+	if (yolo58) {
+		return new Date(Date.now()).getMinutes() == 58 && await getGoodBuys();
+	} else if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
+		return await getGoodBuys();
 	}
+}
+
+async function getGoodBuys() {
+	goodBuys = await scanForGoodBuys();
+	if (detection_mode) {
+		console.clear();
+		console.log("Detection Mode Active");
+		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
+		console.log(`Blacklist: ${blacklist}`);
+		console.log(`Good buys: ${JSON.stringify(goodBuys, null, 2)}`);
+		return;
+	}
+	goodBuy = null;
+	while (goodBuys.length) {
+		goodBuy = goodBuys.shift();
+		if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
+			goodBuy == null
+		}
+	}
+	return goodBuy;
 }
 
 async function scanForGoodBuys() {
@@ -759,12 +767,12 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	}
 	let mean = average(ticker.slice(-21));
 	let std = getStandardDeviation(ticker.slice(-21));
-	let last3gains = gains.slice(-4, -1);
+	let last3gains = gains.slice(-3);
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let increasingGains = isUptrend(last3gains, 0, false);
-	let opensBelowMean = (opens.slice(-4).filter(v => v > (mean)).length == 0);
-	let lastWickIsShorterThanBody = (closes.slice(-2).shift() - opens.slice(-2).shift()) > (highs.slice(-2).shift() - closes.slice(-2).shift());
-	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
+	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
+	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
 	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
 	if (opensBelowMean && increasingCloses && goodBuyGainIsValid && volumeIsOk && increasingGains && lastWickIsShorterThanBody) {
