@@ -119,6 +119,7 @@ var {
 	GOOD_BUY_SEED,
 	GOOD_BUY_PROFIT_MULTIPLIER,
 	GOOD_BUY_LOSS_MULTIPLIER,
+	GOOD_BUY_BUFFER_ADD,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count,
@@ -292,8 +293,8 @@ function initKeybindings() {
 				// a is to toggle auto
 				auto = !auto;
 				break;
-			case "c":
-				// c is to clear blacklist
+			case "l":
+				// l is to clear blacklist
 				if (server) {
 					blacklist = [];
 					updateBlacklistFromBalance();
@@ -466,13 +467,13 @@ async function waitUntilPrepump() {
 			} else if (buy_good_buys) {
 				rally = await maybeGetGoodBuys();
 			}
-			if (rally != null && Date.now() > dont_buy_before) {
+			if (rally && Date.now() > dont_buy_before) {
 				if (!yolo) {
 					// This avoids the race condition if we're waiting to buy anyways
 					await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
 				}
 				if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
-					console.log("not enough data");
+					console.log("not enough data to purchase " + rally.sym);
 					continue;
 				}
 				if (blacklist.includes(getCoin(rally.sym))) {
@@ -640,6 +641,7 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 	let gains = [];
 	let highs = [];
 	let lows = [];
+	let volumes = [];
 	let last = 0;
 	let totalVolume = 0;
 	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
@@ -655,6 +657,7 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 			highs.push(parseFloat(high));
 			lows.push(parseFloat(low));
 			gains.push(close/open);
+			volumes.push(parseFloat(volume));
 			totalVolume += parseFloat(volume) * (open/2 + close/2);
 		})
 		last = closes.slice(-1).pop();
@@ -668,9 +671,10 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 	}
 	let mean = average(ticker);
 	let std = getStandardDeviation(ticker);
-	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
-	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
-	if (increasingCloses && opensBelowMean) {
+	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
+	let opensBelowMeanPlusStdev = (opens.slice(-4).filter(v => v > (mean + std)).length == 0);
+	let last3VolumesGreaterThanPrevious3Volumes = volumes.slice(-3).reduce((sum, val) => sum + val, 0) > volumes.slice(-6, -3).reduce((sum, val) => sum + val, 0);
+	if (increasingCloses && opensBelowMeanPlusStdev && last3VolumesGreaterThanPrevious3Volumes) {
 		return true;
 	}
 	return false;
@@ -680,7 +684,9 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 
 async function maybeGetGoodBuys() {
 	if (yolo58) {
-		return new Date(Date.now()).getMinutes() == 58 && await getGoodBuys();
+		if (new Date(Date.now()).getMinutes() == 58) {
+			return await getGoodBuys();
+		}
 	} else if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
 		return await getGoodBuys();
 	}
@@ -739,6 +745,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let gains = [];
 	let highs = [];
 	let lows = [];
+	let volumes = [];
 	let last = 0;
 	let totalVolume = 0;
 	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
@@ -754,6 +761,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 			highs.push(parseFloat(high));
 			lows.push(parseFloat(low));
 			gains.push(close/open);
+			volumes.push(parseFloat(volume));
 			totalVolume += parseFloat(volume) * (open/2 + close/2);
 		})
 		last = closes.slice(-1).pop();
@@ -769,13 +777,16 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let std = getStandardDeviation(ticker.slice(-21));
 	let last3gains = gains.slice(-3);
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
-	let increasingGains = isUptrend(last3gains, 0, false);
-	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
+	let opensBelowMeanPlusStdev = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
 	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
-	let goodBuyGainIsValid = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let volumeIsOk = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
-	if (opensBelowMean && increasingCloses && goodBuyGainIsValid && volumeIsOk && increasingGains && lastWickIsShorterThanBody) {
+	let startOfRally = !isUptrend(opens.slice(-4), 0, false);
+	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
+	let thirdGainLessThanPrevious2Combined = Math.abs(1-last3gains[0]) < Math.abs(1-last3gains[1]) + Math.abs(1-last3gains[2]);
+	let last2VolumesGreaterThanPrevious2Volumes = volumes.slice(-2).reduce((sum, val) => sum + val, 0) > 1.5 * volumes.slice(-5, -3).reduce((sum, val) => sum + val, 0);
+	let lastWickGreaterThanSecondLastWick = highs.slice(-1).shift() > highs.slice(-2).shift();
+	if (opensBelowMeanPlusStdev && increasingCloses && startOfRally && gainInTargetRange && reachesMin24hVolume && thirdGainLessThanPrevious2Combined && last2VolumesGreaterThanPrevious2Volumes && lastWickIsShorterThanBody && lastWickGreaterThanSecondLastWick) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -846,8 +857,9 @@ async function waitUntilTimeToBuy() {
 	ready = false;
 	previousTrend = "None"
 	buy_indicator_reached = false;
+	buy_indicator_almost_reached = false;
 	buy_indicator_check_time = 0;
-	buy_indicator_buffer_add = buy_good_buys ? 5 * ONE_MIN : ONE_MIN;
+	buy_indicator_buffer_add = buy_good_buys ? GOOD_BUY_BUFFER_ADD : ONE_MIN;
 	buy_indicator_buffer = buy_indicator_buffer_add;
 	while (true) {
 		var [mean, stdev] = await tick(true);
@@ -862,7 +874,7 @@ async function waitUntilTimeToBuy() {
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO"): colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_reached ? colorText("green", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}${(!ready && auto) ? colorText("red", " GATHERING DATA") : ""}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText("green", latestPrice)}, Following BTC: ${follows_btc}, ${prepump ? `Opportunity Expires: ${colorText(buy_indicator_reached ? "green" : "red", msToTime(opportunity_expired_time - Date.now()))}, ` : ""}BBHigh: ${colorText("red", highstd.slice(-1).pop().toPrecision(4))}, BBLow: ${colorText("green", lowstd.slice(-1).pop().toPrecision(4))}, Buy Window: ${buy_indicator_almost_reached ? colorText( buy_indicator_reached ? "green" : "yellow", msToTime(buy_indicator_check_time - Date.now())) : colorText("red", "N/A")}${(!ready && auto) ? colorText("red", " GATHERING DATA") : ""}`);
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 7:
@@ -874,22 +886,31 @@ async function waitUntilTimeToBuy() {
 					}
 					lastLowstd =  lowstd.slice(-1).pop();
 					ready = true;
-					if (!buy_indicator_reached && latestPrice < lastLowstd) {
-						buy_indicator_reached = true;
+					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice < lastLowstd) {
+						buy_indicator_almost_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
 						if (buy_indicator_buffer) {
 							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - ONE_MIN) ;
 						}
 						buy_indicator_buffer = 0;
 					}
-					if (!buy_indicator_reached && latestPrice > mean) {
+					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice > mean) {
 						buy_indicator_buffer = buy_indicator_buffer_add;
+					}
+					if (buy_indicator_almost_reached && !buy_indicator_reached && Date.now() > buy_indicator_check_time) {
+						if (latestPrice > lastLowstd && latestPrice < mean ) {
+							buy_indicator_reached = true;
+							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+						} else {
+							buy_indicator_almost_reached = false;
+						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice > lastLowstd && latestPrice < mean ) {
 							return latestPrice;
 						}
 						buy_indicator_reached = false;
+						buy_indicator_almost_reached = false;
 					}
 					break;
 				default:
@@ -951,7 +972,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 				sell_time: new Date(Date.now()).toLocaleTimeString("en-US"),
 				maxPrice: lastSellLocalMax,
 				sellReason: lastSellReason,
-				gain: lastSell/lastBuy
+				gain: sell_price/buy_price
 			};
 			purchases.push(purchase);
 			lastSellLocalMax = 0;
