@@ -634,38 +634,7 @@ async function detectCoinRallies() {
 }
 
 async function isAGoodBuyFrom1hGraphForRally(sym) {
-	let finished = false;
-	let ticker = [];
-	let closes = [];
-	let opens = [];
-	let gains = [];
-	let highs = [];
-	let lows = [];
-	let volumes = [];
-	let last = 0;
-	let totalVolume = 0;
-	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
-		if (error) {
-			console.log(error);
-			finished = true;
-			return;
-		}
-		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
-			ticker.push(open/2 + close/2);
-			opens.push(parseFloat(open));
-			closes.push(parseFloat(close));
-			highs.push(parseFloat(high));
-			lows.push(parseFloat(low));
-			gains.push(close/open);
-			volumes.push(parseFloat(volume));
-			totalVolume += parseFloat(volume) * (open/2 + close/2);
-		})
-		last = closes.slice(-1).pop();
-		finished = true;
-	}, {limit: 48, endTime: Date.now()});
-	while (!finished) {
-		await sleep(ONE_SEC)
-	}
+	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false;
 	}
@@ -738,38 +707,7 @@ async function scanForGoodBuys() {
 }
 
 async function isAGoodBuyFrom1hGraph(sym) {
-	let finished = false;
-	let ticker = [];
-	let closes = [];
-	let opens = [];
-	let gains = [];
-	let highs = [];
-	let lows = [];
-	let volumes = [];
-	let last = 0;
-	let totalVolume = 0;
-	binance.candlesticks(sym, "1h", (error, ticks, symbol) => {
-		if (error) {
-			console.log(error);
-			finished = true;
-			return;
-		}
-		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
-			ticker.push(open/2 + close/2);
-			opens.push(parseFloat(open));
-			closes.push(parseFloat(close));
-			highs.push(parseFloat(high));
-			lows.push(parseFloat(low));
-			gains.push(close/open);
-			volumes.push(parseFloat(volume));
-			totalVolume += parseFloat(volume) * (open/2 + close/2);
-		})
-		last = closes.slice(-1).pop();
-		finished = true;
-	}, {limit: 48, endTime: Date.now()});
-	while (!finished) {
-		await sleep(ONE_SEC)
-	}
+	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false;
 	}
@@ -777,7 +715,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let std = getStandardDeviation(ticker.slice(-21));
 	let last3gains = gains.slice(-3);
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
-	let opensBelowMeanPlusStdev = (opens.slice(-3).filter(v => v > (mean + std)).length == 0);
+	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
 	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
 	let startOfRally = !isUptrend(opens.slice(-4), 0, false);
@@ -786,7 +724,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let thirdGainLessThanPrevious2Combined = Math.abs(1-last3gains[0]) < Math.abs(1-last3gains[1]) + Math.abs(1-last3gains[2]);
 	let last2VolumesGreaterThanPrevious2Volumes = volumes.slice(-2).reduce((sum, val) => sum + val, 0) > 1.5 * volumes.slice(-5, -3).reduce((sum, val) => sum + val, 0);
 	let lastWickGreaterThanSecondLastWick = highs.slice(-1).shift() > highs.slice(-2).shift();
-	if (opensBelowMeanPlusStdev && increasingCloses && startOfRally && gainInTargetRange && reachesMin24hVolume && thirdGainLessThanPrevious2Combined && last2VolumesGreaterThanPrevious2Volumes && lastWickIsShorterThanBody && lastWickGreaterThanSecondLastWick) {
+	if (opensBelowMean && increasingCloses && startOfRally && gainInTargetRange && reachesMin24hVolume && thirdGainLessThanPrevious2Combined && last2VolumesGreaterThanPrevious2Volumes && lastWickIsShorterThanBody && lastWickGreaterThanSecondLastWick) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -898,7 +836,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_buffer = buy_indicator_buffer_add;
 					}
 					if (buy_indicator_almost_reached && !buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice > lastLowstd && latestPrice < mean ) {
+						if (latestPrice > lastLowstd && latestPrice <= mean ) {
 							buy_indicator_reached = true;
 							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
 						} else {
@@ -906,7 +844,7 @@ async function waitUntilTimeToBuy() {
 						}
 					}
 					if (buy_indicator_reached && Date.now() > buy_indicator_check_time) {
-						if (latestPrice > lastLowstd && latestPrice < mean ) {
+						if (latestPrice > lastLowstd && latestPrice <= mean ) {
 							return latestPrice;
 						}
 						buy_indicator_reached = false;
@@ -1196,6 +1134,42 @@ function symbolFollowsBTCUSDT(sym) {
 }
 
 ////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
+async function fetchCandlestickGraph(sym, interval, segments) {
+	let finished = false;
+	let ticker = [];
+	let closes = [];
+	let opens = [];
+	let gains = [];
+	let highs = [];
+	let lows = [];
+	let volumes = [];
+	let last = 0;
+	let totalVolume = 0;
+	binance.candlesticks(sym, interval, (error, ticks, symbol) => {
+		if (error) {
+			console.log(error);
+			finished = true;
+			return;
+		}
+		ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
+			ticker.push(open/2 + close/2);
+			opens.push(parseFloat(open));
+			closes.push(parseFloat(close));
+			highs.push(parseFloat(high));
+			lows.push(parseFloat(low));
+			gains.push(close/open);
+			volumes.push(parseFloat(volume));
+			totalVolume += parseFloat(volume) * (open/2 + close/2);
+		})
+		last = closes.slice(-1).pop();
+		finished = true;
+	}, {limit: segments, endTime: Date.now()});
+	while (!finished) {
+		await sleep(ONE_SEC)
+	}
+	return [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume];
+} 
+
 async function waitUntilFetchPricesAsync() {
 	while(Date.now() < fetchMarketDataTime) {
 		await sleep(0.1 * ONE_SEC);
@@ -1429,20 +1403,8 @@ async function prepopulate30mData() {
 			}
 			await(Math.random() * 10 * ONE_SEC);
 			if (k.endsWith("USDT") || k.endsWith("BTC")) {
-				binance.candlesticks(k, "1m", (error, ticks, symbol) => {
-					if (error) {
-						console.log(error);
-						resolve();
-						return;
-					}
-					if (!newPrices[k]) {
-						newPrices[k] = [];
-					}
-					ticks.forEach(([time, open, high, low, close, volume, closeTime, assetVolume, trades, buyBaseVolume, buyAssetVolume, ignored]) => {
-						newPrices[k].push(open/2 + close/2);
-					})
-					resolve();
-				}, {limit: 30, endTime: Date.now()});
+				let [ticks] = await fetchCandlestickGraph(k, "1m", 30);
+				newPrices[k] = ticks;
 			}
 		});
 	});
@@ -1598,7 +1560,7 @@ function writeTransactionLogFileAndExit() {
 				stop_loss: buy.stop_loss,
 				time_sold: item.ts,
 				sell_price: item.sell_price,
-				gain: buy.sell_price/item.buy_price,
+				gain: parseFloat(buy.sell_price)/parseFloat(item.buy_price),
 				args: "\"" + buy.args + "\"",
 			});
 		}
