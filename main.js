@@ -768,7 +768,8 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let isBottomSupport = currentLowCluster == sortedLowIndex[0];
 	let gain = resHigh.centroids[1]/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	if (!isFreefallOrExponentialGrowth && isBottomSupport && gainInTargetRange) {
+	let last4OutOf7GainsPositive = gains.slice(-7).filter(g => g > 1).length > 3;
+	if (!isFreefallOrExponentialGrowth && isBottomSupport && gainInTargetRange && last4OutOf7GainsPositive) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1616,7 +1617,7 @@ function writeTransactionLogFileAndExit() {
 				buy_price: buy.buy_price,
 				quantity: item.quantity,
 				take_profit: buy.take_profit,
-				stop_loss: buy.stop_loss,
+				stop_loss: buy.stop_loss, 
 				time_sold: item.ts,
 				sell_price: item.sell_price,
 				gain: parseFloat(item.sell_price)/parseFloat(buy.buy_price),
