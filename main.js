@@ -62,6 +62,7 @@ var {
 	SELL_RIDE_PROFITS,
 	SELL_RIDE_PROFITS_PCT,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
+	BUFFER_ADD,
 
 	// ANALYSIS SETTINS
 	ANALYSIS_TIME,
@@ -205,14 +206,18 @@ async function init() {
 }
 
 async function testKMeans() {
-	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph("MITHUSDT", "15m", 300);
-	console.log(JSON.stringify(lows, null, 4));
-	let res = skmeans(lows,5,null,10);
+	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph("DENTUSDT", "1h", 72);
+	console.log(JSON.stringify(highs, null, 4));
+	let res = skmeans(highs,5,null,10);
 	//let resHigh = skmeans(highs,5,null,10);
 	console.log(JSON.stringify(res, null, 4));
-
 	let sortedHighIndex = Array.from(Array(5).keys()).sort((a, b) => res.centroids[a] - res.centroids[b]);
-	console.log(sortedHighIndex)
+	console.log(sortedHighIndex, sortedHighIndex[1]);
+	let a = highs.length - res.idxs.reverse().findIndex(i => i == sortedHighIndex[1]) - 1;
+	console.log(a);
+	let lastValOfHigherCluster = highs[a];
+	let gain = lastValOfHigherCluster/last;
+	console.log(lastValOfHigherCluster, gain);
 	process.exit(0);
 }
 
@@ -265,6 +270,7 @@ async function initArgumentVariables() {
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
 			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
+			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
 		}
 		detection_mode = process.argv.includes("--detect");
 	}
@@ -766,10 +772,14 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentLowCluster = resLow.idxs.pop();
 	let isFreefallOrExponentialGrowth = !clusterLowArr.slice(0, -8).includes(currentLowCluster);
 	let isBottomSupport = currentLowCluster == sortedLowIndex[0];
-	let gain = resHigh.centroids[1]/last;
+	let lastHighOneClusterAboveCurrentIdx = highs.length - resHigh.idxs.reverse().findIndex(i => i == sortedHighIndex[1]) - 1;
+	if (lastHighOneClusterAboveCurrentIdx == highs.length - 1) {
+		return;
+	}
+	let gain = highs[lastHighOneClusterAboveCurrentIdx]/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let last4OutOf7GainsPositive = gains.slice(-7).filter(g => g > 1).length > 3;
-	if (!isFreefallOrExponentialGrowth && isBottomSupport && gainInTargetRange && last4OutOf7GainsPositive) {
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
+	if (!isFreefallOrExponentialGrowth && isBottomSupport && gainInTargetRange && increasingCloses) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -842,7 +852,7 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_reached = false;
 	buy_indicator_almost_reached = false;
 	buy_indicator_check_time = 0;
-	buy_indicator_buffer_add = buy_good_buys ? GOOD_BUY_BUFFER_ADD : ONE_MIN;
+	buy_indicator_buffer_add = BUFFER_ADD;
 	buy_indicator_buffer = buy_indicator_buffer_add;
 	while (true) {
 		var [mean, stdev] = await tick(true);
