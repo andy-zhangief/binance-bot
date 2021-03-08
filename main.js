@@ -121,6 +121,7 @@ var {
 	GOOD_BUY_PROFIT_MULTIPLIER,
 	GOOD_BUY_LOSS_MULTIPLIER,
 	GOOD_BUY_BUFFER_ADD,
+	REMOVE_FROM_BLACKLIST_TIMER,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count,
@@ -1491,7 +1492,7 @@ function removeFromBlacklistLater(coin) {
 	setTimeout(() => {
 		blacklist = blacklist.filter(i => i !== coin);
 		synchronizeBlacklist();
-	}, (buy_good_buys ? 60 * ONE_MIN : 5 * ONE_MIN));
+	}, REMOVE_FROM_BLACKLIST_TIMER);
 }
 
 function synchronizeBlacklist() {
