@@ -189,6 +189,7 @@ var {
 	follows_btc, 
 	follows_btc_history,
 	init_complete,
+	test_and_quit,
 } = require("./const.js");
 
 ///////////////////////// INITIALIZATION ///////////////////////////////////
@@ -199,18 +200,13 @@ async function init() {
 	await readCoinInfo();
 	initKeybindings();
 	loopGetBalanceAndPrevDayAsync();
-	//await testAndQuit();
+	test_and_quit && await testAndQuit();
 	init_complete = true;
 	if (prepump) {
 		waitUntilPrepump();
 		return;
 	}
 	pump();
-}
-
-async function testAndQuit() {
-	await isAGoodBuyFrom1hGraphForClusters("DENTUSDT");
-	process.exit(0);
 }
 
 function checkValidArgs() {
@@ -249,6 +245,7 @@ async function initArgumentVariables() {
 	if (binance.getOption("test")) {
 		console.log("testing");
 	}
+	test_and_quit = process.argv.includes("--test-and-quit");
 	if (prepump) {
 		yolo = process.argv.includes("--yolo") || process.argv.includes("--yolo58");
 		yolo58 = process.argv.includes("--yolo58");
@@ -766,7 +763,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentLowCluster = resLow.idxs.slice(-1).pop();
 	let isFreefall = !resLow.idxs.slice(0, -8).includes(currentLowCluster);
 	let isExponentialGrowth = !resHigh.idxs.slice(0, -8).includes(currentHighCluster);
-	let isBuyableClusterSupport = currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL && previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1; //TODO: Validate
+	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1); //TODO: Validate
 	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
 	if (lastHighAboveCurrentIdx >= highs.length - 1) {
 		return;
@@ -1760,5 +1757,10 @@ function sleep(ms) {
 		setTimeout(resolve, ms);
 	});
 } 
+
+async function testAndQuit() {
+	await isAGoodBuyFrom1hGraphForClusters("BELBTC");
+	process.exit(0);
+}
 
 init();

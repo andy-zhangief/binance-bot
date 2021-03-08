@@ -173,4 +173,5 @@ module.exports = {
 	follows_btc : false,
 	follows_btc_history : new Array(10).fill(0.5),
 	init_complete : false,
+	test_and_quit : false,
 }
