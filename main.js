@@ -1304,21 +1304,29 @@ async function fetchAllPricesAsync() {
 
 async function getAllPrices() {
 	return new Promise((resolve, reject) => {
-		binance.bookTickers((error, ticker) => {
-			if (error) {
-				while (++fail_counter >= 100) {
-					console.log("TOO MANY FAILS GETTING PRICES");
-					process.exit(1);
+		try {
+			binance.bookTickers((error, ticker) => {
+				if (error) {
+					while (++fail_counter >= 100) {
+						console.log("TOO MANY FAILS GETTING PRICES");
+						process.exit(1);
+					}
+					reject(error);
+					return;
 				}
-				reject();
-				return;
+				fail_counter = 0;
+				serverPrices = ticker;
+				resolve();
+			});
+		} catch (e) {
+			while (++fail_counter >= 100) {
+				console.log("TOO MANY FAILS GETTING PRICES");
+				process.exit(1);
 			}
-			fail_counter = 0;
-			serverPrices = ticker;
-			resolve();
-		});
+			reject(e);
+			return;
+		}
 	});
-	
 }
 
 async function getPrevDay() {
