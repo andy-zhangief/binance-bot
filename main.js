@@ -761,8 +761,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentHighCluster = resHigh.idxs.slice(-1).pop();
 	let previousLowCluster = resLow.idxs.slice(-2).shift();
 	let currentLowCluster = resLow.idxs.slice(-1).pop();
-	let isFreefall = !resLow.idxs.slice(0, -8).includes(currentLowCluster);
-	let isExponentialGrowth = !resHigh.idxs.slice(0, -8).includes(currentHighCluster);
+	let isFreefall = resLow.idxs.slice(0, -8).filter(x => x <= CLUSTER_SUPPORT_BUY_LEVEL - 1).length > 1;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1); //TODO: Validate
 	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
 	if (lastHighAboveCurrentIdx >= highs.length - 1) {
@@ -771,7 +770,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let gain = Math.max(opens[lastHighAboveCurrentIdx], closes[lastHighAboveCurrentIdx])/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
-	if (!isFreefall && !isExponentialGrowth && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
+	if (!isFreefall && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
