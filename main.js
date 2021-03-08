@@ -1619,7 +1619,7 @@ function writeTransactionLogFileAndExit() {
 				stop_loss: buy.stop_loss,
 				time_sold: item.ts,
 				sell_price: item.sell_price,
-				gain: parseFloat(buy.sell_price)/parseFloat(buy.buy_price),
+				gain: parseFloat(item.sell_price)/parseFloat(buy.buy_price),
 				link: "https://www.binance.com/en/trade/" + item.sym,
 				args: "\"" + buy.args + "\"",
 			});
