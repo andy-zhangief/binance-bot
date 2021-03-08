@@ -196,7 +196,8 @@ async function init() {
 	initKeybindings();
 	loopGetBalanceAndPrevDayAsync();
 	init_complete = true;
-	//await testKMeans();
+	await testKMeans();
+	// TODO call replace on idx using sortedHighIndex etc...
 	if (prepump) {
 		waitUntilPrepump();
 		return;
@@ -210,9 +211,11 @@ async function testKMeans() {
 	console.log(JSON.stringify(highs, null, 4));
 	let res = skmeans(highs,5,null,10);
 	//let resHigh = skmeans(highs,5,null,10);
-	console.log(JSON.stringify(res, null, 4));
+	
 	let sortedHighIndex = Array.from(Array(5).keys()).sort((a, b) => res.centroids[a] - res.centroids[b]);
 	console.log(sortedHighIndex, sortedHighIndex[1]);
+	res.idxs = res.idxs.map(i => sortedHighIndex.indexOf(i));
+	console.log(JSON.stringify(res, null, 4));
 	let a = highs.length - res.idxs.reverse().findIndex(i => i == sortedHighIndex[1]) - 1;
 	console.log(a);
 	let lastValOfHigherCluster = highs[a];
@@ -400,6 +403,7 @@ async function initServer() {
 					console.log(colorText("red", `Client has not reconnected, selling ${transaction.quantity} ${sym} at market price`));
 					ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, true, transaction.sym);
 					delete server.transactionHistory[sym];
+					//TODO: push market sell object to transaction history
 				}
 			});
 		}
