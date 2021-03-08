@@ -115,8 +115,8 @@ var {
 	RALLY_GREEN_RED_RATIO,
 	GOOD_BUY_MIN_GAIN,
 	GOOD_BUY_MAX_GAIN,
-	MIN_48H_BTC,
-	MIN_48H_USDT,
+	MIN_24H_BTC,
+	MIN_24H_USDT,
 	GOOD_BUY_SEED_MAX,
 	GOOD_BUY_SEED,
 	GOOD_BUY_PROFIT_MULTIPLIER,
@@ -679,7 +679,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
 	let startOfRally = !isUptrend(opens.slice(-4), 0, false);
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_48H_USDT : MIN_48H_BTC);
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	let thirdGainLessThanPrevious2Combined = Math.abs(1-last3gains[0]) < Math.abs(1-last3gains[1]) + Math.abs(1-last3gains[2]);
 	let last2VolumesGreaterThanPrevious2Volumes = volumes.slice(-2).reduce((sum, val) => sum + val, 0) > 1.5 * volumes.slice(-5, -3).reduce((sum, val) => sum + val, 0);
 	let lastWickGreaterThanSecondLastWick = highs.slice(-1).shift() > highs.slice(-2).shift();
@@ -773,7 +773,8 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	}
 	let gain = Math.max(opens[lastHighAboveCurrentIdx], closes[lastHighAboveCurrentIdx])/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	if (!isFreefall && !isExponentialGrowth && isBuyableClusterSupport && gainInTargetRange) {
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
+	if (!isFreefall && !isExponentialGrowth && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
