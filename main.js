@@ -1188,7 +1188,7 @@ function symbolFollowsBTCUSDT(sym) {
 }
 
 ////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
-async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true) {
+async function fetchCandlestickGraph(sym, interval, segments, force = false) {
 	let key = sym+"-"+interval+"-"+segments;
 	let t = parseInt(interval.substring(0,interval.length-1))
 	let i = interval.substring(interval.length-1);
@@ -1223,9 +1223,7 @@ async function fetchCandlestickGraph(sym, interval, segments, force = false, cac
 	while (!finished) {
 		await sleep(ONE_SEC)
 	}
-	if (cache) {
-		candlestickCache[key] = {data: [ticker, closes, opens, gains, highs, lows, volumes, totalVolume], time: Date.now()};
-	}
+	candlestickCache[key] = {data: [ticker, closes, opens, gains, highs, lows, volumes, totalVolume], time: Date.now()};
 	return [ticker, closes, opens, gains, highs, lows, volumes, totalVolume];
 } 
 
@@ -1470,7 +1468,7 @@ async function prepopulate30mData() {
 			}
 			await(Math.random() * 10 * ONE_SEC);
 			if (k.endsWith("USDT") || k.endsWith("BTC")) {
-				let [ticks] = await fetchCandlestickGraph(k, "1m", 30, true, false);
+				let [ticks] = await fetchCandlestickGraph(k, "1m", 30, true);
 				newPrices[k] = ticks;
 			}
 		});
