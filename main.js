@@ -1231,13 +1231,13 @@ async function fetchCandlestickGraph(sym, interval, segments, force = false, cac
 
 async function waitUntilFetchPricesAsync() {
 	while(Date.now() < fetchMarketDataTime) {
-		await sleep(0.1 * ONE_SEC);
+		await sleep(ONE_SEC);
 	}
 	if (!client) {
 		await fetchAllPricesAsync();
 	} else {
 		while (!price_data_received) {
-			await sleep(0.1 * ONE_SEC);
+			await sleep(ONE_SEC);
 		}
 		price_data_received = false;
 	}
@@ -1377,7 +1377,7 @@ async function getLatestPriceAsync(coinpair) {
 			console.log(`Too many fails fetching price of ${coinpair}, exiting`);
 			process.exit(1);
 		}
-		await sleep(0.1 * ONE_SEC);
+		await sleep(ONE_SEC);
 		return await getLatestPriceAsync(coinpair);
 	}
 }
@@ -1565,7 +1565,7 @@ async function readCoinInfo() {
 			}
 		});
 		while (!coinsInfo) {
-			await sleep(0.1 * ONE_SEC);
+			await sleep(ONE_SEC);
 		}
 		fail_counter = 0;
 		resolve();
