@@ -761,7 +761,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentHighCluster = resHigh.idxs.slice(-1).pop();
 	let previousLowCluster = resLow.idxs.slice(-2).shift();
 	let currentLowCluster = resLow.idxs.slice(-1).pop();
-	let isFreefall = resLow.idxs.slice(0, -8).filter(x => x <= CLUSTER_SUPPORT_BUY_LEVEL - 1).length > 1;
+	let isFreefall = resLow.idxs.slice(0, -8).filter(x => x <= CLUSTER_SUPPORT_BUY_LEVEL - 1).length <= 2;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1); //TODO: Validate
 	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
 	if (lastHighAboveCurrentIdx >= highs.length - 1) {
@@ -1758,7 +1758,7 @@ function sleep(ms) {
 } 
 
 async function testAndQuit() {
-	await isAGoodBuyFrom1hGraphForClusters("BELBTC");
+	await isAGoodBuyFrom1hGraphForClusters("FILBTC");
 	process.exit(0);
 }
 
