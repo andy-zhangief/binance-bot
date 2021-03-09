@@ -170,6 +170,7 @@ var {
 	prevDay,
 	serverPrices,
 	blacklist,
+	candlestickCache,
 	balances,
 	coinInfo,
 	coinsInfo,
@@ -647,7 +648,7 @@ async function detectCoinRallies() {
 }
 
 async function isAGoodBuyFrom1hGraphForRally(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48, true);
 	if (!ticker.length) {
 		return false;
 	}
@@ -663,13 +664,14 @@ async function isAGoodBuyFrom1hGraphForRally(sym) {
 }
 
 async function isAGoodBuyFrom1hGraph(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false;
 	}
 	let mean = average(ticker.slice(-21));
 	let std = getStandardDeviation(ticker.slice(-21));
 	let last3gains = gains.slice(-3);
+	let last = getPricesForCoin(sym, 1).pop();
 	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
 	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
 	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
@@ -750,17 +752,20 @@ async function scanForGoodBuys(clusters = false) {
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72, new Date(Date.now()).getMinutes() > 50);
 	if (!ticker.length) {
 		return false; 
 	}
+	let last = getPricesForCoin(sym, 1).pop();
 	let resHigh = skmeans(highs, NUMBER_OF_CLUSTERS, null, NUMBER_OF_CLUSTER_ITERATIONS);
 	let resLow = skmeans(lows, NUMBER_OF_CLUSTERS, null, NUMBER_OF_CLUSTER_ITERATIONS);
-	resHigh.idxs = resHigh.idxs.map(i => Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]).indexOf(i));
-	resLow.idxs =  resLow.idxs.map(i => Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]).indexOf(i));
-	let currentHighCluster = resHigh.idxs.slice(-1).pop();
-	let previousLowCluster = resLow.idxs.slice(-2).shift();
-	let currentLowCluster = resLow.idxs.slice(-1).pop();
+	let sortedHigh = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]);
+	let sortedLow = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]);
+	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
+	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
+	let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
+	let previousLowCluster = resLow.idxs.slice(-1).pop();
+	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
 	let isFreefall = resLow.idxs.slice(0, -8).filter(x => x <= CLUSTER_SUPPORT_BUY_LEVEL - 1).length <= 2;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1); //TODO: Validate
 	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
@@ -1189,17 +1194,20 @@ function symbolFollowsBTCUSDT(sym) {
 }
 
 ////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
-async function fetchCandlestickGraph(sym, interval, segments) {
+async function fetchCandlestickGraph(sym, interval, segments, force = false) {
+	let key = sym+"-"+interval+"-"+segments;
+	let t = parseInt(interval.substring(0,interval.length-1))
+	let i = interval.substring(interval.length-1);
+	i = i == "m" ? ONE_MIN : i == "h" ? 60 * ONE_MIN : i == "d" ? 24 * 60 * ONE_MIN : 0;
+	if (i == 0) {
+		console.log("Invalid Interval");
+		return;
+	}
+	if (!force && candlestickCache[key] && Date.now() - candlestickCache[key].time < t * i) {
+		return candlestickCache[key].data;
+	}
 	let finished = false;
-	let ticker = [];
-	let closes = [];
-	let opens = [];
-	let gains = [];
-	let highs = [];
-	let lows = [];
-	let volumes = [];
-	let last = 0;
-	let totalVolume = 0;
+	let ticker = [], closes = [], opens = [], gains = [], highs = [], lows = [], volumes = [], totalVolume = 0;
 	binance.candlesticks(sym, interval, (error, ticks, symbol) => {
 		if (error) {
 			console.log(error);
@@ -1216,13 +1224,13 @@ async function fetchCandlestickGraph(sym, interval, segments) {
 			volumes.push(parseFloat(volume));
 			totalVolume += parseFloat(volume) * (open/2 + close/2);
 		})
-		last = closes.slice(-1).pop();
 		finished = true;
 	}, {limit: segments, endTime: Date.now()});
 	while (!finished) {
 		await sleep(ONE_SEC)
 	}
-	return [ticker, closes, opens, gains, highs, lows, volumes, last, totalVolume];
+	candlestickCache[key] = {data: [ticker, closes, opens, gains, highs, lows, volumes, totalVolume], time: Date.now()};
+	return [ticker, closes, opens, gains, highs, lows, volumes, totalVolume];
 } 
 
 async function waitUntilFetchPricesAsync() {
@@ -1466,7 +1474,7 @@ async function prepopulate30mData() {
 			}
 			await(Math.random() * 10 * ONE_SEC);
 			if (k.endsWith("USDT") || k.endsWith("BTC")) {
-				let [ticks] = await fetchCandlestickGraph(k, "1m", 30);
+				let [ticks] = await fetchCandlestickGraph(k, "1m", 30, true);
 				newPrices[k] = ticks;
 			}
 		});

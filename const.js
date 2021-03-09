@@ -154,6 +154,7 @@ module.exports = {
 	prevDay : {},
 	serverPrices : [],
 	blacklist : [],
+	candlestickCache: {},
 	balances : {},
 	coinInfo : null,
 	coinsInfo : null,
