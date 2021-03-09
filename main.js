@@ -1720,7 +1720,8 @@ function plot(buying) {
 
 /////////////////////////////// MISC /////////////////////////////////////////////////
 Promise.raceAll = function(promises, timeoutTime) {
-    return Promise.all(promises.map(p => Promise.race([p, sleep(timeoutTime)])));
+	count = promises.length;
+    return Promise.all(promises.map(p => Promise.race([p, sleep(timeoutTime)]).then(() => console.log(--count))));
 }
 
 function colorText(color, str) {
