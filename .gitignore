@@ -1,3 +1,4 @@
 secrets.js
 minimums.json
 *.log
+logs/*
