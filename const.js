@@ -162,7 +162,6 @@ module.exports = {
 	manual_sell : false,
 	quit_buy : false,
 	yolo : false,
-	yolo58 : false,
 	futures : false,
 	silent : false,
 	server : null,

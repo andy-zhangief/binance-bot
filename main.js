@@ -178,7 +178,6 @@ var {
 	manual_sell,
 	quit_buy,
 	yolo,
-	yolo58,
 	futures,
 	silent,
 	server,
@@ -248,8 +247,7 @@ async function initArgumentVariables() {
 	}
 	test_and_quit = process.argv.includes("--test-and-quit");
 	if (prepump) {
-		yolo = process.argv.includes("--yolo") || process.argv.includes("--yolo58");
-		yolo58 = process.argv.includes("--yolo58");
+		yolo = process.argv.includes("--yolo");
 		futures = process.argv.includes("--futures");
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
@@ -698,11 +696,7 @@ async function isAGoodBuyFrom1hGraph(sym) {
 //TODO: Better code pathing once cluster code is finalized
 
 async function maybeGetGoodBuys(clusters = false) {
-	if (yolo58) {
-		if (new Date(Date.now()).getMinutes() == 58) {
-			return await getGoodBuys(clusters);
-		}
-	} else if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
+	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
 		return await getGoodBuys(clusters);
 	}
 }
