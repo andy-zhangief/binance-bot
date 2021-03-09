@@ -721,8 +721,8 @@ async function getGoodBuys(clusters = false) {
 }
 
 async function scanForGoodBuys(clusters = false) {
-	goodCoins = [];
-	promises = Object.keys(coinsInfo).map(async k => {
+	let goodCoins = [];
+	let promises = Object.keys(coinsInfo).map(async k => {
 		if (coinsInfo[k].status != "TRADING") {
 			return;
 		}
@@ -741,7 +741,7 @@ async function scanForGoodBuys(clusters = false) {
 			}
 		}
 	});
-	await Promise.raceAll(promises, 15 * ONE_SEC, null);
+	await Promise.raceAll(promises, 15 * ONE_SEC);
 	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
@@ -1462,7 +1462,7 @@ async function prepopulate30mData() {
 		process.exit(1);
 	}
 	let newPrices = {};
-	promises = Object.keys(coinsInfo).map(async k => {
+	let promises = Object.keys(coinsInfo).map(async k => {
 		return new Promise(async (resolve) => {
 			if (coinsInfo[k].status != "TRADING") {
 				resolve();
@@ -1475,7 +1475,7 @@ async function prepopulate30mData() {
 			}
 		});
 	});
-	await Promise.raceAll(promises, 15 * ONE_SEC, null);
+	await Promise.raceAll(promises, 15 * ONE_SEC);
 	newPricesArray = [];
 	for (i = 0; i < 30; i++) {
 		newPrices10s = {};
@@ -1719,17 +1719,8 @@ function plot(buying) {
 
 
 /////////////////////////////// MISC /////////////////////////////////////////////////
-
-Promise.delay = function(t, val) {
-    return new Promise(resolve => {
-        setTimeout(resolve.bind(null, val), t);
-    });
-}
-
-Promise.raceAll = function(promises, timeoutTime, timeoutVal) {
-    return Promise.all(promises.map(p => {
-        return Promise.race([p, Promise.delay(timeoutTime, timeoutVal)])
-    }));
+Promise.raceAll = function(promises, timeoutTime) {
+    return Promise.all(promises.map(p => Promise.race([p, sleep(timeoutTime)])));
 }
 
 function colorText(color, str) {
