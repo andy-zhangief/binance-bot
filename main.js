@@ -797,8 +797,7 @@ async function pump() {
 	}
 	if (latestPrice == 0) {
 		TRANSACTION_COMPLETE = true;
-		blacklist = blacklist.filter(i => i !== coin);
-		synchronizeBlacklist();
+		removeFromBlacklistLater(coin);
 		if (!LOOP) {
 			console.log("Quitting");
 			process.exit(0);
