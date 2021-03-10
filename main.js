@@ -747,7 +747,7 @@ async function scanForGoodBuys(clusters = false) {
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72, new Date(Date.now()).getMinutes() > 50);
 	if (!ticker.length) {
 		return false; 
 	}
@@ -759,10 +759,10 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
 	let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
-	let previousLowCluster = resLow.idxs.slice(-1).pop();
+	let previousLowClusters = resLow.idxs.slice(-2);
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
 	let isFreefall = resLow.idxs.slice(0, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
-	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowCluster == CLUSTER_SUPPORT_BUY_LEVEL - 1); //TODO: Validate
+	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters[1] == CLUSTER_SUPPORT_BUY_LEVEL - 1) && (previousLowClusters[0] == CLUSTER_SUPPORT_BUY_LEVEL); //TODO: Validate
 	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
 	if (lastHighAboveCurrentIdx >= highs.length - 1) {
 		return;
