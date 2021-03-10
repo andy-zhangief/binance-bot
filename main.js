@@ -767,7 +767,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	if (lastHighAboveCurrentIdx >= highs.length - 1) {
 		return;
 	}
-	let gain = Math.max(opens[lastHighAboveCurrentIdx], closes[lastHighAboveCurrentIdx])/last;
+	let gain = Math.max(opens[lastHighAboveCurrentIdx], closes[lastHighAboveCurrentIdx])/last - 0.005; // adds a small buffer incase actual resistance is lower
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
 	if (!isFreefall && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
