@@ -941,6 +941,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
 		SELL_TS = 0;
+		lastBuy = buy_price * response.executedQty;
 		lastSell = sell_price * response.executedQty;
 		pnl += lastSell - lastBuy;
 		pnl = Math.round(pnl*10000000)/10000000;
