@@ -761,7 +761,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
 	let previousLowClusters = resLow.idxs.slice(-4);
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
-	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
+	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 2;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
 	let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
@@ -1000,7 +1000,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				case 7:
 					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
-						take_profit_hit_check_time = Date.now() + 0.5 * ONE_MIN;
+						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
 					if (ride_profits && Date.now() > take_profit_hit_check_time) {
 						if (latestPrice < (take_profit * 0.995)) {
