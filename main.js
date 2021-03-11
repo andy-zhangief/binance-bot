@@ -763,11 +763,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
 	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
-	let lastHighAboveCurrentIdx = highs.length - resHigh.idxs.slice().reverse().findIndex(i => i == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC) - 1;
-	if (lastHighAboveCurrentIdx >= highs.length - 1) {
-		return;
-	}
-	let gain = Math.max(opens[lastHighAboveCurrentIdx], closes[lastHighAboveCurrentIdx])/last - 0.005; // adds a small buffer incase actual resistance is lower
+	let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
 	if (!isFreefall && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
@@ -1754,7 +1750,7 @@ function sleep(ms) {
 } 
 
 async function testAndQuit() {
-	await isAGoodBuyFrom1hGraphForClusters("FILBTC");
+	await isAGoodBuyFrom1hGraphForClusters("BTCUSDT");
 	process.exit(0);
 }
 
