@@ -982,7 +982,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	sell_indicator_check_time = 0;
 	ride_profits = false;
 	take_profit_hit_check_time = 0;
-	while (!auto || (latestPrice > stop_loss && latestPrice < take_profit) || ride_profits) {
+	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -998,7 +998,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
 				case 7:
-					if (latestPrice > take_profit && !ride_profits && SELL_RIDE_PROFITS) {
+					if (latestPrice >= take_profit && !ride_profits && SELL_RIDE_PROFITS) {
 						ride_profits = true;
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
