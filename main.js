@@ -759,7 +759,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
 	let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
-	let previousLowClusters = resLow.idxs.slice(-3);
+	let previousLowClusters = resLow.idxs.slice(-4);
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
 	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
