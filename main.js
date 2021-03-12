@@ -750,7 +750,7 @@ async function scanForGoodBuys(clusters = false) {
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72, new Date(Date.now()).getMinutes() > 50);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72);
 	if (!ticker.length) {
 		return false; 
 	}
