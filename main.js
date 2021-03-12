@@ -465,7 +465,7 @@ async function waitUntilPrepump() {
 	while (true) {
 		if (TRANSACTION_COMPLETE) {
 			await waitUntilFetchPricesAsync();
-			if (!detection_mode) {
+			if (!detection_mode && TRANSACTION_COMPLETE) {
 				console.clear();
 				console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
 				console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
