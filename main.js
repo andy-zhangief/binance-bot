@@ -768,7 +768,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
 	let isBuyableClusterSupport = (currentLowCluster >= CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
-	let gain =  Math.abs(Math.min(...lows.slice(0, -10))/last - 1) * 2 + 1;
+	let gain =  Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
@@ -1755,7 +1755,7 @@ function sleep(ms) {
 } 
 
 async function testAndQuit() {
-	await isAGoodBuyFrom1hGraphForClusters("BTCUSDT");
+	await isAGoodBuyFrom1hGraphForClusters("FTMUSDT");
 	process.exit(0);
 }
 
