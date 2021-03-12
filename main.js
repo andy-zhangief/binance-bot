@@ -763,7 +763,8 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
 	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 2;
 	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
-	let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
+	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
+	let gain =  Math.abs(Math.min(...lows.slice(0, -10))/last - 1) * 2 + 1;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
@@ -1005,7 +1006,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
 					if (ride_profits && Date.now() > take_profit_hit_check_time) {
-						if (latestPrice < (take_profit * 0.995)) {
+						if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
 							lastSellReason = "sold because take profit is reached";
 							return latestPrice;
 						}
