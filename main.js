@@ -750,29 +750,28 @@ async function scanForGoodBuys(clusters = false) {
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 72);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
 	}
-	let last = getPricesForCoin(sym, 1).pop();
+	let last30mins = getPricesForCoin(sym);
+	let last = last30mins.slice(-1).pop();
 	let resHigh = skmeans(highs, NUMBER_OF_CLUSTERS, null, NUMBER_OF_CLUSTER_ITERATIONS);
 	let resLow = skmeans(lows, NUMBER_OF_CLUSTERS, null, NUMBER_OF_CLUSTER_ITERATIONS);
 	let sortedHigh = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]);
 	let sortedLow = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]);
 	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
-	let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
-	let previousLowClusters = resLow.idxs.slice(-4);
-	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
-	let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 2;
-	let isBuyableClusterSupport = (currentLowCluster == CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
+	//let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
+	let previousLowClusters = resLow.idxs.slice(-6);
+	let currentLowCluster = sortedLow.indexOf(resLow.test(Math.min(...last30mins)).idx);
+	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
+	let isBuyableClusterSupport = (currentLowCluster >= CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gain =  Math.abs(Math.min(...lows.slice(0, -10))/last - 1) * 2 + 1;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
-	let gainingOverLast8Hours = average(gains.slice(-8, -1)) > 1.01;
-	let lastGreaterThanLastClose = last > closes.slice(-1).pop();
-	if (!isFreefall && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume && gainingOverLast8Hours && lastGreaterThanLastClose) {
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
+	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
