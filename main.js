@@ -770,7 +770,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let gain =  Math.abs(Math.min(...lows.slice(0, -10))/last - 1) * 2 + 1;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 3 : MIN_24H_BTC * 3);
-	let gainingOverLast8Hours = average(gains.slice(-8)) > 1.01;
+	let gainingOverLast8Hours = average(gains.slice(-8, -1)) > 1.01;
 	let lastGreaterThanLastClose = last > closes.slice(-1).pop();
 	if (!isFreefall && isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume && gainingOverLast8Hours && lastGreaterThanLastClose) {
 		return {
