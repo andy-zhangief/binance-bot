@@ -63,6 +63,7 @@ var {
 	SELL_RIDE_PROFITS_PCT,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
 	BUFFER_ADD,
+	BUFFER_SUBTRACT,
 
 	// ANALYSIS SETTINS
 	ANALYSIS_TIME,
@@ -122,6 +123,7 @@ var {
 	GOOD_BUY_PROFIT_MULTIPLIER,
 	GOOD_BUY_LOSS_MULTIPLIER,
 	GOOD_BUY_BUFFER_ADD,
+	GOOD_BUY_BUFFER_SUBTRACT,
 	REMOVE_FROM_BLACKLIST_TIMER,
 	NUMBER_OF_CLUSTERS,
 	NUMBER_OF_CLUSTER_ITERATIONS,
@@ -260,6 +262,7 @@ async function initArgumentVariables() {
 			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
 			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
+			BUFFER_SUBTRACT = GOOD_BUY_BUFFER_SUBTRACT;
 		}
 		detection_mode = process.argv.includes("--detect");
 	}
@@ -872,7 +875,7 @@ async function waitUntilTimeToBuy() {
 						buy_indicator_almost_reached = true;
 						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
 						if (buy_indicator_buffer) {
-							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - ONE_MIN) ;
+							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - BUFFER_SUBTRACT) ;
 						}
 						buy_indicator_buffer = 0;
 					}
