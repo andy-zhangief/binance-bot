@@ -54,7 +54,8 @@ var {
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
 	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
-	BUY_SELL_INDICATOR_INC,
+	BUY_INDICATOR_INC,
+	SELL_INDICATOR_INC,
 	TIME_TO_CHANGE_PROFIT_LOSS,
 	TAKE_PROFIT_CHANGE_PCT,
 	STOP_LOSS_CHANGE_PCT,
@@ -872,7 +873,7 @@ async function waitUntilTimeToBuy() {
 					ready = true;
 					if (!buy_indicator_reached && !buy_indicator_almost_reached && latestPrice < lastLowstd) {
 						buy_indicator_almost_reached = true;
-						buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC + buy_indicator_buffer;
+						buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC + buy_indicator_buffer;
 						if (buy_indicator_buffer) {
 							buy_indicator_buffer_add = Math.max(0, buy_indicator_buffer_add - BUFFER_SUBTRACT) ;
 						}
@@ -884,7 +885,7 @@ async function waitUntilTimeToBuy() {
 					if (buy_indicator_almost_reached && !buy_indicator_reached && Date.now() > buy_indicator_check_time) {
 						if (latestPrice > lastLowstd && latestPrice <= mean ) {
 							buy_indicator_reached = true;
-							buy_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+							buy_indicator_check_time = Date.now() + BUY_INDICATOR_INC;
 						} else {
 							buy_indicator_almost_reached = false;
 						}
@@ -999,7 +1000,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 			: isUptrend(masell.slice(-BB_SELL), BB_SELL * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
 			: "None";
 		autoText = auto ? colorText("green", "AUTO") : colorText("red", "MANUAL");
-		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")} Sell Window: ${sell_indicator_reached ? colorText("green", msToTime(sell_indicator_check_time - Date.now())) : colorText("red", "N/A")}`);
+		console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)}, ${coinpair}, ${autoText}, Current: ${colorText(latestPrice > buy_price ? "green" : "red", latestPrice)} Profit: ${colorText("green", take_profit + " (" + ((take_profit/buy_price - 1) * 100).toFixed(3) + "%)")}, Buy: ${colorText("yellow", buy_price.toPrecision(4))} Stop Loss: ${colorText("red", stop_loss + " (" + ((1-stop_loss/buy_price) * -100).toFixed(3) + "%)")} Sell Window: ${sell_indicator_almost_reached ? colorText(sell_indicator_reached ? "green" : "yellow", msToTime(sell_indicator_check_time - Date.now())) : colorText("red", "N/A")}`);
 		if (auto && Date.now() > timeBeforeSale) {
 			switch (BUY_SELL_STRATEGY) {
 				case 7:
@@ -1016,12 +1017,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (ride_profits && latestPrice > take_profit) {
 						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
 							sell_indicator_almost_reached = true;
-							sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+							sell_indicator_check_time = Date.now() + SELL_INDICATOR_INC;
 						}
 						if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
 							if (latestPrice < highstd.slice(-1).pop()) {
 								sell_indicator_reached = true;
-								sell_indicator_check_time = Date.now() + BUY_SELL_INDICATOR_INC;
+								sell_indicator_check_time = Date.now() + SELL_INDICATOR_INC;
 							} else {
 								sell_indicator_almost_reached = false;
 							}
