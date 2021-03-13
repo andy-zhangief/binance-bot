@@ -467,6 +467,11 @@ async function waitUntilPrepump() {
 	while (true) {
 		if (TRANSACTION_COMPLETE) {
 			await waitUntilFetchPricesAsync();
+			if (server) {
+				console.clear();
+				console.log(`Server has ${server.getClients().length} clients connected. Current Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
+				continue;
+			}
 			if (!detection_mode && TRANSACTION_COMPLETE) {
 				console.clear();
 				console.log(`Waiting for pullbacks, Data points: ${prices_data_points_count}`);
