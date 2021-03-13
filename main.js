@@ -1015,12 +1015,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						}
 					}
 					if (ride_profits && latestPrice > take_profit) {
-						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > highstd.slice(-1).pop()) {
+						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > mean) {
 							sell_indicator_almost_reached = true;
-							sell_indicator_check_time = Date.now() + SELL_INDICATOR_INC;
+							sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC; // This is intentional. Srry for naming confusion
 						}
 						if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < highstd.slice(-1).pop()) {
+							if (latestPrice < mean) {
 								sell_indicator_reached = true;
 								sell_indicator_check_time = Date.now() + SELL_INDICATOR_INC;
 							} else {
@@ -1028,7 +1028,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 							}
 						}
 						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < highstd.slice(-1).pop()) {
+							if (latestPrice < mean) {
 								return latestPrice;
 							}
 							sell_indicator_almost_reached = false;
