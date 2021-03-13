@@ -1773,7 +1773,6 @@ function sleep(ms) {
 } 
 
 async function testAndQuit() {
-	await isAGoodBuyFrom1hGraphForClusters("FTMUSDT");
 	process.exit(0);
 }
 
