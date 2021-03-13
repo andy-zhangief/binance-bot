@@ -990,6 +990,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	sell_indicator_increment = SELL_INDICATOR_INC_BASE;
 	ride_profits = false;
 	take_profit_hit_check_time = 0;
+	fetch_15m_candlestick_time = 0;
+	mean15 = 0;
 	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
@@ -1016,28 +1018,35 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 							return latestPrice;
 						}
 					}
-					if (ride_profits && latestPrice > take_profit) {
-						if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > mean) {
-							sell_indicator_almost_reached = true;
-							sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC; // This is intentional. Srry for naming confusion
-						}
-						if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < mean) {
-								sell_indicator_reached = true;
-								sell_indicator_check_time = Date.now() + sell_indicator_increment;
-								sell_indicator_increment *= SELL_INDICATOR_INC_MULTIPLIER;
-							} else {
-								sell_indicator_almost_reached = false;
-							}
-						}
-						if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-							if (latestPrice < mean) {
-								return latestPrice;
-							}
-							sell_indicator_almost_reached = false;
-							sell_indicator_reached = false;
-						}
+					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
+						fetch_15m_candlestick_time = Date.now();
+						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker));
 					}
+					if (ride_profits && latestPrice < mean15) {
+						return latestPrice;
+					}
+					// if (ride_profits && latestPrice > take_profit) {
+					// 	if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > mean) {
+					// 		sell_indicator_almost_reached = true;
+					// 		sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC; // This is intentional. Srry for naming confusion
+					// 	}
+					// 	if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
+					// 		if (latestPrice < mean) {
+					// 			sell_indicator_reached = true;
+					// 			sell_indicator_check_time = Date.now() + sell_indicator_increment;
+					// 			sell_indicator_increment *= SELL_INDICATOR_INC_MULTIPLIER;
+					// 		} else {
+					// 			sell_indicator_almost_reached = false;
+					// 		}
+					// 	}
+					// 	if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
+					// 		if (latestPrice < mean) {
+					// 			return latestPrice;
+					// 		}
+					// 		sell_indicator_almost_reached = false;
+					// 		sell_indicator_reached = false;
+					// 	}
+					// }
 					break;
 				default:
 					break;
