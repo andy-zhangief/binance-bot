@@ -55,7 +55,8 @@ var {
 	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
 	BUY_INDICATOR_INC,
-	SELL_INDICATOR_INC,
+	SELL_INDICATOR_INC_BASE,
+	SELL_INDICATOR_INC_MULTIPLIER,
 	TIME_TO_CHANGE_PROFIT_LOSS,
 	TAKE_PROFIT_CHANGE_PCT,
 	STOP_LOSS_CHANGE_PCT,
@@ -986,6 +987,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	sell_indicator_reached = false;
 	sell_indicator_almost_reached = false;
 	sell_indicator_check_time = 0;
+	sell_indicator_increment = SELL_INDICATOR_INC_BASE;
 	ride_profits = false;
 	take_profit_hit_check_time = 0;
 	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits) {
@@ -1022,7 +1024,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
 							if (latestPrice < mean) {
 								sell_indicator_reached = true;
-								sell_indicator_check_time = Date.now() + SELL_INDICATOR_INC;
+								sell_indicator_check_time = Date.now() + sell_indicator_increment;
+								sell_indicator_increment *= SELL_INDICATOR_INC_MULTIPLIER;
 							} else {
 								sell_indicator_almost_reached = false;
 							}
