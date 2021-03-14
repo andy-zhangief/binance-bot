@@ -16,7 +16,7 @@ module.exports = {
 	PCT_BUY : 0.01, // DOES NOT WORK IF OVERRIDE_BTC OR OVERRIDE_USDT IS > 0
 	TAKE_PROFIT_MULTIPLIER : 1.04, // Only change for single coinpair trading, will be unset if prepump is enabled
 	STOP_LOSS_MULTIPLIER : 0.98, // Only change for single coinpair trading, will be unset if prepump is enabled
-	POLL_INTERVAL : 720,// roughly 1 second
+	POLL_INTERVAL : ONE_SEC,
 	LOOP : true, // false for single buy and quit
 	DEFAULT_BASE_CURRENCY : "USDT",
 	FETCH_BALANCE_INTERVAL : 60 * ONE_MIN,
@@ -119,6 +119,7 @@ module.exports = {
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
 	latestPrice : 0,
+	websocketTicker : {},
 	q : [],
 	lowstd : [],
 	highstd : [],

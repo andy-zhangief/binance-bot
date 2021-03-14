@@ -135,6 +135,7 @@ var {
 	// DONT TOUCH THESE GLOBALS
 	dump_count,
 	latestPrice,
+	websocketTicker,
 	q,
 	lowstd,
 	highstd,
@@ -442,7 +443,8 @@ async function initClient() {
 				transaction = message.transaction;
 				coinpair = transaction.sym;
 				latestPrice = getPricesForCoin(coinpair).pop();
-				setCoinAndclearQ();
+				setCoinFromCoinpair();
+				clearQs();
 				ndump(transaction.take_profit, transaction.buy_price, transaction.stop_loss, transaction.quantity, false, transaction.sym);
 			}
 		}
@@ -504,7 +506,8 @@ async function waitUntilPrepump() {
 					continue;
 				}
 				coinpair = rally.sym;
-				setCoinAndclearQ();
+				setCoinFromCoinpair();
+				clearQs();
 				blacklist.push(coin);
 				synchronizeBlacklist();
 				await readCoinInfo();
@@ -791,9 +794,9 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 
 ////////////////////////////////////// BUY ///////////////////////////////////////////////
 
-async function pump() {
+async function pump(sym = coinpair) {
 	console.log("Buying " + coinpair);
-	TRANSACTION_COMPLETE = false;
+	beginTransaction(sym);
 	if (BUY_LOCAL_MIN && !yolo) {
 		manual_buy = false;
 		quit_buy = false;
@@ -804,7 +807,7 @@ async function pump() {
 		latestPrice = await getLatestPriceAsync(coinpair);
 	}
 	if (latestPrice == 0) {
-		TRANSACTION_COMPLETE = true;
+		endTransaction(sym);
 		removeFromBlacklistLater(coin);
 		if (!LOOP) {
 			console.log("Quitting");
@@ -918,7 +921,7 @@ async function waitUntilTimeToBuy() {
 //////////////////////////////////////////// SELL ///////////////////////////////////////////////
 
 async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = false, sym = coinpair) {
-	TRANSACTION_COMPLETE = false;
+	beginTransaction(sym);
 	if (!immediately) {
 		lastSellLocalMax = 0;
 		buy_time = Date.now();
@@ -933,7 +936,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 			console.log("Market sell error, please sell on Binance.com manually");
 			return;
 		}
-		TRANSACTION_COMPLETE = true;
+		endTransaction(sym);
 		
 		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty;
 		if (client) {
@@ -1133,8 +1136,17 @@ function initializeQs() {
 			lowstd =  new Array(QUEUE_SIZE).fill(averageHistorical + LOWER_BB_PCT * stdevHistorical);
 			highstd =  new Array(QUEUE_SIZE).fill(averageHistorical + UPPER_BB_PCT * stdevHistorical);
 		}
-		
 	}
+}
+
+function clearQs() {
+	lookback = [];
+	q = [];
+	means = [];
+	lowstd = [];
+	highstd = [];
+	mabuy = [];
+	masell = [];
 }
 
 async function tick(buying) {
@@ -1145,12 +1157,14 @@ async function tick(buying) {
 			fetching_prices_from_graph_mode = false;
 		});
 	}
+	while (!websocketTicker.bestAsk) {
+		await sleep(POLL_INTERVAL);
+	}
 	await sleep(POLL_INTERVAL);
-	//lastDepth = await getMarketDepth(coinpair);
-	bidask = await getBidAsk(coinpair);
+	bidask = {askPrice: websocketTicker.bestAsk, bidPrice: websocketTicker.bestBid};
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice); //await getLatestPriceAsync(coinpair);
-	pushToLookback(latestPrice);
 	initializeQs();
+	pushToLookback(latestPrice);
 	BUY_TS++;
 	SELL_TS++;
 	q.push(latestPrice);
@@ -1208,6 +1222,31 @@ function symbolFollowsBTCUSDT(sym) {
 }
 
 ////////////////////// BALANCE AND BLACKLISTS AND EXCHANGE STUFF //////////////////////////////////////
+function beginTransaction(sym) {
+	TRANSACTION_COMPLETE = false;
+	initializeTickerWebsocket(sym);
+}
+
+function endTransaction(sym) {
+	TRANSACTION_COMPLETE = true;
+	terminateTickerWebsocket(sym);
+	clearQs();
+}
+
+async function initializeTickerWebsocket(sym) {
+	let endpoint = sym.toLowerCase() + "@bookTicker";
+	if (!Object.keys(binance.websockets.subscriptions()).includes(endpoint)) {
+		binance.websockets.bookTickers(sym, (ticker) => websocketTicker = ticker);
+	}
+}
+
+function terminateTickerWebsocket(sym) {
+	let endpoint = sym.toLowerCase() + "@bookTicker";
+	if (Object.keys(binance.websockets.subscriptions()).includes(endpoint)) {
+		binance.websockets.terminate(endpoint);
+	}
+}
+
 async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true) {
 	let key = sym+"-"+interval+"-"+segments;
 	let t = parseInt(interval.substring(0,interval.length-1))
@@ -1554,10 +1593,8 @@ function getCoin(coinpair) {
 	return coinpair.slice(0, -3);
 }
 
-function setCoinAndclearQ() {
+function setCoinFromCoinpair() {
 	coin = getCoin(coinpair);
-	lookback = [];
-	q = [];
 }
 
 async function readCoinInfo() {
