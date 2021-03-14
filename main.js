@@ -11,6 +11,7 @@ const tty = require('tty');
 const asciichart = require ('asciichart');
 const SocketModel = require('socket-model');
 const skmeans = require("skmeans");
+const regression = require('regression');
 //https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
@@ -22,6 +23,8 @@ var {
 	// DO NOT CHANGE THESE
 	ONE_SEC,
 	ONE_MIN,
+	ONE_HOUR,
+	ONE_DAY,
 	APPROX_LOCAL_MIN_MAX_BUFFER_PCT,
 	MIN_COIN_VAL_IN_BTC,
 	TERMINAL_HEIGHT_BUFFER,
@@ -159,6 +162,7 @@ var {
 	buy_good_buys,
 	buy_clusters,
 	buy_rallys,
+	buy_linear_reg,
 	last_keypress,
 	lastTrend,
 	lastDepth,
@@ -258,9 +262,9 @@ async function initArgumentVariables() {
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 		buy_rallys = process.argv.includes("--rallys");
 		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys;
-		buy_clusters = !buy_rallys && !buy_good_buys;
-		
-		if (buy_good_buys || buy_clusters) {
+		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys;
+		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg;
+		if (buy_good_buys || buy_clusters || buy_linear_reg) {
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
 			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
@@ -488,10 +492,8 @@ async function waitUntilPrepump() {
 			rally = null;
 			if (buy_rallys) {
 				rally = await getRally();
-			} else if (buy_good_buys) {
-				rally = await maybeGetGoodBuys(false);
-			} else if (buy_clusters) {
-				rally = await maybeGetGoodBuys(true);
+			} else if (buy_good_buys || buy_clusters || buy_linear_reg) {
+				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
 				if (!yolo) {
@@ -526,14 +528,14 @@ async function waitUntilPrepump() {
 }
 
 //TODO: Better code pathing once cluster code is finalized
-async function maybeGetGoodBuys(clusters = false) {
+async function maybeGetGoodBuys() {
 	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
-		return await getGoodBuys(clusters);
+		return await getGoodBuys();
 	}
 }
 
-async function getGoodBuys(clusters = false) {
-	goodBuys = await scanForGoodBuys(clusters);
+async function getGoodBuys() {
+	goodBuys = await scanForGoodBuys();
 	if (detection_mode) {
 		console.clear();
 		console.log("Detection Mode Active");
@@ -551,7 +553,7 @@ async function getGoodBuys(clusters = false) {
 	return goodBuy;
 }
 
-async function scanForGoodBuys(clusters = false) {
+async function scanForGoodBuys() {
 	let goodCoins = [];
 	let promises = Object.keys(coinsInfo).map(async k => {
 		if (coinsInfo[k].status != "TRADING") {
@@ -566,7 +568,7 @@ async function scanForGoodBuys(clusters = false) {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : await isAGoodBuyFrom1hGraph(k);
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -599,6 +601,34 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
+	}
+	return false;
+}
+
+async function isAGoodBuyFromLinearRegression(sym) {
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "4h", 60);
+	let stdevs = [];
+	let mean = 0;
+	let section = ticker.slice(-20);
+	let last = getPricesForCoin(sym, -1).pop();
+	while (ticker.length >= 20) {
+		stdevs.unshift(getStandardDeviation(ticker.slice(-20)));
+		mean = average(ticker.slice(-20));
+		ticker.pop();
+	}
+	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
+	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.002;
+	let lastStdevIsSmallest = Math.min(...stdevs) == stdevs[stdevs.length-2];
+	let lastValueAboveMean = last > mean;
+	let gain = (last/mean - 1) * 2 + 1;
+	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	if (isRoughlyFlat && lastStdevIsSmallest && lastValueAboveMean && gainInTargetRange) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1017,11 +1047,11 @@ function terminateTickerWebsocket(sym) {
 	}
 }
 
-async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true) {
+async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true, endTime = Date.now()) {
 	let key = sym+"-"+interval+"-"+segments;
 	let t = parseInt(interval.substring(0,interval.length-1))
 	let i = interval.substring(interval.length-1);
-	i = i == "m" ? ONE_MIN : i == "h" ? 60 * ONE_MIN : i == "d" ? 24 * 60 * ONE_MIN : 0;
+	i = i == "m" ? ONE_MIN : i == "h" ? ONE_HOUR : i == "d" ? ONE_DAY : 0;
 	if (i == 0) {
 		console.log("Invalid Interval");
 		return;
@@ -1048,7 +1078,7 @@ async function fetchCandlestickGraph(sym, interval, segments, force = false, cac
 			totalVolume += parseFloat(volume) * (open/2 + close/2);
 		})
 		finished = true;
-	}, {limit: segments, endTime: Date.now()});
+	}, {limit: segments, endTime: endTime});
 	while (!finished) {
 		await sleep(ONE_SEC)
 	}

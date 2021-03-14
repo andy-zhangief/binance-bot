@@ -6,6 +6,8 @@ module.exports = {
 	// DO NOT CHANGE THESE
 	ONE_SEC : ONE_SEC,
 	ONE_MIN : ONE_MIN,
+	ONE_HOUR : 60 * ONE_MIN,
+	ONE_DAY : 24 * 60 * ONE_MIN,
 	APPROX_LOCAL_MIN_MAX_BUFFER_PCT : 0.069420,
 	MIN_COIN_VAL_IN_BTC : 0.00000200,
 	TERMINAL_HEIGHT_BUFFER : 4,
@@ -143,6 +145,7 @@ module.exports = {
 	buy_good_buys : false,
 	buy_clusters : false,
 	buy_rallys : true,
+	buy_linear_reg : false,
 	last_keypress : "",
 	lastTrend : "",
 	lastDepth : {},
