@@ -66,6 +66,7 @@ var {
 	PROFIT_LOSS_CHECK_TIME,
 	SELL_RIDE_PROFITS,
 	SELL_RIDE_PROFITS_PCT,
+	SELL_PREVENT_TRIP_STOP_LOSS,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
 	BUFFER_ADD,
 	BUFFER_SUBTRACT,
@@ -626,7 +627,7 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastValueAboveMean = last > mean;
-	let gain = (last/(mean - stdevs.slice().pop()) - 1) * 2 + 1;
+	let gain = (last/(mean - stdevs.slice().pop()) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
@@ -845,10 +846,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	sell_indicator_check_time = 0;
 	sell_indicator_increment = SELL_INDICATOR_INC_BASE;
 	ride_profits = false;
+	prevent_trip_stoploss = false;
+	stop_loss_hit_time = 0;
 	take_profit_hit_check_time = 0;
 	fetch_15m_candlestick_time = 0;
 	mean15 = 0;
-	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits) {
+	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits || prevent_trip_stoploss) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -907,6 +910,17 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				default:
 					break;
 			}
+		}
+		if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice < stop_loss && !prevent_trip_stoploss) {
+			prevent_trip_stoploss = true;
+			stop_loss_hit_time = Date.now();
+		}
+		if (prevent_trip_stoploss && Date.now() > stop_loss_hit_time + ONE_MIN) {
+			if (latestPrice < stop_loss) {
+				lastSellReason = "Sold because stop loss was hit";
+				return latestPrice;
+			}
+			prevent_trip_stoploss = false;
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
