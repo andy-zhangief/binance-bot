@@ -614,21 +614,22 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 async function isAGoodBuyFromLinearRegression(sym) {
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "4h", 60);
 	let stdevs = [];
-	let mean = 0;
-	let section = ticker.slice(-20);
+	let section = ticker.slice(-10);
+	let mean = average(ticker.slice(-20));
 	let last = getPricesForCoin(sym, -1).pop();
 	while (ticker.length >= 20) {
 		stdevs.unshift(getStandardDeviation(ticker.slice(-20)));
-		mean = average(ticker.slice(-20));
 		ticker.pop();
 	}
 	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
 	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.002;
-	let lastStdevIsSmallest = Math.min(...stdevs) == stdevs[stdevs.length-2];
+	let minStdev = Math.min(...stdevs);
+	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastValueAboveMean = last > mean;
-	let gain = (last/mean - 1) * 2 + 1;
-	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	if (isRoughlyFlat && lastStdevIsSmallest && lastValueAboveMean && gainInTargetRange) {
+	let gain = (last/(mean - stdevs.slice().pop()) - 1) * 2 + 1;
+	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
+	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
