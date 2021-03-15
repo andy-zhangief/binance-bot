@@ -461,7 +461,6 @@ async function initClient() {
 }
 
 ///////////////////////////// BEFORE BUY ////////////////////////////////////////
-
 async function waitUntilPrepump() {
 	coinpair = "";
 	if (futures) {
@@ -627,10 +626,11 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastValueAboveMean = last > mean;
+	let lastOpenAndCloseAboveMean = closes.slice().pop() > mean && opens.slice().pop() > mean;
 	let gain = (last/(mean - stdevs.slice().pop()) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
+	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && lastOpenAndCloseAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1043,9 +1043,9 @@ function beginTransaction(sym) {
 }
 
 function endTransaction(sym) {
-	TRANSACTION_COMPLETE = true;
 	terminateTickerWebsocket(sym);
 	clearQs();
+	TRANSACTION_COMPLETE = true;
 }
 
 async function initializeTickerWebsocket(sym) {
