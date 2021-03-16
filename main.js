@@ -67,6 +67,7 @@ var {
 	SELL_RIDE_PROFITS,
 	SELL_RIDE_PROFITS_PCT,
 	SELL_PREVENT_TRIP_STOP_LOSS,
+	SELL_STOP_LOSS_BUFFER_TIME,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
 	BUFFER_ADD,
 	BUFFER_SUBTRACT,
@@ -271,6 +272,10 @@ async function initArgumentVariables() {
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
 			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
 			BUFFER_SUBTRACT = GOOD_BUY_BUFFER_SUBTRACT;
+			if (buy_linear_reg) {
+				PREPUMP_MAX_PROFIT_MULTIPLIER = 1.2;
+				PREPUMP_MIN_LOSS_MULTIPLIER = 0.9;
+			}
 		}
 		detection_mode = process.argv.includes("--detect");
 	}
@@ -872,7 +877,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
 					if (ride_profits && Date.now() > take_profit_hit_check_time) {
-						if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
+						if (latestPrice < (lastSellLocalMax * SELL_RIDE_PROFITS_PCT)) {
 							lastSellReason = "sold because take profit is reached";
 							return latestPrice;
 						}
@@ -910,17 +915,17 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 				default:
 					break;
 			}
-		}
-		if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice < stop_loss && !prevent_trip_stoploss) {
-			prevent_trip_stoploss = true;
-			stop_loss_hit_time = Date.now();
-		}
-		if (prevent_trip_stoploss && Date.now() > stop_loss_hit_time + ONE_MIN) {
-			if (latestPrice < stop_loss) {
-				lastSellReason = "Sold because stop loss was hit";
-				return latestPrice;
+			if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice < stop_loss && !prevent_trip_stoploss) {
+				prevent_trip_stoploss = true;
+				stop_loss_hit_time = Date.now();
 			}
-			prevent_trip_stoploss = false;
+			if (prevent_trip_stoploss && Date.now() > stop_loss_hit_time + SELL_STOP_LOSS_BUFFER_TIME) {
+				if (latestPrice < stop_loss) {
+					lastSellReason = "Sold because stop loss was hit";
+					return latestPrice;
+				}
+				prevent_trip_stoploss = false;
+			}
 		}
 		if (SHOW_GRAPH) {
 			plot(false);
