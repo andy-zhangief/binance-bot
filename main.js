@@ -632,11 +632,11 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
 	let lastValueAboveMean = last > mean;
-	let lastOpenAndCloseAboveMean = closes.slice().pop() > mean && opens.slice().pop() > mean;
-	let gain = (last/(mean - stdevs.slice().pop()) - 1) * 2 + 1.01;
+	let lastOpenAndCloseAboveMean = closes.slice(-2).shift() > mean && opens.slice(-2).pop() > mean;
+	let gain = (last/(mean - 0.5 * stdevs.slice().pop()) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && lastValueAboveMean && lastOpenAndCloseAboveMean && gainInTargetRange && reachesMin24hVolume) {
+	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && lastOpenAndCloseAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -878,7 +878,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
 					if (ride_profits && Date.now() > take_profit_hit_check_time) {
-						if (latestPrice < (lastSellLocalMax * SELL_RIDE_PROFITS_PCT)) {
+						if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
 							lastSellReason = "sold because take profit is reached";
 							return latestPrice;
 						}
