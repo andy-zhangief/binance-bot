@@ -272,10 +272,6 @@ async function initArgumentVariables() {
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
 			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
 			BUFFER_SUBTRACT = GOOD_BUY_BUFFER_SUBTRACT;
-			if (buy_linear_reg) {
-				PREPUMP_MAX_PROFIT_MULTIPLIER = 1.2;
-				PREPUMP_MIN_LOSS_MULTIPLIER = 0.9;
-			}
 		}
 		detection_mode = process.argv.includes("--detect");
 	}
