@@ -52,6 +52,7 @@ var {
 	OPPORTUNITY_EXPIRE_WINDOW,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
+	PRICE_DROP_NEW_OPPORTUNITY_MULTIPLER,
 	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
 	BUY_INDICATOR_INC,
@@ -672,6 +673,7 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_check_time = 0;
 	buy_indicator_buffer_add = BUFFER_ADD;
 	buy_indicator_buffer = buy_indicator_buffer_add;
+	starting_price = 0;
 	while (true) {
 		var [mean, stdev] = await tick(true);
 		console.clear();
@@ -680,6 +682,9 @@ async function waitUntilTimeToBuy() {
 		}
 		if (quit_buy) {
 			return 0;
+		}
+		if (!starting_price) {
+			starting_price = latestPrice;
 		}
 		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
@@ -692,7 +697,7 @@ async function waitUntilTimeToBuy() {
 					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
 					}
-					if (prepump && Date.now() > opportunity_expired_time) {
+					if (prepump && (Date.now() > opportunity_expired_time || latestPrice < starting_price * PRICE_DROP_NEW_OPPORTUNITY_MULTIPLER)) {
 						return 0;
 					}
 					lastLowstd =  lowstd.slice(-1).pop();
