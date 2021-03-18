@@ -55,6 +55,7 @@ var {
 	OPPORTUNITY_EXPIRE_WINDOW,
 	MIN_OPPORTUNITY_EXPIRE_WINDOW,
 	MAX_OPPORTUNITY_EXPIRE_WINDOW,
+	PRICE_DROP_NEW_OPPORTUNITY_MULTIPLER,
 	GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW,
 	BUY_LOCAL_MIN,
 	BUY_INDICATOR_INC,
@@ -598,7 +599,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
 	let isBuyableClusterSupport = (currentLowCluster >= CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
-	let gain =  Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1;
+	let gain =  Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
@@ -706,6 +707,7 @@ async function waitUntilTimeToBuy() {
 	buy_indicator_check_time = 0;
 	buy_indicator_buffer_add = BUFFER_ADD;
 	buy_indicator_buffer = buy_indicator_buffer_add;
+	starting_price = 0;
 	while (true) {
 		var [mean, stdev] = await tick(true);
 		console.clear();
@@ -714,6 +716,9 @@ async function waitUntilTimeToBuy() {
 		}
 		if (quit_buy) {
 			return 0;
+		}
+		if (!starting_price) {
+			starting_price = latestPrice;
 		}
 		meanTrend = isDowntrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT)? (lastTrend = "down") && colorText("red", "Down") 
 			: isUptrend(mabuy.slice(-BB_BUY), BB_BUY * APPROX_LOCAL_MIN_MAX_BUFFER_PCT) ? (lastTrend = "up") && colorText("green", "Up") 
@@ -726,7 +731,7 @@ async function waitUntilTimeToBuy() {
 					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
 					}
-					if (prepump && Date.now() > opportunity_expired_time) {
+					if (prepump && (Date.now() > opportunity_expired_time || latestPrice < starting_price * PRICE_DROP_NEW_OPPORTUNITY_MULTIPLER)) {
 						return 0;
 					}
 					lastLowstd =  lowstd.slice(-1).pop();
@@ -884,6 +889,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker));
 					}
 					if (ride_profits && latestPrice < mean15) {
+						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
 						return latestPrice;
 					}
 					// if (ride_profits && latestPrice > take_profit) {
