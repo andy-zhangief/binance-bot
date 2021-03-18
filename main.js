@@ -1006,7 +1006,7 @@ function beginTransaction(sym) {
 function endTransaction(sym) {
 	terminateTickerWebsocket(sym);
 	clearQs();
-	TRANSACTION_COMPLETE = true;
+	sleep(ONE_MIN).then(() => TRANSACTION_COMPLETE = true);
 }
 
 async function initializeTickerWebsocket(sym) {
