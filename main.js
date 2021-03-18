@@ -630,7 +630,7 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
 	let lastValueAboveMean = last > mean;
 	let lastOpenAndCloseAboveMean = closes.slice(-2).shift() > mean && opens.slice(-2).pop() > mean;
-	let gain = (last/(mean - 0.5 * stdevs.slice().pop()) - 1) * 2 + 1.01;
+	let gain = (last/Math.min(...lows.slice(-6)) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && lastOpenAndCloseAboveMean && gainInTargetRange && reachesMin24hVolume) {
