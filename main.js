@@ -365,6 +365,7 @@ async function initServer() {
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
 				server.transactionLog.push(message);
+				server.pnl += (parseFloat(message.sell_price) = parseFloat(message.buy_price)) * parseFloat(message.quantity);
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
@@ -380,6 +381,7 @@ async function initServer() {
 
 	server.transactionHistory = {};
 	server.transactionLog = [];
+	server.pnl = 0;
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
 	});
@@ -478,6 +480,7 @@ async function waitUntilPrepump() {
 			if (server) {
 				console.clear();
 				console.log(`Server has ${server.getClients().length} clients connected. Current Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
+				console.log(`Total PNL : ${server.pnl}`);
 				continue;
 			}
 			if (!detection_mode && TRANSACTION_COMPLETE) {
@@ -796,7 +799,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		
 		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty;
 		if (client) {
-			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity, args: process.argv});
+			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, buy_price: buy_price, sell_price: sell_price, quantity: quantity, args: process.argv});
 		}
 		if (server && immediately) {
 			server.transactionLog.push({id: "server market sell", sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity})
