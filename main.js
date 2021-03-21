@@ -369,7 +369,7 @@ async function initServer() {
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
 				server.transactionLog.push(message);
-				server.pnl += (parseFloat(message.sell_price) = parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				server.pnl += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
