@@ -369,7 +369,7 @@ async function initServer() {
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
 				server.transactionLog.push(message);
-				server.pnl += (parseFloat(message.sell_price) = parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				server.pnl += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
@@ -641,7 +641,7 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let gain = (last/Math.min(...lows.slice(-6)) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastValueAboveMean && lastOpenAndCloseAboveMean && lastValueAboveFirst && gainInTargetRange && reachesMin24hVolume) {
+	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && lastValueAboveMean && lastOpenAndCloseAboveMean && lastValueAboveFirst && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
