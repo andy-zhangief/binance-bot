@@ -274,8 +274,8 @@ async function initArgumentVariables() {
 			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
 			BUFFER_SUBTRACT = GOOD_BUY_BUFFER_SUBTRACT;
 			if (buy_linear_reg) {
-				PREPUMP_MAX_PROFIT_MULTIPLIER = 1.2;
-				PREPUMP_MIN_LOSS_MULTIPLIER = 0.9;
+				PREPUMP_MAX_PROFIT_MULTIPLIER = 1.15;
+				PREPUMP_MIN_LOSS_MULTIPLIER = 0.925;
 			}
 		}
 		detection_mode = process.argv.includes("--detect");
@@ -637,7 +637,7 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
 	let lastValueAboveMean = last > mean;
 	let lastValueAboveFirst = ticker.slice().shift() < last;
-	let gain = (last/(last - mean) - 1) * 2 + 1.01;
+	let gain = (last/Math.min(...lows.slice(-6)) - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && lastValueAboveMean && lastValueAboveFirst && gainInTargetRange && reachesMin24hVolume) {
