@@ -590,7 +590,6 @@ async function scanForGoodBuys() {
 }
 
 async function isAGoodBuyV2(sym) {
-	console.log("buying");
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
