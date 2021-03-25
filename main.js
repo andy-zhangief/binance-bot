@@ -504,6 +504,7 @@ async function waitUntilPrepump() {
 			if (buy_rallys) {
 				rally = await getRally();
 			} else if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
+				console.log("buying");
 				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
