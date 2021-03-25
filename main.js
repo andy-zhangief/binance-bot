@@ -504,7 +504,6 @@ async function waitUntilPrepump() {
 			if (buy_rallys) {
 				rally = await getRally();
 			} else if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
-				console.log("buying");
 				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
@@ -591,6 +590,7 @@ async function scanForGoodBuys() {
 }
 
 async function isAGoodBuyV2(sym) {
+	console.log("buying");
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
