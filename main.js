@@ -265,7 +265,7 @@ async function initArgumentVariables() {
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 		buy_rallys = process.argv.includes("--rallys");
-		buy_new_method = process.argv.includes("--newmethod") && !buy_new_method;
+		buy_new_method = process.argv.includes("--newmethod") && !buy_rallys;
 		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys && !buy_new_method;
 		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys && !buy_new_method;
 		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg && !buy_new_method;
@@ -921,7 +921,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
-						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker));
+						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) - 0.5 * getStandardDeviation(ticker));
 					}
 					if (ride_profits && latestPrice < mean15) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
