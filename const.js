@@ -148,6 +148,7 @@ module.exports = {
 	buy_good_buys : false,
 	buy_clusters : false,
 	buy_rallys : true,
+	buy_new_method: false,
 	buy_linear_reg : false,
 	last_keypress : "",
 	lastTrend : "",

@@ -165,6 +165,7 @@ var {
 	buy_good_buys,
 	buy_clusters,
 	buy_rallys,
+	buy_new_method,
 	buy_linear_reg,
 	last_keypress,
 	lastTrend,
@@ -264,10 +265,11 @@ async function initArgumentVariables() {
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
 		buy_rallys = process.argv.includes("--rallys");
-		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys;
-		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys;
-		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg;
-		if (buy_good_buys || buy_clusters || buy_linear_reg) {
+		buy_new_method = process.argv.includes("--newmethod") && !buy_new_method;
+		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys && !buy_new_method;
+		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys && !buy_new_method;
+		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg && !buy_new_method;
+		if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
 			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
@@ -577,7 +579,7 @@ async function scanForGoodBuys() {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : await isAGoodBuyFrom1hGraph(k);
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyV2(k) : await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -585,6 +587,32 @@ async function scanForGoodBuys() {
 	});
 	await Promise.raceAll(promises, 15 * ONE_SEC);
 	return goodCoins.sort((a, b) => a.volume - b.volume);
+}
+
+async function isAGoodBuyV2(sym) {
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
+	if (!ticker.length) {
+		return false; 
+	}
+	let mean = average(ticker.slice(-21));
+	let last3gains = gains.slice(-3);
+	let last = getPricesForCoin(sym, 1).pop();
+	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
+	let lastAboveMean = last > mean;
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
+	let gain = Math.abs(last / mean) + 0.1;
+	let lastGainIsLargest = Math.max(...last3gains) == last3gains.slice().pop();
+	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
+	if (opensBelowMean && lastAboveMean && increasingCloses && lastGainIsLargest && gainInTargetRange && reachesMin24hVolume) {
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
+	}
+	return false
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
