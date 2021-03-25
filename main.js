@@ -567,6 +567,8 @@ async function getGoodBuys() {
 
 async function scanForGoodBuys() {
 	let goodCoins = [];
+	console.log("In V2");
+	await sleep (ONE_MIN);
 	let promises = Object.keys(coinsInfo).map(async k => {
 		if (coinsInfo[k].status != "TRADING") {
 			return;
@@ -580,7 +582,7 @@ async function scanForGoodBuys() {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyV2(k) : await isAGoodBuyFrom1hGraph(k);
+			goodCoin = buy_new_method ? await isAGoodBuyV2(k) : buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -591,8 +593,7 @@ async function scanForGoodBuys() {
 }
 
 async function isAGoodBuyV2(sym) {
-	console.log("In V2");
-	await sleep (ONE_MIN);
+	console.log("In V2 test");
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
