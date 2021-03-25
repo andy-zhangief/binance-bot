@@ -496,6 +496,7 @@ async function waitUntilPrepump() {
 				console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 				console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)} from ${purchases.length} purchases`);
 				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
+				console.log(`buy_rallys: ${buy_rallys}, buy_good_buys: ${buy_good_buys}, buy_clusters: ${buy_clusters}, buy_linear_reg: ${buy_linear_reg}, buy_new_method: ${buy_new_method}`);
 				last_purchase_obj = purchases.slice(-1).pop();
 				recent_purchases = purchases.slice(-(process.stdout.rows - 7)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 				console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
