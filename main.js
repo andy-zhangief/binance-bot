@@ -495,16 +495,14 @@ async function waitUntilPrepump() {
 				console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 				console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 				console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)} from ${purchases.length} purchases`);
-				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
-				console.log(`buy_rallys: ${buy_rallys}, buy_good_buys: ${buy_good_buys}, buy_clusters: ${buy_clusters}, buy_linear_reg: ${buy_linear_reg}, buy_new_method: ${buy_new_method}`);
-				last_purchase_obj = purchases.slice(-1).pop();
+				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);				last_purchase_obj = purchases.slice(-1).pop();
 				recent_purchases = purchases.slice(-(process.stdout.rows - 7)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 				console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 			}
 			rally = null;
 			if (buy_rallys) {
 				rally = await getRally();
-			} else if (buy_good_buys || buy_clusters || buy_linear_reg) {
+			} else if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
 				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
@@ -541,7 +539,7 @@ async function waitUntilPrepump() {
 
 //TODO: Better code pathing once cluster code is finalized
 async function maybeGetGoodBuys() {
-	if (prices_data_points_count % GOOD_BUY_SEED_MAX == 3) {
+	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
 		return await getGoodBuys();
 	}
 }
@@ -567,8 +565,6 @@ async function getGoodBuys() {
 
 async function scanForGoodBuys() {
 	let goodCoins = [];
-	console.log("In V2");
-	await sleep (ONE_MIN);
 	let promises = Object.keys(coinsInfo).map(async k => {
 		if (coinsInfo[k].status != "TRADING") {
 			return;
@@ -582,7 +578,7 @@ async function scanForGoodBuys() {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = buy_new_method ? await isAGoodBuyV2(k) : buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : await isAGoodBuyFrom1hGraph(k);
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyV2(k) : await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -593,7 +589,6 @@ async function scanForGoodBuys() {
 }
 
 async function isAGoodBuyV2(sym) {
-	console.log("In V2 test");
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
