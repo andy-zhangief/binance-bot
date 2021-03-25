@@ -541,7 +541,7 @@ async function waitUntilPrepump() {
 
 //TODO: Better code pathing once cluster code is finalized
 async function maybeGetGoodBuys() {
-	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
+	if (prices_data_points_count % GOOD_BUY_SEED_MAX == 3) {
 		return await getGoodBuys();
 	}
 }
