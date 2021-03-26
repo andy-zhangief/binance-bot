@@ -666,14 +666,15 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
 	let lastMean = mean4hs.pop();
-	let lastValueAboveMean = last > lastMean && last < lastMean + stdevs.slice().pop(); 
+	let lastValueAboveMean = last > lastMean && last < lastMean + 0.5 * stdevs.slice().pop(); 
 	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x > mean4hs.pop()).length == 0;
 	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	console.log(`sym: ${sym}, gain: ${gain}, isRoughlyFlat: ${isRoughlyFlat}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, lastStdevGreaterThan2ndLastStdev: ${lastStdevGreaterThan2ndLastStdev}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}`)
-	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
+	console.log(`sym: ${sym}, gain: ${gain}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, lastStdevGreaterThan2ndLastStdev: ${lastStdevGreaterThan2ndLastStdev}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}`)
+	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
