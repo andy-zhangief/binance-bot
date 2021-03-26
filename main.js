@@ -1085,8 +1085,8 @@ async function initializeTickerWebsocket(sym) {
 }
 
 function terminateTickerWebsocket(sym) {
-	let endpoint = sym.toLowerCase() + "@bookTicker";
-	if (Object.keys(binance.websockets.subscriptions()).includes(endpoint)) {
+	let endpoints = binance.websockets.subscriptions();
+	for ( let endpoint in endpoints ) {
 		binance.websockets.terminate(endpoint);
 	}
 }
