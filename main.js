@@ -662,14 +662,14 @@ async function isAGoodBuyFromLinearRegression(sym) {
 		ticker.pop();
 	}
 	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
-	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.0025;
+	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.002;
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
 	let lastMean = mean4hs.pop();
-	let lastValueAboveMean = last > lastMean && last < lastMean + 0.5 * stdevs.slice().pop(); 
+	let lastValueAboveMean = last > lastMean && last < lastMean + stdevs.slice().pop(); 
 	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x > mean4hs.pop()).length == 0;
-	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) * 2 + 1.01;
+	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	console.log(`sym: ${sym}, gain: ${gain}, isRoughlyFlat: ${isRoughlyFlat}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, lastStdevGreaterThan2ndLastStdev: ${lastStdevGreaterThan2ndLastStdev}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}`)
