@@ -269,6 +269,7 @@ async function initArgumentVariables() {
 		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys && !buy_new_method;
 		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys && !buy_new_method;
 		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg && !buy_new_method;
+		SELL_RIDE_PROFITS = process.argv.includes("--ride-profits");
 		if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
 			GOOD_BUY_SEED = process.argv.includes("--fastseed") ? 3 : GOOD_BUY_SEED;
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
