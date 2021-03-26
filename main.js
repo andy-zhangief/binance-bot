@@ -653,24 +653,26 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 async function isAGoodBuyFromLinearRegression(sym) {
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "4h", 60, new Date(Date.now()).getMinutes() > 55);
 	let stdevs = [];
+	let mean4hs = [];
 	let section = ticker.slice(-10);
-	let mean = average(ticker.slice(-20));
+	let lastMean = average(ticker.slice(-20));
 	let last = getPricesForCoin(sym, -1).pop();
 	while (ticker.length >= 20) {
 		stdevs.unshift(getStandardDeviation(ticker.slice(-20)));
+		mean4hs.unshift(average(ticker.slice(-20)));
 		ticker.pop();
 	}
 	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
 	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.0025;
 	let minStdev = Math.min(...stdevs);
-	let last12StdsContainsMinStdev = stdevs.slice(-12).includes(minStdev);
+	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
-	let last5ValuesBelowMeanMinusStdev = closes.slice(-6, -1).filter(x => x > mean - stdevs.slice().pop()).length == 0;
-	let lastValueAboveMeanMinusStdev = last > mean - stdevs.slice().pop(); 
-	let gain = Math.abs(last/mean - 1) * 2 + 1.01;
+	let lastValueAboveMean = last > mean4hs.pop(); 
+	let last10ValuesBelowMean = lows.slice(-11, -1).reverse().filter(x => x > mean4hs.pop()).length == 0;
+	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	if (isRoughlyFlat && last12StdsContainsMinStdev && lastStdevGreaterThan2ndLastStdev && last5ValuesBelowMeanMinusStdev && lastValueAboveMeanMinusStdev && gainInTargetRange && reachesMin24hVolume) {
+	if (isRoughlyFlat && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && last10ValuesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
