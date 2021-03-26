@@ -674,9 +674,9 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
-	console.log(`sym: ${sym}, gain: ${gain}, volume: ${totalVolume}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`)
+	//console.log(`sym: ${sym}, gain: ${gain}, volume: ${totalVolume}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`)
 	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
-		console.log("returning " + sym);
+		//console.log("returning " + sym);
 		return {
 			sym: sym,
 			gain: gain,
