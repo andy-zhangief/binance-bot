@@ -923,7 +923,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
-						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) - 0.5 * getStandardDeviation(ticker));
+						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
 					}
 					if (ride_profits && latestPrice < mean15) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
