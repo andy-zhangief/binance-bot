@@ -674,7 +674,7 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	//console.log(`sym: ${sym}, gain: ${gain}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}`)
-	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && lastStdevGreaterThan2ndLastStdev && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
+	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
