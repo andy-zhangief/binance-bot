@@ -655,7 +655,6 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let stdevs = [];
 	let mean4hs = [];
 	let section = ticker.slice(-10);
-	let lastMean = average(ticker.slice(-20));
 	let last = getPricesForCoin(sym, -1).pop();
 	while (ticker.length >= 20) {
 		stdevs.unshift(getStandardDeviation(ticker.slice(-20)));
@@ -667,7 +666,8 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
 	let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
-	let lastValueAboveMean = last > mean4hs.pop(); 
+	let lastMean = mean4hs.pop();
+	let lastValueAboveMean = last > lastMean && last < lastMean + 0.5 * stdevs.slice().pop(); 
 	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x > mean4hs.pop()).length == 0;
 	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
