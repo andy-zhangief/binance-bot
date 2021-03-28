@@ -900,6 +900,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	stop_loss_hit_time = 0;
 	take_profit_hit_check_time = 0;
 	fetch_15m_candlestick_time = 0;
+	wasAbove4hMean = false;
+	isAbove4hMean = false;
 	mean15 = 0;
 	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits || prevent_trip_stoploss) {
 		var [mean, stdev] = await tick(false);
@@ -930,6 +932,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
+						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker));
+						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
+					}
+					if (!isAbove4hMean && wasAbove4hMean) {
+						lastSellReason = "sold because it dipped below 4h mean after rising above it";
+						return latestPrice;
 					}
 					if (ride_profits && latestPrice < mean15) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
