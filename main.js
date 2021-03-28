@@ -935,7 +935,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker));
 						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
 					}
-					if (!isAbove4hMean && wasAbove4hMean) {
+					if (!isAbove4hMean && wasAbove4hMean && latestPrice > mean + 2 * stdev) {
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
 						return latestPrice;
 					}
