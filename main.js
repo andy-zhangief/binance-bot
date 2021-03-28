@@ -588,7 +588,8 @@ async function scanForGoodBuys() {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyV2(k) : await isAGoodBuyFrom1hGraph(k);
+			// Feel free to add your own method of detecting good buys
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyNewMethod(k) : await isAGoodBuyFrom1hGraph(k);
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -598,7 +599,7 @@ async function scanForGoodBuys() {
 	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
-async function isAGoodBuyV2(sym) {
+async function isAGoodBuyNewMethod(sym) {
 	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
 	if (!ticker.length) {
 		return false; 
