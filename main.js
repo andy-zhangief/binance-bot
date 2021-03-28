@@ -2,7 +2,8 @@ const {
 	API_KEY,
 	API_SECRET,
 	MAX_OVERRIDE_BTC,
-	MAX_OVERRIDE_USDT
+	MAX_OVERRIDE_USDT,
+	OVERRIDE_BLACKLIST
 } = require("./secrets.js")
 
 const fs = require('fs');
@@ -517,7 +518,7 @@ async function waitUntilPrepump() {
 					}
 					await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
 				}
-				if (blacklist.includes(getCoin(rally.sym))) {
+				if (getCombinedBlacklist().includes(getCoin(rally.sym))) {
 					continue;
 				}
 				coinpair = rally.sym;
@@ -559,7 +560,7 @@ async function getGoodBuys() {
 	goodBuy = null;
 	while (goodBuys.length) {
 		goodBuy = goodBuys.shift();
-		if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
+		if (getBalance(getCoin(goodBuy.sym)) > 0 || getCombinedBlacklist().includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
 			goodBuy == null
 		}
 	}
@@ -1312,6 +1313,10 @@ async function prepopulate30mData() {
 	}
 }
 
+function getCombinedBlacklist() {
+	return blacklist.concat(OVERRIDE_BLACKLIST);
+}
+
 function updateBlacklistFromBalance() {
 	Object.keys(balances).forEach(key => {
 		if (key != "USDT" && parseFloat(balances[key].available) > 0 && !blacklist.includes(key)) {
@@ -1556,7 +1561,7 @@ async function getRally() {
 	
 	while (rallies.length) {
 		rally = rallies.shift();
-		if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
+		if (getBalance(getCoin(rally.sym)) > 0 || getCombinedBlacklist().includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
 			rally = null;
 		}
 	}
