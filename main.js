@@ -510,12 +510,12 @@ async function waitUntilPrepump() {
 			if (rally && Date.now() > dont_buy_before) {
 				if (!yolo) {
 					// This avoids the race condition if we're waiting to buy anyways
+					if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
+						console.log("not enough data to purchase " + rally.sym);
+						await sleep(ONE_MIN);
+						continue;
+					}
 					await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
-				}
-				if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
-					console.log("not enough data to purchase " + rally.sym);
-					await sleep(ONE_MIN);
-					continue;
 				}
 				if (blacklist.includes(getCoin(rally.sym))) {
 					continue;
@@ -935,7 +935,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
 						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
 					}
-					if (!isAbove4hMean && wasAbove4hMean && latestPrice > mean + 2 * stdev) {
+					if (!isAbove4hMean && wasAbove4hMean && latestPrice > mean + 1.8 * stdev) {
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
 						return latestPrice;
 					}
