@@ -374,7 +374,11 @@ async function initServer() {
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
 				server.transactionLog.push(message);
-				server.pnl += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				if (message.sym.endsWith("BTC")) {
+					server.pnlBTC += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				} else if (message.sym.endsWith("USDT")) {
+					server.pnlUSDT += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				}
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
@@ -390,7 +394,8 @@ async function initServer() {
 
 	server.transactionHistory = {};
 	server.transactionLog = [];
-	server.pnl = 0;
+	server.pnlUSDT = 0;
+	server.pnlBTC = 0;
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
 	});
@@ -438,7 +443,7 @@ async function initClient() {
 			}
 			if (message.blacklist) {
 				if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !TRANSACTION_COMPLETE) {
+					if (!getCombinedBlacklist().includes(coin) && message.blacklist.includes(coin) && auto && !TRANSACTION_COMPLETE) {
 						quit_buy = true;
 					}
 					blacklist = message.blacklist;
@@ -489,7 +494,8 @@ async function waitUntilPrepump() {
 			if (server) {
 				console.clear();
 				console.log(`Server has ${server.getClients().length} clients connected. Current Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
-				console.log(`Total PNL : ${server.pnl}`);
+				server.pnlBTC && console.log(`Total BTC PNL : ${server.pnlBTC}`);
+				server.pnlUSDT && console.log(`Total USDT PNL : ${server.pnlUSDT}`);
 				continue;
 			}
 			if (!detection_mode && TRANSACTION_COMPLETE) {
