@@ -595,7 +595,7 @@ async function scanForGoodBuys() {
 			}
 		}
 	});
-	await Promise.raceAll(promises, 15 * ONE_MIN);
+	await Promise.raceAll(promises, 15 * ONE_SEC);
 	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
