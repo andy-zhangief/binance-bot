@@ -140,8 +140,6 @@ module.exports = {
 	lastBuyReason : "",
 	lastSellReason : "",
 	lastSellLocalMax: 0,
-	BUY_TS : 0,
-	SELL_TS : 0,
 	auto : false,
 	histogram : false,
 	detection_mode : false,

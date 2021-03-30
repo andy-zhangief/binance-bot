@@ -13,7 +13,6 @@ const asciichart = require ('asciichart');
 const SocketModel = require('socket-model');
 const skmeans = require("skmeans");
 const regression = require('regression');
-//https://github.com/jaggedsoft/node-binance-api
 const Binance = require('node-binance-api');
 const readline = require('readline');
 var binance;
@@ -158,8 +157,6 @@ var {
 	lastBuyReason,
 	lastSellReason,
 	lastSellLocalMax,
-	BUY_TS,
-	SELL_TS,
 	auto,
 	histogram,
 	detection_mode,
@@ -733,7 +730,6 @@ async function pump(sym = coinpair) {
 		console.log("Buy is successful")
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
-		BUY_TS = 0;
 		buy_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		lastBuy = buy_price * response.executedQty;
 		actualquantity = response.executedQty;
@@ -853,7 +849,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		console.log("Last sell is because " + lastSellReason);
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
-		SELL_TS = 0;
 		lastBuy = buy_price * response.executedQty;
 		lastSell = sell_price * response.executedQty;
 		pnl += lastSell - lastBuy;
@@ -1028,8 +1023,6 @@ async function tick(buying) {
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice);
 	initializeQs();
 	pushToLookback(latestPrice);
-	BUY_TS++;
-	SELL_TS++;
 	q.push(latestPrice);
 	stdev = getStandardDeviation([...Array(Math.floor(QUEUE_SIZE/60)).keys()].map(v => average(q.slice(v * 60, (v + 1) * 60))));
 	mean = average(q);
