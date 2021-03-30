@@ -165,7 +165,6 @@ var {
 	detection_mode,
 	buy_good_buys,
 	buy_clusters,
-	buy_rallys,
 	buy_new_method,
 	buy_linear_reg,
 	last_keypress,
@@ -265,11 +264,10 @@ async function initArgumentVariables() {
 		futures = process.argv.includes("--futures");
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
-		buy_rallys = process.argv.includes("--rallys");
-		buy_new_method = process.argv.includes("--newmethod") && !buy_rallys;
-		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys && !buy_new_method;
-		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_rallys && !buy_new_method;
-		buy_clusters = !buy_rallys && !buy_good_buys && !buy_linear_reg && !buy_new_method;
+		buy_new_method = process.argv.includes("--newmethod");
+		buy_good_buys = process.argv.includes("--goodbuys") && !buy_new_method;
+		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_new_method;
+		buy_clusters = process.argv.includes("--clusters") && !buy_good_buys && !buy_linear_reg && !buy_new_method;
 		SELL_RIDE_PROFITS = process.argv.includes("--ride-profits");
 		if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
 			GOOD_BUY_SEED = process.argv.includes("--fastseed") ? 3 : GOOD_BUY_SEED;
@@ -509,9 +507,7 @@ async function waitUntilPrepump() {
 				console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 			}
 			rally = null;
-			if (buy_rallys) {
-				rally = await getRally();
-			} else if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
+			if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
 				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
@@ -589,7 +585,7 @@ async function scanForGoodBuys() {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
 			// Feel free to add your own method of detecting good buys
-			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyNewMethod(k) : await isAGoodBuyFrom1hGraph(k);
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyNewMethod(k) : false;
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -885,7 +881,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 				removeFromBlacklistLater(coin);
 				return;
 			}
-			analyzeDecisionForSingleCoin(purchase);
 			pump();
 			return;
 		}
@@ -1548,224 +1543,6 @@ function plot(buying) {
 }
 
 ////////////////////////////////////////////////////////DEPRECATED/////////////////////////////////////////////////////
-
-async function getRally() {
-	rallies = await detectCoinRallies();
-	if (detection_mode) {
-		console.clear();
-		console.log("Detection Mode Active");
-		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
-		console.log(`Blacklist: ${blacklist}`);
-		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies.filter(v => v.goodBuy), null, 4)}`);
-		return;
-	}
-
-	if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
-		return;
-	}
-
-	rally = null;
-	
-	while (rallies.length) {
-		rally = rallies.shift();
-		if (getBalance(getCoin(rally.sym)) > 0 || getCombinedBlacklist().includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
-			rally = null;
-		}
-	}
-	return rally;
-}
-
-async function detectCoinRallies() {
-	lastX = prices.slice(-RALLY_TIME);
-	rallies = [];
-	for (const sym of Object.keys(lastX[0])) {
-		green = 0;
-		red = 0;
-		last = lastX[0][sym];
-		min = last;
-		max = last;
-		last_x_values = [last];
-		for (i = 1; i < lastX.length; i++) {
-			current = lastX[i][sym];
-			if (!current) {
-				break;
-			}
-			if (current >= last) {
-				green++;
-			} else {
-				red++;
-			}
-			min = Math.min(min, current);
-			max = Math.max(max, current);
-			last = current;
-			last_x_values.push(current)
-		}
-		if (green + red != RALLY_TIME - 1) {
-			break;
-		}
-		// TODO: Rethink where start/end values should be in comparison to sorted historical
-		gain = max/min;
-		first = lastX[0][sym];
-		last = lastX[lastX.length-1][sym];
-		historical_vals = getPricesForCoin(sym).slice(0, -RALLY_TIME);
-		recent_historical_vals = historical_vals.slice(-2.5 * RALLY_TIME, -RALLY_TIME);
-		sorted_historical_vals = recent_historical_vals.sort();
-		recent_sorted_historical_vals = recent_historical_vals.sort();
-		high_median = sorted_historical_vals.slice(-0.5 * sorted_historical_vals.length).shift();
-		low_median = sorted_historical_vals.slice(0, -0.95 * sorted_historical_vals.length).pop();
-		min_historical = recent_sorted_historical_vals.shift();
-		max_historical = recent_sorted_historical_vals.pop();
-		test_count = 0;
-		fail_reasons = ""
-		if(green == 0 || red/green >= RALLY_GREEN_RED_RATIO) {
-			test_count++;
-		} else {
-			fail_reasons += "ratio " + red/green + " ";
-		}
-		if (gain < RALLY_MAX_DELTA) {
-			test_count++;
-		} else {
-			fail_reasons += "maxDelta " + gain + " ";
-		}
-		if (gain > RALLY_MIN_DELTA) {
-			test_count++;
-		} else {
-			fail_reasons += "minDelta " + gain + " ";
-		}
-		if (last < first) {
-			test_count++;
-		} else {
-			fail_reasons += "last>first " + last + '>' + first + " ";
-		}
-		if (high_median > first) {
-			test_count++;
-		} else {
-			fail_reasons += "highMed<first " + high_median + '<' + first + " ";
-		}
-		if (low_median < first) {
-			test_count++;
-		} else {
-			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
-		}
-		// Rethink this in particular
-		if (min_historical > last) {
-			test_count++;
-		} else {
-			fail_reasons += "lowest<last " + min_historical + '<' + last + " ";
-		}
-		if (max_historical/min_historical > gain) {
-			test_count++;
-		} else {
-			fail_reasons += "historicalgain<gain " + max_historical/min_historical + '<' + gain + " ";
-		}
-		if ((green == 0 || red/green >= RALLY_GREEN_RED_RATIO)
-			&& gain < RALLY_MAX_DELTA
-			&& gain > RALLY_MIN_DELTA
-			&& last < first
-			&& high_median > first
-			&& low_median < first
-			&& min_historical > last
-			&& max_historical/min_historical > gain) {
-			rallies.push({
-				sym: sym,
-				min: min,
-				max: max,
-				gain: gain,
-				first: first,
-				last: last,
-				goodBuy: await isAGoodBuyFrom1hGraphForRally(sym),
-			});
-		} else if (test_count > 6 && detection_mode) {
-			rallies.push({sym: sym, first: first, last: last, goodBuy: await isAGoodBuyFrom1hGraphForRally(sym), gain: gain, fail: fail_reasons});
-		}
-	}
-	return rallies.sort((a, b) => a.gain - b.gain);
-}
-
-async function isAGoodBuyFrom1hGraphForRally(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
-	if (!ticker.length) {
-		return false;
-	}
-	let mean = average(ticker);
-	let std = getStandardDeviation(ticker);
-	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
-	let opensBelowMeanPlusStdev = (opens.slice(-4).filter(v => v > (mean + std)).length == 0);
-	let last3VolumesGreaterThanPrevious3Volumes = volumes.slice(-3).reduce((sum, val) => sum + val, 0) > volumes.slice(-6, -3).reduce((sum, val) => sum + val, 0);
-	if (increasingCloses && opensBelowMeanPlusStdev && last3VolumesGreaterThanPrevious3Volumes) {
-		return true;
-	}
-	return false;
-}
-
-async function isAGoodBuyFrom1hGraph(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
-	if (!ticker.length) {
-		return false;
-	}
-	let mean = average(ticker.slice(-21));
-	let std = getStandardDeviation(ticker.slice(-21));
-	let last3gains = gains.slice(-3);
-	let last = getPricesForCoin(sym, 1).pop();
-	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
-	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
-	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
-	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
-	let startOfRally = !isUptrend(opens.slice(-4), 0, false);
-	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
-	let thirdGainLessThanPrevious2Combined = Math.abs(1-last3gains[0]) < Math.abs(1-last3gains[1]) + Math.abs(1-last3gains[2]);
-	let last2VolumesGreaterThanPrevious2Volumes = volumes.slice(-2).reduce((sum, val) => sum + val, 0) > 1.5 * volumes.slice(-5, -3).reduce((sum, val) => sum + val, 0);
-	let lastWickGreaterThanSecondLastWick = highs.slice(-1).shift() > highs.slice(-2).shift();
-	if (opensBelowMean && increasingCloses && startOfRally && gainInTargetRange && reachesMin24hVolume && thirdGainLessThanPrevious2Combined && last2VolumesGreaterThanPrevious2Volumes && lastWickIsShorterThanBody && lastWickGreaterThanSecondLastWick) {
-		return {
-			sym: sym,
-			gain: gain,
-			last: last,
-			volume: totalVolume,
-		};
-	}
-	return false;
-}
-
-function analyzeDecisionForSingleCoin(purchase) {
-	if (!purchase || !purchase.sym) {
-		return;
-	}
-	return new Promise((_) => {
-		if (purchase.gain > 1) {
-			// Increase UPPER_BB_PCT && LOSER_BB_PCT
-			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
-			LOWER_BB_PCT = Math.min(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
-		} else {
-			// Decrease UPPER_BB_PCT && LOWER_BB_PCT
-			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
-			LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
-		}
-	}, TIME_BEFORE_NEW_BUY);
-}
-
-function analyzeDecisionForPrepump(sym, rally_inc_pct, purchase, old_profit_multiplier) {
-	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
-		return;
-	}
-	return new Promise((_) => {
-		// Currently this does nothing
-		setTimeout(() => {
-			if (purchase.gain > 1) {
-				// DECREASE UPPER_BB_PCT && INCREASE LOSER_BB_PCT
-				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT - 0.1));
-				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT + 0.1));
-			} else {
-				// INCREASE UPPER_BB_PCT && DECREASE LOWER_BB_PCT
-				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT + 0.1));
-				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT - 0.1));
-			}
-		}, TIME_BEFORE_NEW_BUY);
-	});
-}
-
-
 async function getPrevDay() {
 	binance.prevDay(false, (error, pd) => {
 		if (error || !pd) {
@@ -1777,22 +1554,6 @@ async function getPrevDay() {
 		    prevDay[symbol] = obj.priceChangePercent;
 		}
 	});
-}
-
-
-async function getBidAsk(coinpair) {
-	try {
-		bidask = await binance.bookTickers(coinpair);
-		fail_counter = 0;
-		return bidask
-	} catch (e) {
-		console.log("Failure getting bid ask", e);
-		if (++fail_counter >= 100) {
-			console.log(`Too many fails fetching bid/ask prices of ${coinpair}, exiting`);
-			process.exit(1);
-		}
-		return await getBidAsk(coinpair);
-	}
 }
 
 //TODO: reimplement this + the related functions, fail_counter was set to 1.
