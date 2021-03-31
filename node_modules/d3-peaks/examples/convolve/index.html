@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Convolution</title>
+<style>
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+  }
+  text {
+    font-family: sans-serif;
+    font-size: 11px;
+  }
+  
+  .axis.y path,
+  .axis.y line {
+    stroke: white;
+  }
+  
+  path {
+    fill: none;
+    stroke: black;
+    stroke-width: 1.5;
+  }
+  
+  circle {
+    fill: black;
+  }
+  
+  path.convolution {
+    stroke: crimson;
+  }
+  
+  circle.convolution {
+    fill: crimson;
+  }
+  
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="d3-peaks.js" charset="utf-8"></script>
+<script>
+  var width = 800,
+      height = 470,
+      margin = {top: 10, left: 30, bottom: 20, right: 10};
+  
+  var signal = [0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0];
+  var ricker = d3_peaks.ricker()
+    .std(4);
+  var convolve = d3_peaks.convolve()
+    .kernel(ricker);
+  var convolution = convolve(signal);
+  
+  signal = signal.map(function(d, i) { return {x: i, y: d, type: 'signal'} });
+  convolution = convolution.map(function(d, i) { return {x: i, y: d, type: 'convolution'} });
+  data = signal.concat(convolution);
+  
+  var svg = d3.select("body").append("svg")
+    .attr("width", width + margin.left + margin.right)
+    .attr("height", height + margin.top + margin.bottom)
+  var g = svg.append("g")
+    .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+    
+  var x = d3.scale.linear()
+    .domain([0, signal.length])
+    .range([20, width])
+    
+  var y = d3.scale.linear()
+    .domain([-0.5,2])
+    .range([height, 0]);
+  
+  var xAxis = d3.svg.axis()
+    .scale(x)
+    .tickValues(d3.range(0, signal.length));
+  
+  var yAxis = d3.svg.axis()
+    .scale(y)
+    .tickValues([
+        d3.min(data, function(d) { return d.y; }),
+        0, 
+        d3.max(data, function(d) { return d.y; })
+      ])
+    .orient("left");
+    
+  g.append("g")
+    .attr("class", "axis")
+    .attr("transform", "translate(0," + y(0) + ")")
+    .call(xAxis);
+    
+  g.append("g")
+    .attr("class", "axis y")
+    .call(yAxis);
+    
+  var pin = g.selectAll(".pin")
+      .data(data)
+      .enter().append("g")
+        .attr("class", "pin");
+        
+  pin.append("path")
+      .attr("d", function(d) { 
+        return "M" + x(d.x) + "," + y(0) +
+               "V" + y(d.y);
+      })
+      .attr("class", function(d) { return d.type });
+      
+  pin.append("circle")
+    .attr("cx", function(d) { return x(d.x); })
+    .attr("cy", function(d) { return y(d.y); })
+    .attr("r", 4)
+    .attr("class", function(d) { return d.type });
+    
+  var legend = g.append("g")
+    .attr("transform", "translate(" + (width - 110) + ", " + margin.top + ")")
+    .attr("class", "legend");
+    
+  legend.append("path")
+    .attr("d", "M0,10H30");
+    
+  legend.append("text")
+    .attr("x", 35)
+    .attr("y", 10)
+    .attr("dy", 3)
+    .text("signal");
+    
+  legend.append("path")
+    .attr("d", "M0,30H30")
+    .attr("class", "convolution");
+    
+  legend.append("text")
+    .attr("x", 35)
+    .attr("y", 30)
+    .attr("dy", 3)
+    .attr("fill", "crimson")
+    .text("convolution");
+    
+</script>
+</body>

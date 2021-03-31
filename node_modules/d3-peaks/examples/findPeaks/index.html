@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<title>Find Peaks</title>
+<style>
+  .axis path,
+  .axis line {
+    fill: none;
+    stroke: black;
+    shape-rendering: crispEdges;
+  }
+  text {
+    font-family: sans-serif;
+    font-size: 11px;
+  }
+  
+  path {
+    fill: none;
+    stroke: black;
+    stroke-width: 1.5px;
+  }
+  
+  path.cardinal {
+    stroke: crimson;
+    stroke-width: 3px;
+  }
+  
+  path.area {
+    stroke: black;
+    stroke-width: 0.5px;
+    fill: crimson;
+    fill-opacity: 0.2;
+  }
+  
+  circle.peak {
+    fill: crimson;
+  }
+  
+</style>
+<body>
+<script src="//d3js.org/d3.v3.min.js" charset="utf-8"></script>
+<script src="d3-peaks.js" charset="utf-8"></script>
+<script>
+  var width = 920,
+      height = 464,
+      margin = {top: 10, left: 10, bottom: 20, right: 10};
+  
+  var ricker = d3_peaks.ricker;
+  var findPeaks = d3_peaks.findPeaks()
+    .kernel(ricker)
+    .gapThreshold(1)
+    .minLineLength(2)
+    .minSNR(1.0)
+    .widths([1,2,3]);
+  
+  d3.json("signal.json", function(error, json) {
+    if (error) console.warn(error);
+    
+    var signal = json.signal;
+    var peaks = findPeaks(signal);
+    
+    var svg = d3.select("body").append("svg")
+      .attr("width", width + margin.left + margin.right)
+      .attr("height", height + margin.top + margin.bottom);
+    var g = svg.append("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+      
+    var x = d3.scale.linear()
+      .domain ([0, signal.length])
+      .range([20, width]);
+      
+    var y = d3.scale.linear()
+      .domain([0, d3.max(signal)])
+      .range([height, 0]);
+      
+    var xAxis = d3.svg.axis()
+      .scale(x)
+      .ticks(20);
+      
+    var line = d3.svg.line()
+      .x(function(d, i) { return x(i); })
+      .y(function(d) { return y(d); });
+      
+    var area = d3.svg.area()
+      .x(function(d) { return x(d.x); })
+      .y0(height)
+      .y1(function(d) { return y(d.y); });
+      
+      
+    g.append("g")
+      .datum(signal)
+      .append("path")
+      .attr("d", line);
+      
+    g.append("g")
+      .attr("class", "axis")
+      .attr("transform", "translate(0," + y(0) + ")")
+      .call(xAxis);
+      
+    g.selectAll(".peak")
+      .data(peaks)
+      .enter().append("circle")
+        .attr("cx", function(peak) { return x(peak.index); })
+        .attr("cy", function(peak) { return y(signal[peak.index]); })
+        .attr("r", 4)
+        .attr("class", "peak");
+
+    line.interpolate("cardinal")
+      .x(function(d) { return x(d.index); })
+      .y(function(d) { return y(signal[d.index]); });
+      
+    peaks.sort(function(a, b) { return a.index - b.index; });
+    g.append("g")
+      .datum(peaks)
+      .append("path")
+        .attr("d", line)
+        .attr("class", "cardinal");
+
+    var areas = [];
+    peaks.forEach(function(peak) {
+      var width = peak.width;
+      var lowerBound = Math.max(0, peak.index - width);
+      var upperBound = Math.min(signal.length, peak.index + width + 1);
+      
+      var a = [];
+      for (var i = lowerBound; i < upperBound; i++) {
+        a.push({
+          x: i,
+          y: signal[i]
+        });
+      }
+      areas.push(a);
+    });
+    
+    areas.forEach(function(data) {
+      g.append("g")
+        .datum(data)
+        .append("path")
+          .attr("d", area)
+          .attr("class", "area");
+    })
+  })
+</script>
+</body>

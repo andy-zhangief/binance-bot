@@ -13,6 +13,7 @@ const asciichart = require ('asciichart');
 const SocketModel = require('socket-model');
 const skmeans = require("skmeans");
 const regression = require('regression');
+const d3peaks = require('d3-peaks');
 const Binance = require('node-binance-api');
 const readline = require('readline');
 var binance;
@@ -610,8 +611,9 @@ async function isAGoodBuyNewMethod(sym) {
 	let lastGainIsLargest = Math.max(...last3gains) == last3gains.slice().pop();
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
+	let last5PeaksTrendDown = isDowntrend(findPeaks(highs).slice(-5), 0, false);
 	//console.log(`sym: ${sym}, last: ${last}, mean: ${mean}, gain: ${gain}, opensBelowMean: ${opensBelowMean}, lastAboveMean: ${lastAboveMean}, increasingCloses: ${increasingCloses}, lastGainIsLargest: ${lastGainIsLargest}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`);
-	if (opensBelowMean && lastAboveMean && increasingCloses && lastGainIsLargest && gainInTargetRange && reachesMin24hVolume) {
+	if (opensBelowMean && lastAboveMean && increasingCloses && lastGainIsLargest && !last5PeaksTrendDown && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -1503,6 +1505,12 @@ function average(data){
 
   var avg = sum / data.length;
   return avg;
+}
+
+function findPeaks(series) {
+	let peakfunction = d3peaks.findPeaks().kernel(d3peaks.ricker).gapThreshold(3);
+	let peaks = findPeaks(series);
+	return peaks.map(x => series[x.index]);
 }
 
 /////////////////////////////// GRAPHING /////////////////////////////////////////////////
