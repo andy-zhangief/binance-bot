@@ -613,15 +613,13 @@ async function isAGoodBuyNewMethod(sym) {
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	//console.log(`sym: ${sym}, last: ${last}, mean: ${mean}, gain: ${gain}, opensBelowMean: ${opensBelowMean}, lastAboveMean: ${lastAboveMean}, increasingCloses: ${increasingCloses}, lastGainIsLargest: ${lastGainIsLargest}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`);
 	if (opensBelowMean && lastAboveMean && increasingCloses && lastGainIsLargest && gainInTargetRange && reachesMin24hVolume) {
-		let last5PeaksTrendDown = isDowntrend(findPeaks(highs).slice(-5), 0, false);
-		if (!last5PeaksTrendDown) {
-			return {
-				sym: sym,
-				gain: gain,
-				last: last,
-				volume: totalVolume,
-			};
-		}
+		//let last5PeaksTrendDown = isDowntrend(findPeaks(highs).slice(-5), 0, false);
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
 	}
 	return false
 }
