@@ -488,7 +488,7 @@ async function waitUntilPrepump() {
 			await waitUntilFetchPricesAsync();
 			if (server) {
 				console.clear();
-				console.log(`Server has ${server.getClients().length} clients connected. Current ${server.transactionHistory.length} Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
+				console.log(`Server has ${server.getClients().length} clients connected. Current ${server.transactionHistory.length || ""} Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
 				server.pnlBTC && console.log(`Total BTC PNL : ${server.pnlBTC}`);
 				server.pnlUSDT && console.log(`Total USDT PNL : ${server.pnlUSDT}`);
 				continue;
