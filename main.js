@@ -2,7 +2,8 @@ const {
 	API_KEY,
 	API_SECRET,
 	MAX_OVERRIDE_BTC,
-	MAX_OVERRIDE_USDT
+	MAX_OVERRIDE_USDT,
+	OVERRIDE_BLACKLIST
 } = require("./secrets.js")
 
 const fs = require('fs');
@@ -11,7 +12,7 @@ const tty = require('tty');
 const asciichart = require ('asciichart');
 const SocketModel = require('socket-model');
 const skmeans = require("skmeans");
-//https://github.com/jaggedsoft/node-binance-api
+const regression = require('regression');
 const Binance = require('node-binance-api');
 const readline = require('readline');
 var binance;
@@ -22,6 +23,8 @@ var {
 	// DO NOT CHANGE THESE
 	ONE_SEC,
 	ONE_MIN,
+	ONE_HOUR,
+	ONE_DAY,
 	APPROX_LOCAL_MIN_MAX_BUFFER_PCT,
 	MIN_COIN_VAL_IN_BTC,
 	TERMINAL_HEIGHT_BUFFER,
@@ -64,6 +67,8 @@ var {
 	PROFIT_LOSS_CHECK_TIME,
 	SELL_RIDE_PROFITS,
 	SELL_RIDE_PROFITS_PCT,
+	SELL_PREVENT_TRIP_STOP_LOSS,
+	SELL_STOP_LOSS_BUFFER_TIME,
 	FOLLOW_BTC_MIN_BUY_MEDIAN,
 	BUFFER_ADD,
 	BUFFER_SUBTRACT,
@@ -152,14 +157,13 @@ var {
 	lastBuyReason,
 	lastSellReason,
 	lastSellLocalMax,
-	BUY_TS,
-	SELL_TS,
 	auto,
 	histogram,
 	detection_mode,
 	buy_good_buys,
 	buy_clusters,
-	buy_rallys,
+	buy_new_method,
+	buy_linear_reg,
 	last_keypress,
 	lastTrend,
 	lastDepth,
@@ -257,16 +261,22 @@ async function initArgumentVariables() {
 		futures = process.argv.includes("--futures");
 		SYMBOLS_PRICE_CHECK_TIME = !!parseFloat(process.argv[3]) ? parseFloat(process.argv[3]) * ONE_SEC : SYMBOLS_PRICE_CHECK_TIME;
 		DEFAULT_BASE_CURRENCY = process.argv.includes("--base=BTC") ? "BTC" : process.argv.includes("--base=USDT") ? "USDT" : DEFAULT_BASE_CURRENCY;
-		buy_rallys = process.argv.includes("--rallys");
-		buy_good_buys = process.argv.includes("--goodbuys") && !buy_rallys;
-		buy_clusters = !buy_rallys && !buy_good_buys;
-		
-		if (buy_good_buys || buy_clusters) {
+		buy_new_method = process.argv.includes("--newmethod");
+		buy_good_buys = process.argv.includes("--goodbuys") && !buy_new_method;
+		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_new_method;
+		buy_clusters = process.argv.includes("--clusters") && !buy_good_buys && !buy_linear_reg && !buy_new_method;
+		SELL_RIDE_PROFITS = process.argv.includes("--ride-profits");
+		if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
+			GOOD_BUY_SEED = process.argv.includes("--fastseed") ? 3 : GOOD_BUY_SEED;
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
 			PREPUMP_STOP_LOSS_MULTIPLIER = GOOD_BUY_LOSS_MULTIPLIER;
 			OPPORTUNITY_EXPIRE_WINDOW = GOOD_BUYS_OPPORTUNITY_EXPIRE_WINDOW;
 			BUFFER_ADD = GOOD_BUY_BUFFER_ADD;
 			BUFFER_SUBTRACT = GOOD_BUY_BUFFER_SUBTRACT;
+			if (buy_linear_reg) {
+				PREPUMP_MAX_PROFIT_MULTIPLIER = 1.15;
+				PREPUMP_MIN_LOSS_MULTIPLIER = 0.925;
+			}
 		}
 		detection_mode = process.argv.includes("--detect");
 	}
@@ -359,6 +369,11 @@ async function initServer() {
 			if (message.sold) {
 				delete server.transactionHistory[message.sym];
 				server.transactionLog.push(message);
+				if (message.sym.endsWith("BTC")) {
+					server.pnlBTC += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				} else if (message.sym.endsWith("USDT")) {
+					server.pnlUSDT += (parseFloat(message.sell_price) - parseFloat(message.buy_price)) * parseFloat(message.quantity);
+				}
 			}
 			if (message.connect) {
 				let transaction = server.transactionHistory[Object.keys(_.pickBy(server.transactionHistory, (value, key) => value && _.isEqual(value.args, message.args) && value.reconnected === false)).pop()];
@@ -374,6 +389,8 @@ async function initServer() {
 
 	server.transactionHistory = {};
 	server.transactionLog = [];
+	server.pnlUSDT = 0;
+	server.pnlBTC = 0;
 	server.onClientConnection((socket) => {
 		server.getWriter().send({historicalPrices: prices, blacklist: blacklist}, socket);
 	});
@@ -421,7 +438,7 @@ async function initClient() {
 			}
 			if (message.blacklist) {
 				if (!_.isEqual(message.blacklist.sort(), blacklist.sort())) {
-					if (!blacklist.includes(coin) && message.blacklist.includes(coin) && auto && !TRANSACTION_COMPLETE) {
+					if (!getCombinedBlacklist().includes(coin) && message.blacklist.includes(coin) && auto && !TRANSACTION_COMPLETE) {
 						quit_buy = true;
 					}
 					blacklist = message.blacklist;
@@ -457,7 +474,6 @@ async function initClient() {
 }
 
 ///////////////////////////// BEFORE BUY ////////////////////////////////////////
-
 async function waitUntilPrepump() {
 	coinpair = "";
 	if (futures) {
@@ -472,7 +488,9 @@ async function waitUntilPrepump() {
 			await waitUntilFetchPricesAsync();
 			if (server) {
 				console.clear();
-				console.log(`Server has ${server.getClients().length} clients connected. Current Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
+				console.log(`Server has ${server.getClients().length} clients connected. Current ${server.transactionHistory.length} Transactions: ${JSON.stringify(server.transactionHistory, null, 2)}`);
+				server.pnlBTC && console.log(`Total BTC PNL : ${server.pnlBTC}`);
+				server.pnlUSDT && console.log(`Total USDT PNL : ${server.pnlUSDT}`);
 				continue;
 			}
 			if (!detection_mode && TRANSACTION_COMPLETE) {
@@ -481,29 +499,25 @@ async function waitUntilPrepump() {
 				console.log("Your Base currency is " + DEFAULT_BASE_CURRENCY);
 				console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
 				console.log(`PNL: ${colorText(pnl >= 0 ? "green" : "red", pnl)} from ${purchases.length} purchases`);
-				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);
-				last_purchase_obj = purchases.slice(-1).pop();
+				console.log(`Rally Time: ${msToTime(RALLY_TIME * SYMBOLS_PRICE_CHECK_TIME)}, Profit Multiplier: ${colorText("green", PREPUMP_TAKE_PROFIT_MULTIPLIER)}, Rally Stop Loss Multiplier: ${colorText("red", PREPUMP_STOP_LOSS_MULTIPLIER)}`);				last_purchase_obj = purchases.slice(-1).pop();
 				recent_purchases = purchases.slice(-(process.stdout.rows - 7)/(last_purchase_obj ? (Object.keys(last_purchase_obj).length + 2) : 1));
 				console.log(`Last ${recent_purchases.length} Purchases: ${JSON.stringify(recent_purchases, null, 4)}`);
 			}
 			rally = null;
-			if (buy_rallys) {
-				rally = await getRally();
-			} else if (buy_good_buys) {
-				rally = await maybeGetGoodBuys(false);
-			} else if (buy_clusters) {
-				rally = await maybeGetGoodBuys(true);
+			if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method) {
+				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
 				if (!yolo) {
 					// This avoids the race condition if we're waiting to buy anyways
+					if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
+						console.log("not enough data to purchase " + rally.sym);
+						await sleep(ONE_MIN);
+						continue;
+					}
 					await sleep(10 * ONE_SEC * Math.random() + 2 * ONE_SEC);
 				}
-				if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
-					console.log("not enough data to purchase " + rally.sym);
-					continue;
-				}
-				if (blacklist.includes(getCoin(rally.sym))) {
+				if (getCombinedBlacklist().includes(getCoin(rally.sym))) {
 					continue;
 				}
 				coinpair = rally.sym;
@@ -527,14 +541,14 @@ async function waitUntilPrepump() {
 }
 
 //TODO: Better code pathing once cluster code is finalized
-async function maybeGetGoodBuys(clusters = false) {
+async function maybeGetGoodBuys() {
 	if (prices_data_points_count % GOOD_BUY_SEED_MAX == GOOD_BUY_SEED) {
-		return await getGoodBuys(clusters);
+		return await getGoodBuys();
 	}
 }
 
-async function getGoodBuys(clusters = false) {
-	goodBuys = await scanForGoodBuys(clusters);
+async function getGoodBuys() {
+	goodBuys = await scanForGoodBuys();
 	if (detection_mode) {
 		console.clear();
 		console.log("Detection Mode Active");
@@ -545,14 +559,14 @@ async function getGoodBuys(clusters = false) {
 	goodBuy = null;
 	while (goodBuys.length) {
 		goodBuy = goodBuys.shift();
-		if (getBalance(getCoin(goodBuy.sym)) > 0 || blacklist.includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
+		if (getBalance(getCoin(goodBuy.sym)) > 0 || getCombinedBlacklist().includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
 			goodBuy == null
 		}
 	}
 	return goodBuy;
 }
 
-async function scanForGoodBuys(clusters = false) {
+async function scanForGoodBuys() {
 	let goodCoins = [];
 	let promises = Object.keys(coinsInfo).map(async k => {
 		if (coinsInfo[k].status != "TRADING") {
@@ -567,7 +581,10 @@ async function scanForGoodBuys(clusters = false) {
 		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
-			goodCoin = clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : await isAGoodBuyFrom1hGraph(k);
+			// Feel free to add your own method of detecting good buys
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : 
+				buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : 
+				buy_new_method ? await isAGoodBuyNewMethod(k) : false;
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -575,6 +592,33 @@ async function scanForGoodBuys(clusters = false) {
 	});
 	await Promise.raceAll(promises, 15 * ONE_SEC);
 	return goodCoins.sort((a, b) => a.volume - b.volume);
+}
+
+async function isAGoodBuyNewMethod(sym) {
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
+	if (!ticker.length) {
+		return false; 
+	}
+	let mean = average(ticker.slice(-21));
+	let last3gains = gains.slice(-3);
+	let last = getPricesForCoin(sym, 1).pop();
+	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
+	let lastAboveMean = last > mean;
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
+	let gain = Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1.01;
+	let lastGainIsLargest = Math.max(...last3gains) == last3gains.slice().pop();
+	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
+	//console.log(`sym: ${sym}, last: ${last}, mean: ${mean}, gain: ${gain}, opensBelowMean: ${opensBelowMean}, lastAboveMean: ${lastAboveMean}, increasingCloses: ${increasingCloses}, lastGainIsLargest: ${lastGainIsLargest}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`);
+	if (opensBelowMean && lastAboveMean && increasingCloses && lastGainIsLargest && gainInTargetRange && reachesMin24hVolume) {
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
+	}
+	return false
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
@@ -591,15 +635,49 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
 	//let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
-	let previousLowClusters = resLow.idxs.slice(-6);
+	let previousLowClusters = resLow.idxs.slice(-12);
 	let currentLowCluster = sortedLow.indexOf(resLow.test(Math.min(...last30mins)).idx);
 	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
-	let isBuyableClusterSupport = (currentLowCluster >= CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length == previousLowClusters.length); //TODO: Validate
+	let isBuyableClusterSupport = (currentLowCluster >= CLUSTER_SUPPORT_BUY_LEVEL) && (previousLowClusters.filter(x => x < CLUSTER_SUPPORT_BUY_LEVEL).length >= 10); //TODO: Validate
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gain =  Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
 	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
+		return {
+			sym: sym,
+			gain: gain,
+			last: last,
+			volume: totalVolume,
+		};
+	}
+	return false;
+}
+
+async function isAGoodBuyFromLinearRegression(sym) {
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "4h", 60, new Date(Date.now()).getMinutes() > 55);
+	let stdevs = [];
+	let mean4hs = [];
+	let section = ticker.slice(-10);
+	let last = getPricesForCoin(sym, -1).pop();
+	while (ticker.length >= 20) {
+		stdevs.unshift(getStandardDeviation(ticker.slice(-20)));
+		mean4hs.unshift(average(ticker.slice(-20)));
+		ticker.pop();
+	}
+	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
+	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.002;
+	let minStdev = Math.min(...stdevs);
+	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
+	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
+	let lastMean = mean4hs.pop();
+	let lastValueAboveMean = last > lastMean && last < lastMean + 0.5 * stdevs.slice().pop(); 
+	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x >= mean4hs.pop()).length == 0;
+	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) + 1.01;
+	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
+	//console.log(`sym: ${sym}, gain: ${gain}, volume: ${totalVolume}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`)
+	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,
@@ -652,7 +730,6 @@ async function pump(sym = coinpair) {
 		console.log("Buy is successful")
 		console.info("Market Buy response", response);
 		console.info("order id: " + response.orderId);
-		BUY_TS = 0;
 		buy_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty
 		lastBuy = buy_price * response.executedQty;
 		actualquantity = response.executedQty;
@@ -762,7 +839,7 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		
 		sell_price = response.fills.reduce(function(acc, fill) { return acc + fill.price * fill.qty; }, 0)/response.executedQty;
 		if (client) {
-			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity, args: process.argv});
+			client.send({id: client.connectionID, sold: true, ts: new Date(Date.now()), sym: sym, buy_price: buy_price, sell_price: sell_price, quantity: quantity, args: process.argv});
 		}
 		if (server && immediately) {
 			server.transactionLog.push({id: "server market sell", sold: true, ts: new Date(Date.now()), sym: sym, sell_price: sell_price, quantity: quantity})
@@ -772,7 +849,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 		console.log("Last sell is because " + lastSellReason);
 		console.info("Market sell response", response);
 		console.info("order id: " + response.orderId);
-		SELL_TS = 0;
 		lastBuy = buy_price * response.executedQty;
 		lastSell = sell_price * response.executedQty;
 		pnl += lastSell - lastBuy;
@@ -800,7 +876,6 @@ async function ndump(take_profit, buy_price, stop_loss, quantity, immediately = 
 				removeFromBlacklistLater(coin);
 				return;
 			}
-			analyzeDecisionForSingleCoin(purchase);
 			pump();
 			return;
 		}
@@ -819,10 +894,14 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 	sell_indicator_check_time = 0;
 	sell_indicator_increment = SELL_INDICATOR_INC_BASE;
 	ride_profits = false;
+	prevent_trip_stoploss = false;
+	stop_loss_hit_time = 0;
 	take_profit_hit_check_time = 0;
 	fetch_15m_candlestick_time = 0;
+	wasAbove4hMean = false;
+	isAbove4hMean = false;
 	mean15 = 0;
-	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits) {
+	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits || prevent_trip_stoploss) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
@@ -850,37 +929,32 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price) {
 					}
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
-						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker));
+						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
+						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
+						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
+					}
+					if (Date.now() > start + 2 * ONE_HOUR && !isAbove4hMean && wasAbove4hMean && latestPrice > mean + 1.8 * stdev) {
+						lastSellReason = "sold because it dipped below 4h mean after rising above it";
+						return latestPrice;
 					}
 					if (ride_profits && latestPrice < mean15) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
 						return latestPrice;
 					}
-					// if (ride_profits && latestPrice > take_profit) {
-					// 	if (!sell_indicator_reached && !sell_indicator_almost_reached && latestPrice > mean) {
-					// 		sell_indicator_almost_reached = true;
-					// 		sell_indicator_check_time = Date.now() + BUY_INDICATOR_INC; // This is intentional. Srry for naming confusion
-					// 	}
-					// 	if (!sell_indicator_reached && sell_indicator_almost_reached && Date.now() > sell_indicator_check_time) {
-					// 		if (latestPrice < mean) {
-					// 			sell_indicator_reached = true;
-					// 			sell_indicator_check_time = Date.now() + sell_indicator_increment;
-					// 			sell_indicator_increment *= SELL_INDICATOR_INC_MULTIPLIER;
-					// 		} else {
-					// 			sell_indicator_almost_reached = false;
-					// 		}
-					// 	}
-					// 	if (sell_indicator_reached && Date.now() > sell_indicator_check_time) {
-					// 		if (latestPrice < mean) {
-					// 			return latestPrice;
-					// 		}
-					// 		sell_indicator_almost_reached = false;
-					// 		sell_indicator_reached = false;
-					// 	}
-					// }
 					break;
 				default:
 					break;
+			}
+			if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice < stop_loss && !prevent_trip_stoploss) {
+				prevent_trip_stoploss = true;
+				stop_loss_hit_time = Date.now();
+			}
+			if (prevent_trip_stoploss && Date.now() > stop_loss_hit_time + SELL_STOP_LOSS_BUFFER_TIME) {
+				if (latestPrice < stop_loss) {
+					lastSellReason = "Sold because stop loss was hit";
+					return latestPrice;
+				}
+				prevent_trip_stoploss = false;
 			}
 		}
 		if (SHOW_GRAPH) {
@@ -949,8 +1023,6 @@ async function tick(buying) {
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice);
 	initializeQs();
 	pushToLookback(latestPrice);
-	BUY_TS++;
-	SELL_TS++;
 	q.push(latestPrice);
 	stdev = getStandardDeviation([...Array(Math.floor(QUEUE_SIZE/60)).keys()].map(v => average(q.slice(v * 60, (v + 1) * 60))));
 	mean = average(q);
@@ -1017,17 +1089,17 @@ async function initializeTickerWebsocket(sym) {
 }
 
 function terminateTickerWebsocket(sym) {
-	let endpoint = sym.toLowerCase() + "@bookTicker";
-	if (Object.keys(binance.websockets.subscriptions()).includes(endpoint)) {
+	let endpoints = binance.websockets.subscriptions();
+	for ( let endpoint in endpoints ) {
 		binance.websockets.terminate(endpoint);
 	}
 }
 
-async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true) {
+async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true, endTime = Date.now()) {
 	let key = sym+"-"+interval+"-"+segments;
 	let t = parseInt(interval.substring(0,interval.length-1))
 	let i = interval.substring(interval.length-1);
-	i = i == "m" ? ONE_MIN : i == "h" ? 60 * ONE_MIN : i == "d" ? 24 * 60 * ONE_MIN : 0;
+	i = i == "m" ? ONE_MIN : i == "h" ? ONE_HOUR : i == "d" ? ONE_DAY : 0;
 	if (i == 0) {
 		console.log("Invalid Interval");
 		return;
@@ -1054,7 +1126,7 @@ async function fetchCandlestickGraph(sym, interval, segments, force = false, cac
 			totalVolume += parseFloat(volume) * (open/2 + close/2);
 		})
 		finished = true;
-	}, {limit: segments, endTime: Date.now()});
+	}, {limit: segments, endTime: endTime});
 	while (!finished) {
 		await sleep(ONE_SEC)
 	}
@@ -1234,6 +1306,10 @@ async function prepopulate30mData() {
 	if (server) {
 		server.broadcast({historicalPrices: prices, blacklist: blacklist});
 	}
+}
+
+function getCombinedBlacklist() {
+	return blacklist.concat(OVERRIDE_BLACKLIST);
 }
 
 function updateBlacklistFromBalance() {
@@ -1460,224 +1536,6 @@ function plot(buying) {
 }
 
 ////////////////////////////////////////////////////////DEPRECATED/////////////////////////////////////////////////////
-
-async function getRally() {
-	rallies = await detectCoinRallies();
-	if (detection_mode) {
-		console.clear();
-		console.log("Detection Mode Active");
-		console.log(`Current time is ${new Date(Date.now()).toLocaleTimeString("en-US")}`);
-		console.log(`Blacklist: ${blacklist}`);
-		rallies && rallies.length && console.log(`Rallies: ${JSON.stringify(rallies.filter(v => v.goodBuy), null, 4)}`);
-		return;
-	}
-
-	if (prices_data_points_count < PRICES_HISTORY_LENGTH) {
-		return;
-	}
-
-	rally = null;
-	
-	while (rallies.length) {
-		rally = rallies.shift();
-		if (getBalance(getCoin(rally.sym)) > 0 || blacklist.includes(getCoin(rally.sym)) || coinpair == rally.sym || rally.fail || !rally.goodBuy) {
-			rally = null;
-		}
-	}
-	return rally;
-}
-
-async function detectCoinRallies() {
-	lastX = prices.slice(-RALLY_TIME);
-	rallies = [];
-	for (const sym of Object.keys(lastX[0])) {
-		green = 0;
-		red = 0;
-		last = lastX[0][sym];
-		min = last;
-		max = last;
-		last_x_values = [last];
-		for (i = 1; i < lastX.length; i++) {
-			current = lastX[i][sym];
-			if (!current) {
-				break;
-			}
-			if (current >= last) {
-				green++;
-			} else {
-				red++;
-			}
-			min = Math.min(min, current);
-			max = Math.max(max, current);
-			last = current;
-			last_x_values.push(current)
-		}
-		if (green + red != RALLY_TIME - 1) {
-			break;
-		}
-		// TODO: Rethink where start/end values should be in comparison to sorted historical
-		gain = max/min;
-		first = lastX[0][sym];
-		last = lastX[lastX.length-1][sym];
-		historical_vals = getPricesForCoin(sym).slice(0, -RALLY_TIME);
-		recent_historical_vals = historical_vals.slice(-2.5 * RALLY_TIME, -RALLY_TIME);
-		sorted_historical_vals = recent_historical_vals.sort();
-		recent_sorted_historical_vals = recent_historical_vals.sort();
-		high_median = sorted_historical_vals.slice(-0.5 * sorted_historical_vals.length).shift();
-		low_median = sorted_historical_vals.slice(0, -0.95 * sorted_historical_vals.length).pop();
-		min_historical = recent_sorted_historical_vals.shift();
-		max_historical = recent_sorted_historical_vals.pop();
-		test_count = 0;
-		fail_reasons = ""
-		if(green == 0 || red/green >= RALLY_GREEN_RED_RATIO) {
-			test_count++;
-		} else {
-			fail_reasons += "ratio " + red/green + " ";
-		}
-		if (gain < RALLY_MAX_DELTA) {
-			test_count++;
-		} else {
-			fail_reasons += "maxDelta " + gain + " ";
-		}
-		if (gain > RALLY_MIN_DELTA) {
-			test_count++;
-		} else {
-			fail_reasons += "minDelta " + gain + " ";
-		}
-		if (last < first) {
-			test_count++;
-		} else {
-			fail_reasons += "last>first " + last + '>' + first + " ";
-		}
-		if (high_median > first) {
-			test_count++;
-		} else {
-			fail_reasons += "highMed<first " + high_median + '<' + first + " ";
-		}
-		if (low_median < first) {
-			test_count++;
-		} else {
-			fail_reasons += "lowMed>first " + low_median + '>' + first + " ";
-		}
-		// Rethink this in particular
-		if (min_historical > last) {
-			test_count++;
-		} else {
-			fail_reasons += "lowest<last " + min_historical + '<' + last + " ";
-		}
-		if (max_historical/min_historical > gain) {
-			test_count++;
-		} else {
-			fail_reasons += "historicalgain<gain " + max_historical/min_historical + '<' + gain + " ";
-		}
-		if ((green == 0 || red/green >= RALLY_GREEN_RED_RATIO)
-			&& gain < RALLY_MAX_DELTA
-			&& gain > RALLY_MIN_DELTA
-			&& last < first
-			&& high_median > first
-			&& low_median < first
-			&& min_historical > last
-			&& max_historical/min_historical > gain) {
-			rallies.push({
-				sym: sym,
-				min: min,
-				max: max,
-				gain: gain,
-				first: first,
-				last: last,
-				goodBuy: await isAGoodBuyFrom1hGraphForRally(sym),
-			});
-		} else if (test_count > 6 && detection_mode) {
-			rallies.push({sym: sym, first: first, last: last, goodBuy: await isAGoodBuyFrom1hGraphForRally(sym), gain: gain, fail: fail_reasons});
-		}
-	}
-	return rallies.sort((a, b) => a.gain - b.gain);
-}
-
-async function isAGoodBuyFrom1hGraphForRally(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
-	if (!ticker.length) {
-		return false;
-	}
-	let mean = average(ticker);
-	let std = getStandardDeviation(ticker);
-	let increasingCloses = isUptrend(closes.slice(-4), 0, false);
-	let opensBelowMeanPlusStdev = (opens.slice(-4).filter(v => v > (mean + std)).length == 0);
-	let last3VolumesGreaterThanPrevious3Volumes = volumes.slice(-3).reduce((sum, val) => sum + val, 0) > volumes.slice(-6, -3).reduce((sum, val) => sum + val, 0);
-	if (increasingCloses && opensBelowMeanPlusStdev && last3VolumesGreaterThanPrevious3Volumes) {
-		return true;
-	}
-	return false;
-}
-
-async function isAGoodBuyFrom1hGraph(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
-	if (!ticker.length) {
-		return false;
-	}
-	let mean = average(ticker.slice(-21));
-	let std = getStandardDeviation(ticker.slice(-21));
-	let last3gains = gains.slice(-3);
-	let last = getPricesForCoin(sym, 1).pop();
-	let gain = Math.min(last3gains.reduce((sum, val) => sum + Math.abs(1-val), 1.01), Math.max(...closes.slice(-21)) * 0.99 / last);
-	let opensBelowMean = (opens.slice(-3).filter(v => v > (mean)).length == 0);
-	let lastWickIsShorterThanBody = (closes.slice(-1).shift() - opens.slice(-1).shift()) > (highs.slice(-1).shift() - closes.slice(-1).shift());
-	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
-	let startOfRally = !isUptrend(opens.slice(-4), 0, false);
-	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
-	let thirdGainLessThanPrevious2Combined = Math.abs(1-last3gains[0]) < Math.abs(1-last3gains[1]) + Math.abs(1-last3gains[2]);
-	let last2VolumesGreaterThanPrevious2Volumes = volumes.slice(-2).reduce((sum, val) => sum + val, 0) > 1.5 * volumes.slice(-5, -3).reduce((sum, val) => sum + val, 0);
-	let lastWickGreaterThanSecondLastWick = highs.slice(-1).shift() > highs.slice(-2).shift();
-	if (opensBelowMean && increasingCloses && startOfRally && gainInTargetRange && reachesMin24hVolume && thirdGainLessThanPrevious2Combined && last2VolumesGreaterThanPrevious2Volumes && lastWickIsShorterThanBody && lastWickGreaterThanSecondLastWick) {
-		return {
-			sym: sym,
-			gain: gain,
-			last: last,
-			volume: totalVolume,
-		};
-	}
-	return false;
-}
-
-function analyzeDecisionForSingleCoin(purchase) {
-	if (!purchase || !purchase.sym) {
-		return;
-	}
-	return new Promise((_) => {
-		if (purchase.gain > 1) {
-			// Increase UPPER_BB_PCT && LOSER_BB_PCT
-			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT + 0.1));
-			LOWER_BB_PCT = Math.min(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT + 0.1));
-		} else {
-			// Decrease UPPER_BB_PCT && LOWER_BB_PCT
-			UPPER_BB_PCT = Math.max(MIN_BB_PCT, Math.min(MAX_BB_PCT, UPPER_BB_PCT - 0.1));
-			LOWER_BB_PCT = Math.max(-MAX_BB_PCT, Math.min(-MIN_BB_PCT, LOWER_BB_PCT - 0.1));
-		}
-	}, TIME_BEFORE_NEW_BUY);
-}
-
-function analyzeDecisionForPrepump(sym, rally_inc_pct, purchase, old_profit_multiplier) {
-	if (!purchase || !purchase.sym ||  !purchase.sym == sym) {
-		return;
-	}
-	return new Promise((_) => {
-		// Currently this does nothing
-		setTimeout(() => {
-			if (purchase.gain > 1) {
-				// DECREASE UPPER_BB_PCT && INCREASE LOSER_BB_PCT
-				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT - 0.1));
-				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT + 0.1));
-			} else {
-				// INCREASE UPPER_BB_PCT && DECREASE LOWER_BB_PCT
-				UPPER_BB_PCT = Math.max(PREPUMP_MIN_UPPER_BB_PCT, Math.min(PREPUMP_MAX_UPPER_BB_PCT, UPPER_BB_PCT + 0.1));
-				LOWER_BB_PCT = Math.max(PREPUMP_MIN_LOWER_BB_PCT, Math.min(PREPUMP_MAX_LOWER_BB_PCT, LOWER_BB_PCT - 0.1));
-			}
-		}, TIME_BEFORE_NEW_BUY);
-	});
-}
-
-
 async function getPrevDay() {
 	binance.prevDay(false, (error, pd) => {
 		if (error || !pd) {
@@ -1689,22 +1547,6 @@ async function getPrevDay() {
 		    prevDay[symbol] = obj.priceChangePercent;
 		}
 	});
-}
-
-
-async function getBidAsk(coinpair) {
-	try {
-		bidask = await binance.bookTickers(coinpair);
-		fail_counter = 0;
-		return bidask
-	} catch (e) {
-		console.log("Failure getting bid ask", e);
-		if (++fail_counter >= 100) {
-			console.log(`Too many fails fetching bid/ask prices of ${coinpair}, exiting`);
-			process.exit(1);
-		}
-		return await getBidAsk(coinpair);
-	}
 }
 
 //TODO: reimplement this + the related functions, fail_counter was set to 1.
