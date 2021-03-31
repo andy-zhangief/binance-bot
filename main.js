@@ -582,7 +582,9 @@ async function scanForGoodBuys() {
 			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
 			await sleep(Math.random() * 10 * ONE_SEC);
 			// Feel free to add your own method of detecting good buys
-			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : buy_new_method ? await isAGoodBuyNewMethod(k) : false;
+			goodCoin = buy_clusters ? await isAGoodBuyFrom1hGraphForClusters(k) : 
+				buy_linear_reg ? await isAGoodBuyFromLinearRegression(k) : 
+				buy_new_method ? await isAGoodBuyNewMethod(k) : false;
 			if (goodCoin) {
 				goodCoins.push(goodCoin);
 			}
@@ -667,17 +669,15 @@ async function isAGoodBuyFromLinearRegression(sym) {
 	let isRoughlyFlat = Math.abs(result.equation[0])/section.slice().pop() < 0.002;
 	let minStdev = Math.min(...stdevs);
 	let lastStdevIsAlmostSmallest = stdevs.slice().pop()/minStdev < 1.15;
-	//let lastStdevGreaterThan2ndLastStdev = stdevs.slice(-2).shift() < stdevs.slice(-1).pop();
 	let increasingCloses = isUptrend(closes.slice(-3), 0, false);
 	let lastMean = mean4hs.pop();
 	let lastValueAboveMean = last > lastMean && last < lastMean + 0.5 * stdevs.slice().pop(); 
-	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x > mean4hs.pop()).length == 0;
+	let last10ClosesBelowMean = closes.slice(-11, -1).reverse().filter(x => x >= mean4hs.pop()).length == 0;
 	let gain = Math.abs(Math.min(...lows.slice(-2))/last - 1) + 1.01;
 	let gainInTargetRange = gain >= 1.03 && gain <= 1.2;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	//console.log(`sym: ${sym}, gain: ${gain}, volume: ${totalVolume}, isRoughlyFlat: ${isRoughlyFlat}, increasingCloses: ${increasingCloses}, lastStdevIsAlmostSmallest: ${lastStdevIsAlmostSmallest}, last10ClosesBelowMean: ${last10ClosesBelowMean}, lastValueAboveMean: ${lastValueAboveMean}, gainInTargetRange: ${gainInTargetRange}, reachesMin24hVolume: ${reachesMin24hVolume}`)
 	if (isRoughlyFlat && increasingCloses && lastStdevIsAlmostSmallest && last10ClosesBelowMean && lastValueAboveMean && gainInTargetRange && reachesMin24hVolume) {
-		//console.log("returning " + sym);
 		return {
 			sym: sym,
 			gain: gain,
