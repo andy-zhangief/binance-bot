@@ -625,7 +625,7 @@ async function isAGoodBuyNewMethod(sym) {
 }
 
 async function isAGoodBuyFrom1hGraphForClusters(sym) {
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48);
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "4h", 30);
 	if (!ticker.length) {
 		return false; 
 	}
@@ -645,7 +645,7 @@ async function isAGoodBuyFrom1hGraphForClusters(sym) {
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gain =  Math.abs(Math.min(...lows.slice(-10))/last - 1) * 2 + 1.01;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
-	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 2 : MIN_24H_BTC * 2);
+	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 10 : MIN_24H_BTC * 10);
 	if (isBuyableClusterSupport && gainInTargetRange && reachesMin24hVolume) {
 		return {
 			sym: sym,
@@ -1625,7 +1625,97 @@ function sleep(ms) {
 } 
 
 async function testAndQuit() {
+	buyCorrect = 0;
+	buyTotal = 0;
+	dontBuyCorrect = 0;
+	dontBuyTotal = 0;
+	pnlSum = 0;
+	while (true) {
+		goodCoins  = [];
+		let promises = Object.keys(coinsInfo).map(async k => {
+			if (coinsInfo[k].status != "TRADING") {
+				return;
+			}
+			if (futures && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
+				return;
+			}
+			if (!futures && (k.includes("UPUSDT") || k.includes("DOWNUSDT"))) {
+				return;
+			}
+			if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
+				// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
+				await sleep(Math.random() * 10 * ONE_SEC);
+				// Feel free to add your own method of detecting good buys
+				goodCoins.push(await kmeanstest(k));
+			}
+		});
+		await Promise.raceAll(promises, 15 * ONE_SEC);
+		goodCoins.forEach(v => {
+			if (v[0]) {
+				//console.log(v);
+				buyTotal++;
+				(v[1] == 1 || v[1] == 2 && v[7] > v[2]) && buyCorrect++;
+				if (v[4] > v[3] && v[1]) {
+					pnlSum += v[3]/v[2] - 1
+				} else if (!v[1] && v[6] < v[5]) {
+					pnlSum += v[5]/v[2] - 1
+				} else {
+					pnlSum += v[7]/v[2] - 1
+				}
+			}
+		})
+		console.log(`correct buys: ${buyCorrect}, total buys: ${buyTotal}, accuracy: ${buyCorrect/buyTotal}, PNL: ${pnlSum}`);
+		await sleep(15 * ONE_SEC);
+	}
+	
 	process.exit(0);
+}
+
+async function kmeanstest(sym) {
+	buffer = 24;
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48 + buffer, false, false, Date.now() - Math.floor((Math.random() * 10 * ONE_DAY)));
+	if (!ticker.length) {
+		return false; 
+	}
+	let control = true;
+	let last = closes.slice(-buffer).shift();
+	let resHigh = skmeans(highs.slice(0, -buffer), 3, null, 10);
+	let resLow = skmeans(lows.slice(0, -buffer), 3, null, 10);
+	let sortedHigh = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]);
+	let sortedLow = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]);
+	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
+	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
+	let increasingCloses = isUptrend(closes.slice(-buffer-3, -buffer), 0, false);
+	//let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
+	let previousLowClusters = resLow.idxs.slice(-15);
+	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
+	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
+	let isBuyableClusterSupport = (currentLowCluster == 1) && (previousLowClusters.filter(x => x < 1).length >= 12); //TODO: Validate
+	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
+	let gain =  Math.abs(Math.min(...lows.slice(-buffer - 3, -buffer))/last - 1) * 2 + 1.02;
+	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
+	let reachesMin24hVolume = true;
+	let section = lows.slice(-buffer-12, -buffer);
+	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
+	let isLowsNegativelySloped = result.equation[0]/section.slice().pop() < -0.001;
+	buy = false;
+	if ((control && Math.random() > 0.5) || (isBuyableClusterSupport && increasingCloses && !isLowsNegativelySloped && gainInTargetRange && reachesMin24hVolume)) {
+		buy = true;
+	}
+	postHighs = highs.slice(-buffer);
+	postLows = lows.slice(-buffer);
+	for (i = 0; i < buffer; i++) {
+		if (postLows[i] < last * ((1-gain)/2+1)) {
+			buy && console.log("bad buy");
+			return [buy, 0, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop()]
+		}
+		if (postHighs[i] > last * gain) {
+			buy && console.log("good buy");
+			return [buy, 1, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows),closes.slice(-1).pop()]
+		}
+	}
+	buy && console.log(closes.slice(-1).pop() > last ? "inconclusively Good" : "inconclusively Bad");
+	return [buy, 2 , last , last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop()]
 }
 
 init();
