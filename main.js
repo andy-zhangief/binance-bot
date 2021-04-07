@@ -16,6 +16,7 @@ const regression = require('regression');
 const d3peaks = require('d3-peaks');
 const Binance = require('node-binance-api');
 const readline = require('readline');
+const tf = require('@tensorflow/tfjs-node');
 var binance;
 
 ////////////////////////////// GLOBALS ///////////////////////////////
@@ -1622,7 +1623,11 @@ function sleep(ms) {
 	return new Promise((resolve) => {
 		setTimeout(resolve, ms);
 	});
-} 
+}
+
+model = null;
+testright = 0;
+tests = 0;
 
 async function testAndQuit() {
 	buyCorrect = 0;
@@ -1630,6 +1635,7 @@ async function testAndQuit() {
 	dontBuyCorrect = 0;
 	dontBuyTotal = 0;
 	pnlSum = 0;
+	createMLModel();
 	while (true) {
 		goodCoins  = [];
 		let promises = Object.keys(coinsInfo).map(async k => {
@@ -1663,18 +1669,32 @@ async function testAndQuit() {
 					pnlSum += v[7]/v[2] - 1
 				}
 			}
-		})
-		console.log(`correct buys: ${buyCorrect}, total buys: ${buyTotal}, accuracy: ${buyCorrect/buyTotal}, PNL: ${pnlSum}`);
+		});
+		testcase = goodCoins.pop();
+		//console.log(`correct buys: ${buyCorrect}, total buys: ${buyTotal}, accuracy: ${buyCorrect/buyTotal}, PNL: ${pnlSum}`);
+		const xs = tf.tensor2d(goodCoins.map(x => console.log(x.length) || x[8].resh.concat(x[8].resl)));
+		const ys = tf.tensor2d(goodCoins.map(x => x[1] == 0 ? [0,1] : x[1] == 1 ? [1,0] : x[1] == 2 && x[7] > x[2] ? [0.75, 0.25] : [0.25, 0.75]))
+		await model.fit(xs, ys)
+		model.predict(tf.tensor1d(testcase.resh.concat(testcase.resl))).print();
+		console.log(x[1] == 0 ? "badbuy" : x[1] == 1 ? "goodbuy" : x[1] == 2 && x[7] > x[2] ? "igoodbuy" : 'ibadbuy')
 		await sleep(15 * ONE_SEC);
 	}
 	
 	process.exit(0);
 }
 
+async function createMLModel() {
+	model = tf.sequential();
+	model.add(tf.layers.dense({units: 4, activation: 'sigmoid', inputShape: [96]}));
+	model.add(tf.layers.dense({units: 2, activation: 'relu'}));
+	model.compile({optimizer: 'sgd', loss: 'meanSquaredError'});
+}
+
 async function kmeanstest(sym) {
 	buffer = 24;
-	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48 + buffer, false, false, Date.now() - Math.floor((Math.random() * 10 * ONE_DAY)));
-	if (!ticker.length) {
+	prevslice = 15;
+	let [ticker, closes, opens, gains, highs, lows, volumes, totalVolume] = await fetchCandlestickGraph(sym, "1h", 48 + buffer, false, false, Date.now() - Math.floor((Math.random() * 100 * ONE_DAY)));
+	if (!ticker.length || ticker.length < 48 + buffer) {
 		return false; 
 	}
 	let control = true;
@@ -1687,10 +1707,11 @@ async function kmeanstest(sym) {
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
 	let increasingCloses = isUptrend(closes.slice(-buffer-3, -buffer), 0, false);
 	//let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
-	let previousLowClusters = resLow.idxs.slice(-15);
+	let previousLowClusters = resLow.idxs.slice(-prevslice);
 	let currentLowCluster = sortedLow.indexOf(resLow.test(last).idx);
+	let isAverageBeforePreviousClustersOk = average(resLow.idxs.slice(0, -prevslice)) >= 1.2;
 	//let isFreefall = resLow.idxs.slice(-24, -8).filter(x => x <= Math.max(0, CLUSTER_SUPPORT_BUY_LEVEL - 1)).length <= 1;
-	let isBuyableClusterSupport = (currentLowCluster == 1) && (previousLowClusters.filter(x => x < 1).length >= 12); //TODO: Validate
+	let isBuyableClusterSupport = previousLowClusters.slice().pop() >= 1 && average(previousLowClusters) <= 0.2; //TODO: Validate
 	//let gain = Math.min(...highs.map((v, k) => resHigh.idxs[k] == currentHighCluster + CLUSTER_RESISTANCE_SELL_LEVEL_INC ? v : Infinity))/last;
 	let gain =  Math.abs(Math.min(...lows.slice(-buffer - 3, -buffer))/last - 1) * 2 + 1.02;
 	let gainInTargetRange = gain >= GOOD_BUY_MIN_GAIN && gain <= GOOD_BUY_MAX_GAIN;
@@ -1699,23 +1720,25 @@ async function kmeanstest(sym) {
 	let result = regression.linear(section.map((v, k) => [k, parseFloat(v)]), {order: 1, precision: 10});
 	let isLowsNegativelySloped = result.equation[0]/section.slice().pop() < -0.001;
 	buy = false;
-	if ((control && Math.random() > 0.5) || (isBuyableClusterSupport && increasingCloses && !isLowsNegativelySloped && gainInTargetRange && reachesMin24hVolume)) {
+	if ((control && Math.random() > 0.5) || (isAverageBeforePreviousClustersOk && isBuyableClusterSupport && increasingCloses && !isLowsNegativelySloped && gainInTargetRange && reachesMin24hVolume)) {
 		buy = true;
 	}
 	postHighs = highs.slice(-buffer);
 	postLows = lows.slice(-buffer);
 	for (i = 0; i < buffer; i++) {
 		if (postLows[i] < last * ((1-gain)/2+1)) {
-			buy && console.log("bad buy");
-			return [buy, 0, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop()]
+			//buy && (console.log("bad buy") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
+			//buy && badbuyscluster.push({resl: resLow.idxs.join(""), resh: resHigh.idxs.join(""), avg: average(resLow.idxs), avgAfter: average(resLow.idxs.slice(-prevslice)), avgb4: average(resHigh.idxs.slice(0, -prevslice))})
+			return [buy, 0, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
 		}
 		if (postHighs[i] > last * gain) {
-			buy && console.log("good buy");
-			return [buy, 1, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows),closes.slice(-1).pop()]
+			//buy && (console.log("good buy") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
+			//buy && goodbuyscluster.push({resl: resLow.idxs.join(""), resh: resHigh.idxs.join(""), avg: average(resLow.idxs), avgAfter: average(resLow.idxs.slice(-prevslice)), avgb4: average(resHigh.idxs.slice(0, -prevslice))})
+			return [buy, 1, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows),closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
 		}
 	}
-	buy && console.log(closes.slice(-1).pop() > last ? "inconclusively Good" : "inconclusively Bad");
-	return [buy, 2 , last , last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop()]
+	//buy && (console.log(closes.slice(-1).pop() > last ? "inconclusively Good" : "inconclusively Bad") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
+	return [buy, 2 , last , last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
 }
 
 init();
