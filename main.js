@@ -1514,6 +1514,12 @@ function findPeaks(series) {
 	return peaks.map(x => series[x.index]);
 }
 
+function normalizeData(data) {
+	maxVal = Math.max(...data);
+	minVal = Math.min(...data);
+	return data.map(x => maxVal == minVal ? 0 : (x-minVal)/(maxVal-minVal));
+}
+
 /////////////////////////////// GRAPHING /////////////////////////////////////////////////
 function formatGraph(x, i) {
 	return ("" + x + GRAPH_PADDING).slice (0, GRAPH_PADDING.length);
@@ -1625,7 +1631,7 @@ function sleep(ms) {
 	});
 }
 
-model = null;
+models = [];
 testright = 0;
 tests = 0;
 
@@ -1635,59 +1641,134 @@ async function testAndQuit() {
 	dontBuyCorrect = 0;
 	dontBuyTotal = 0;
 	pnlSum = 0;
-	createMLModel();
+	tf.tidy(createMLModel);
+	await models.pop().save('file://ml-model-1');
+	process.exit(0);
 	while (true) {
-		goodCoins  = [];
-		let promises = Object.keys(coinsInfo).map(async k => {
-			if (coinsInfo[k].status != "TRADING") {
-				return;
-			}
-			if (futures && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
-				return;
-			}
-			if (!futures && (k.includes("UPUSDT") || k.includes("DOWNUSDT"))) {
-				return;
-			}
-			if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
-				// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
-				await sleep(Math.random() * 10 * ONE_SEC);
-				// Feel free to add your own method of detecting good buys
-				goodCoins.push(await kmeanstest(k));
-			}
-		});
-		await Promise.raceAll(promises, 15 * ONE_SEC);
-		goodCoins.forEach(v => {
-			if (v[0]) {
-				//console.log(v);
-				buyTotal++;
-				(v[1] == 1 || v[1] == 2 && v[7] > v[2]) && buyCorrect++;
-				if (v[4] > v[3] && v[1]) {
-					pnlSum += v[3]/v[2] - 1
-				} else if (!v[1] && v[6] < v[5]) {
-					pnlSum += v[5]/v[2] - 1
-				} else {
-					pnlSum += v[7]/v[2] - 1
-				}
-			}
-		});
-		testcase = goodCoins.pop();
-		//console.log(`correct buys: ${buyCorrect}, total buys: ${buyTotal}, accuracy: ${buyCorrect/buyTotal}, PNL: ${pnlSum}`);
-		const xs = tf.tensor2d(goodCoins.map(x => console.log(x.length) || x[8].resh.concat(x[8].resl)));
-		const ys = tf.tensor2d(goodCoins.map(x => x[1] == 0 ? [0,1] : x[1] == 1 ? [1,0] : x[1] == 2 && x[7] > x[2] ? [0.75, 0.25] : [0.25, 0.75]))
-		await model.fit(xs, ys)
-		model.predict(tf.tensor1d(testcase.resh.concat(testcase.resl))).print();
-		console.log(x[1] == 0 ? "badbuy" : x[1] == 1 ? "goodbuy" : x[1] == 2 && x[7] > x[2] ? "igoodbuy" : 'ibadbuy')
-		await sleep(15 * ONE_SEC);
+		tf.engine().startScope()
+		await trainMLModel()
+		tf.engine().endScope()
+		console.log("num tensors: " + tf.memory().numTensors);
+		if (models.length == 24) {
+			await models.pop().save('localstorage://ml-model-1');
+			process.exit(0);
+		}
 	}
-	
 	process.exit(0);
 }
 
-async function createMLModel() {
-	model = tf.sequential();
-	model.add(tf.layers.dense({units: 4, activation: 'sigmoid', inputShape: [96]}));
-	model.add(tf.layers.dense({units: 2, activation: 'relu'}));
-	model.compile({optimizer: 'sgd', loss: 'meanSquaredError'});
+async function trainMLModel() {
+	goodCoins  = [];
+	let promises = Object.keys(coinsInfo).map(async k => {
+		if (coinsInfo[k].status != "TRADING") {
+			return;
+		}
+		if (futures && !k.includes("UPUSDT") && !k.includes("DOWNUSDT")) {
+			return;
+		}
+		if (!futures && (k.includes("UPUSDT") || k.includes("DOWNUSDT"))) {
+			return;
+		}
+		if (k.endsWith(DEFAULT_BASE_CURRENCY) && !k.includes("AUD") && !k.includes("EUR") && !k.includes("GBP")) {
+			// This is to prevent spamming and getting a HTTP/427 Not sure how to batch requests without using websockets
+			await sleep(Math.random() * 10 * ONE_SEC);
+			// Feel free to add your own method of detecting good buys
+			result = await kmeanstest(k);
+			result && goodCoins.push(result);
+		}
+	});
+	await Promise.raceAll(promises, 15 * ONE_SEC);
+	goodbuys = [];
+	badbuys = [];
+	testcases = goodCoins.slice(-10);
+	goodCoins = goodCoins.slice(0, -10);
+	goodCoins.forEach(v => {
+		if (v[0]) {
+			//console.log(v);
+			buyTotal++;
+			(v[1] == 1 || v[1] == 2 && v[7] > v[2]) && buyCorrect++;
+			if (v[4] > v[3] && v[1]) {
+				pnlSum += v[3]/v[2] - 1
+			} else if (!v[1] && v[6] < v[5]) {
+				pnlSum += v[5]/v[2] - 1
+			} else {
+				pnlSum += v[7]/v[2] - 1
+			}
+			if (v[1] == 0) {
+				badbuys.push(v);
+			} else if (v[1] == 1) {
+				goodbuys.push(v);
+			}
+		}
+	});
+	ttttt = goodCoins.filter(x => x[0]).map(x => {
+		//console.log(x[8])
+		return [...Array(48).keys()].map(i => [x[8].resh[i], x[8].resl[i], x[8].resv[i], x[8].resg[i]]);
+	});
+	//console.log(`correct buys: ${buyCorrect}, total buys: ${buyTotal}, accuracy: ${buyCorrect/buyTotal}, PNL: ${pnlSum}`);
+	const xs = tf.tensor3d(ttttt);
+	const ys = tf.tensor2d(goodCoins.filter(x => x[0]).map(x => x[1] == [0] ? [0.001,0.999] : x[1] == 1 ? [0.999,0.001] : x[1] == 2 ? [0.75,0.1] : [0.1,0.75]))
+	//console.log(ys.shape, xs.shape);
+	promises = models.map(model => model.fit(xs, ys, {
+		epochs: 10,
+		shuffle: true,
+		validationSplit: 0.1,
+	}));
+	console.log("promises")
+	await Promise.all(promises);
+	console.log("resolved")
+	let testdata = [];
+	[...Array(10).keys()].map(x => {
+		let testcase = testcases[x];
+		t2 = [...Array(48).keys()].map(i => [testcase[8].resh[i], testcase[8].resl[i], testcase[8].resv[i], testcase[8].resg[i]]);
+		testdata.push(t2);
+	})
+	let testdatatensor = tf.tensor3d(testdata);
+	minModel = -1;
+	minModelVal = 1000000;
+	for (i = 0; i < models.length; i++) {
+		let model = models[i]
+		predictions = model.predict(testdatatensor).dataSync()
+		for (j = 0; j < 10; j++) {
+			if (predictions[j * 2] > predictions[j * 2 + 1]) {
+				v = testcases[j];
+				if (v[1] == 1) {
+					model.gains += v[3]/v[2] - 1
+				} else if (v[1] == 0) {
+					model.gains += v[5]/v[2] - 1
+				} else {
+					model.gains += v[7]/v[2] - 1
+				}
+			}
+		}
+		if (minModelVal > model.gains) {
+			minModel = i;
+			minModelVal = model.gains;
+		}
+		console.log(i, model.gains);
+	}
+	if (models.length > 1) {
+		models.sort((a, b) => b.gains-a.gains).pop();
+	}
+	//console.log(train.history.val_loss.pop());
+	//console.log(tf.memory().numTensors)
+	//console.log(testcase[1] == 0 ? "badbuy" : testcase[1] == 1 ? "goodbuy" : testcase[1] == 2 && testcase[7] > testcase[2] ? "igoodbuy" : 'ibadbuy')
+	
+	await sleep(ONE_SEC);
+}
+
+function createMLModel() {
+	//tf.setBackend('cpu');
+	for (i = 0; i < 25; i++ ) {
+		let model = tf.sequential();
+		model.add(tf.layers.lstm({units: 12, activation: 'relu', inputShape: [48, 4]}));
+		//model.add(tf.layers.flatten({dataFormat: 'channelsLast'}));
+		model.add(tf.layers.dense({units: 4, activation: 'relu'}));
+		model.add(tf.layers.dense({units: 2, activation: 'relu'}));
+		model.gains = 0;
+		model.compile({optimizer: 'adamax', loss: tf.losses.meanSquaredError});
+		models.push(model);
+	}
 }
 
 async function kmeanstest(sym) {
@@ -1699,12 +1780,21 @@ async function kmeanstest(sym) {
 	}
 	let control = true;
 	let last = closes.slice(-buffer).shift();
+	//let resGain = skmeans(gains.slice(0, -buffer), 3, null, 10);
 	let resHigh = skmeans(highs.slice(0, -buffer), 3, null, 10);
 	let resLow = skmeans(lows.slice(0, -buffer), 3, null, 10);
-	let sortedHigh = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]);
-	let sortedLow = Array.from(Array(NUMBER_OF_CLUSTERS).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]);
+	let resVol = skmeans(volumes.slice(0, -buffer), 5, null, 10);
+	let sortedHigh = Array.from(Array(3).keys()).sort((a, b) => resHigh.centroids[a] - resHigh.centroids[b]);
+	let sortedLow = Array.from(Array(3).keys()).sort((a, b) => resLow.centroids[a] - resLow.centroids[b]);
+	//let sortedGain = Array.from(Array(3).keys()).sort((a, b) => resGain.centroids[a] - resGain.centroids[b]);
+	let sortedVol = Array.from(Array(5).keys()).sort((a, b) => resVol.centroids[a] - resVol.centroids[b]);
+
 	resHigh.idxs = resHigh.idxs.map(i => sortedHigh.indexOf(i));
 	resLow.idxs =  resLow.idxs.map(i => sortedLow.indexOf(i));
+	//resGain.idxs =  resGain.idxs.map(i => sortedGain.indexOf(i));
+	let resGain = gains.slice(0, -buffer);
+	resVol.idxs =  resVol.idxs.map(i => sortedVol.indexOf(i));
+
 	let increasingCloses = isUptrend(closes.slice(-buffer-3, -buffer), 0, false);
 	//let currentHighCluster = sortedHigh.indexOf(resHigh.test(last).idx)
 	let previousLowClusters = resLow.idxs.slice(-prevslice);
@@ -1729,16 +1819,16 @@ async function kmeanstest(sym) {
 		if (postLows[i] < last * ((1-gain)/2+1)) {
 			//buy && (console.log("bad buy") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
 			//buy && badbuyscluster.push({resl: resLow.idxs.join(""), resh: resHigh.idxs.join(""), avg: average(resLow.idxs), avgAfter: average(resLow.idxs.slice(-prevslice)), avgb4: average(resHigh.idxs.slice(0, -prevslice))})
-			return [buy, 0, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
+			return [buy, 0, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resg: normalizeData(resGain), resl: normalizeData(resLow.idxs), resh: normalizeData(resHigh.idxs), resv: normalizeData(resVol.idxs)}]
 		}
 		if (postHighs[i] > last * gain) {
 			//buy && (console.log("good buy") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
 			//buy && goodbuyscluster.push({resl: resLow.idxs.join(""), resh: resHigh.idxs.join(""), avg: average(resLow.idxs), avgAfter: average(resLow.idxs.slice(-prevslice)), avgb4: average(resHigh.idxs.slice(0, -prevslice))})
-			return [buy, 1, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows),closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
+			return [buy, 1, last, last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows),closes.slice(-1).pop(), {resg: normalizeData(resGain), resl: normalizeData(resLow.idxs), resh: normalizeData(resHigh.idxs), resv: normalizeData(resVol.idxs)}]
 		}
 	}
 	//buy && (console.log(closes.slice(-1).pop() > last ? "inconclusively Good" : "inconclusively Bad") || console.log(resLow.idxs) || console.log(average(resLow.idxs.slice(-prevslice))) || console.log(average(resLow.idxs.slice(0, -prevslice))));
-	return [buy, 2 , last , last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resl: resLow.idxs, resh: resHigh.idxs}]
+	return [buy, closes.slice(-1).pop() > last ? 2 : 3 , last , last * gain, Math.max(...postHighs), last * ((1-gain)/2+1), Math.min(...postLows), closes.slice(-1).pop(), {resg: normalizeData(resGain), resl: normalizeData(resLow.idxs), resh: normalizeData(resHigh.idxs), resv: normalizeData(resVol.idxs)}]
 }
 
 init();
