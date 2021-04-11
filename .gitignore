@@ -2,3 +2,4 @@
 minimums.json
 *.log
 logs/*
+node_modules/*
