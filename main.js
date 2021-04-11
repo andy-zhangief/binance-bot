@@ -1641,16 +1641,16 @@ function sleep(ms) {
 }
 
 models = [];
-ml_ver = 2;
+ml_ver = 1;
 ml_name = '';
 baseline = {};
 MUTATION_RATE = 0.01;
-NUM_MODELS = 218;
+NUM_MODELS = 250;
 NUM_TESTS = 10;
 side_model_num = 2;
 test_pool = [];
 count = 0;
-gauntlet = true;
+gauntlet = false;
 
 async function testAndQuit() {
 	buyCorrect = 0;
@@ -1685,11 +1685,12 @@ async function testAndQuit() {
 			if (models.length == 1 || SKIP_ML) {
 				SKIP_ML = false;
 				saveModel = models.shift();
-				console.log(saveModel.filename);
 				if (baseline.correctPurchases/baseline.purchases < saveModel.correctPurchases/saveModel.purchases) {
-					await saveModel.save('file://ml/ml-model-v1g-' + ml_ver);
+					await saveModel.save('file://ml/ml-model-v1-' + ml_ver);
+					console.log("save complete");
 				} else {
 					ml_ver--;
+					console.log("Some ting wong");
 				}
 				break;
 			}
@@ -1698,16 +1699,13 @@ async function testAndQuit() {
 				break;
 			}
 		}
-		if (++count == 5) {
-			break;
-		}
 	}
 	
 	process.exit(0);
 }
 
 async function gatherTestCases() {
-	rate = 0.25 * ONE_MIN;
+	rate = 0.33 * ONE_MIN;
 	while (true) {
 		let promises = Object.keys(coinsInfo).map(async k => {
 			if (coinsInfo[k].status != "TRADING") {
@@ -1841,9 +1839,7 @@ async function createMLModel(load = false, gauntlet = false) {
 			model.add(tf.layers.dense({units: 2, activation: 'softmax'}));
 		} else {
 			filename = 'file://ml/'+ml_name+ (gauntlet ? n : '') + '/model.json';
-			console.log(filename);
-			console.log(filename);
-			console.log(filename);
+			//console.log(filename);
 			model = await tf.loadLayersModel(filename);
 			model.filename = filename;
 			model.mutations = 0;
