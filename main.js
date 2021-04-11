@@ -1842,6 +1842,8 @@ async function createMLModel(load = false, gauntlet = false) {
 		} else {
 			filename = 'file://ml/'+ml_name+ (gauntlet ? n : '') + '/model.json';
 			console.log(filename);
+			console.log(filename);
+			console.log(filename);
 			model = await tf.loadLayersModel(filename);
 			model.filename = filename;
 			model.mutations = 0;
