@@ -5,3 +5,5 @@ logs/*
 node_modules/*
 *.DS_Store
 ml/ml_old/*
+ml/gauntlet/*
+ml/*ml-model-*

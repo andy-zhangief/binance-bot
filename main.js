@@ -1645,12 +1645,13 @@ ml_ver = 1;
 ml_name = '';
 baseline = {};
 MUTATION_RATE = 0.01;
-NUM_MODELS = 250;
+NUM_MODELS = 218;
 NUM_TESTS = 10;
 side_model_num = 2;
 test_pool = [];
-count = 0;
-gauntlet = false;
+winners = [];
+gauntlet = true;
+ml_name_base = 'ml-model-v1-';
 
 async function testAndQuit() {
 	buyCorrect = 0;
@@ -1663,10 +1664,11 @@ async function testAndQuit() {
 	await sleep(ONE_MIN);
 	while(true) {
 		models = [];
+		beep();
 		tf.disposeVariables();
 		console.log("BEGIN VERSION " + ml_ver);
 		baseline = {purchases: 0, gains: 0, correctPurchases: 0, passiveScore: 0};
-		ml_name = gauntlet ? 'ml_old/gauntlet/m-' : ('ml-model-v1-' + ml_ver);
+		ml_name = ml_name_base + ml_ver;
 		ml_ver++;	
 		MUTATION_RATE = 1/ml_ver;
 		tf.engine().startScope()
@@ -1685,9 +1687,12 @@ async function testAndQuit() {
 			if (models.length == 1 || SKIP_ML) {
 				SKIP_ML = false;
 				saveModel = models.shift();
-				if (baseline.correctPurchases/baseline.purchases < saveModel.correctPurchases/saveModel.purchases) {
-					await saveModel.save('file://ml/ml-model-v1-' + ml_ver);
+				if (baseline.correctPurchases/baseline.purchases < saveModel.correctPurchases/saveModel.purchases && (!gauntlet || !winners.includes(saveModel.filename))) {
+					gauntlet && console.log(saveModel.filename);
+					await saveModel.save('file://ml/' + ml_name_base + ml_ver);
+					winners.push(saveModel.filename);
 					console.log("save complete");
+
 				} else {
 					ml_ver--;
 					console.log("Some ting wong");
@@ -1776,7 +1781,7 @@ async function trainMLModel() {
 	}
 
 	let valueFn = (m) => {
-		return m.purchases == 0 ? 0 : (5 * m.correctPurchases/m.purchases + 10 * m.gains/m.purchases - m.passiveScore*m.passiveScore/200);
+		return m.purchases == 0 ? 0 : (5 * m.correctPurchases/m.purchases + 10 * m.gains/m.purchases - m.passiveScore*m.passiveScore/400);
 	}
 
 	for (j = 0; j < testcases.length; j++) {
@@ -1799,7 +1804,7 @@ async function trainMLModel() {
 		if (model.purchases == prevPurchases) {
 			model.passiveScore += 1;
 		}
-		i < 10 && console.log(i, model.mutations, model.purchases, model.gains, model.correctPurchases/model.purchases, valueFn(model));
+		i < 10 && console.log(i, (gauntlet ? model.filename : "" ), model.mutations, model.purchases, model.gains, model.correctPurchases/model.purchases, valueFn(model));
 	}
 	models.sort((a, b) => valueFn(b) - valueFn(a));
 	if (models.length > 1 && baseline.purchases > 50 ) {
@@ -1829,6 +1834,12 @@ async function createMLModel(load = false, gauntlet = false) {
 	//tf.setBackend('cpu');
 	let tempModels = [];
 	console.log("Create Models");
+	let gfiles = [];
+	if (gauntlet) {
+		gfiles = fs.readdirSync('./ml/gauntlet/');
+		ml_name = 'gauntlet/';
+		NUM_MODELS = gfiles.length;
+	}
 	for (let n = 0; n < NUM_MODELS; n++) {
 		let model;
 		if (!load) {
@@ -1838,7 +1849,7 @@ async function createMLModel(load = false, gauntlet = false) {
 			model.add(tf.layers.dense({units: 4, activation: 'sigmoid'}));
 			model.add(tf.layers.dense({units: 2, activation: 'softmax'}));
 		} else {
-			filename = 'file://ml/'+ml_name+ (gauntlet ? n : '') + '/model.json';
+			filename = 'file://ml/'+ml_name+ (gauntlet ? gfiles[n] : '') + '/model.json';
 			//console.log(filename);
 			model = await tf.loadLayersModel(filename);
 			model.filename = filename;
