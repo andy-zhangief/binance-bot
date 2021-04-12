@@ -1812,7 +1812,7 @@ async function trainMLModel() {
 		i < 10 && console.log(i, (gauntlet ? model.filename : "" ), model.mutations, model.purchases, model.gains, model.correctPurchases/model.purchases, valueFn(model));
 	}
 	models.sort((a, b) => valueFn(b) - valueFn(a));
-	if (models.length > 1 && baseline.purchases > 50 ) {
+	if (models.length > 1 && baseline.purchases > 300 ) {
 		popped = models.pop();
 		if (popped.purchases > 10 && popped.correctPurchases/popped.purchases > 0.7) {
 			await models.pop().save('file://ml/side/ml-model-' + side_model_num++);
@@ -1832,7 +1832,7 @@ async function trainMLModel() {
 	//console.log(tf.memory().numTensors)
 	//console.log(testcase[1] == 0 ? "badbuy" : testcase[1] == 1 ? "goodbuy" : testcase[1] == 2 && testcase[7] > testcase[2] ? "igoodbuy" : 'ibadbuy')
 	
-	await sleep(ONE_SEC);
+	//await sleep(ONE_SEC);
 }
 
 async function createMLModel(load = false, gauntlet = false) {
