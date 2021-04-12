@@ -1529,6 +1529,12 @@ function randomGaussian() {
     return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
 }
 
+function getRandomInt(max) {
+  min = 0;
+  max = Math.floor(max);
+  return Math.floor(Math.random() * (max + 1 - min) + min);
+}
+
 /////////////////////////////// GRAPHING /////////////////////////////////////////////////
 function formatGraph(x, i) {
 	return ("" + x + GRAPH_PADDING).slice (0, GRAPH_PADDING.length);
@@ -1645,13 +1651,13 @@ ml_ver = 1;
 ml_name = '';
 baseline = {};
 MUTATION_RATE = 0.01;
-NUM_MODELS = 218;
+NUM_MODELS = 250;
 NUM_TESTS = 10;
 side_model_num = 2;
 test_pool = [];
-winners = [];
 gauntlet = true;
-ml_name_base = 'ml-model-v1-';
+gmutation = true;
+ml_name_base = 'gmutation/mutation-';
 
 async function testAndQuit() {
 	buyCorrect = 0;
@@ -1670,7 +1676,7 @@ async function testAndQuit() {
 		baseline = {purchases: 0, gains: 0, correctPurchases: 0, passiveScore: 0};
 		ml_name = ml_name_base + ml_ver;
 		ml_ver++;	
-		MUTATION_RATE = 1/ml_ver;
+		//MUTATION_RATE = 1/ml_ver;
 		tf.engine().startScope()
 		await sleep(5 * ONE_SEC);
 		console.log("Enter Create Models");
@@ -1687,10 +1693,9 @@ async function testAndQuit() {
 			if (models.length == 1 || SKIP_ML) {
 				SKIP_ML = false;
 				saveModel = models.shift();
-				if (baseline.correctPurchases/baseline.purchases < saveModel.correctPurchases/saveModel.purchases && (!gauntlet || !winners.includes(saveModel.filename))) {
+				if (baseline.correctPurchases/baseline.purchases < saveModel.correctPurchases/saveModel.purchases) {
 					gauntlet && console.log(saveModel.filename);
-					await saveModel.save('file://ml/' + ml_name_base + ml_ver);
-					winners.push(saveModel.filename);
+					await saveModel.save('file://ml/' + ml_name_base + ml_ver + '-' + saveModel.mutations);
 					console.log("save complete");
 
 				} else {
@@ -1835,11 +1840,17 @@ async function createMLModel(load = false, gauntlet = false) {
 	let tempModels = [];
 	console.log("Create Models");
 	let gfiles = [];
+	let origFiles = [];
 	if (gauntlet) {
-		gfiles = fs.readdirSync('./ml/gauntlet/');
-		ml_name = 'gauntlet/';
-		NUM_MODELS = gfiles.length;
+		gfiles = fs.readdirSync('./ml/gmutation/');
+		if (gmutation) {
+			ml_name = 'gmutation/';
+		} else {
+			ml_name = 'gauntlet/';
+			NUM_MODELS = gfiles.length;
+		}
 	}
+
 	for (let n = 0; n < NUM_MODELS; n++) {
 		let model;
 		if (!load) {
@@ -1849,7 +1860,7 @@ async function createMLModel(load = false, gauntlet = false) {
 			model.add(tf.layers.dense({units: 4, activation: 'sigmoid'}));
 			model.add(tf.layers.dense({units: 2, activation: 'softmax'}));
 		} else {
-			filename = 'file://ml/'+ml_name+ (gauntlet ? gfiles[n] : '') + '/model.json';
+			filename = 'file://ml/'+ml_name+ (gauntlet ? (gmutation ? gfiles[getRandomInt(gfiles.length-1)] : gfiles[n]) : '') + '/model.json';
 			//console.log(filename);
 			model = await tf.loadLayersModel(filename);
 			model.filename = filename;
@@ -1870,7 +1881,13 @@ async function createMLModel(load = false, gauntlet = false) {
 		        let newTensor = tf.tensor(values, shape);
 		        mutatedWeights[i] = newTensor;
 	      	}
-	      	!gauntlet && model.setWeights(mutatedWeights);
+	      	if (gmutation && !origFiles.includes(filename)) {
+	      		model.mutations = 0;
+	      		origFiles.push(filename);
+	      	} else {
+	      		console.log(filename);
+	      		(!gauntlet || gmutation) && model.setWeights(mutatedWeights);
+	      	}
 		}
 		//console.log(i, NUM_MODELS);
 		model.gains = 0;
