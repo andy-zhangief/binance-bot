@@ -1868,26 +1868,26 @@ async function createMLModel(load = false, gauntlet = false) {
 			const weights = model.getWeights();
 			const mutatedWeights = [];
 			for (let i = 0; i < weights.length; i++) {
-		        let tensor = weights[i];
-		        let shape = weights[i].shape;
-		        let values = tensor.dataSync().slice();
-		        for (let j = 0; j < values.length; j++) {
+				let tensor = weights[i];
+				let shape = weights[i].shape;
+				let values = tensor.dataSync().slice();
+				for (let j = 0; j < values.length; j++) {
 					if (Math.random() < MUTATION_RATE) {
 						let w = values[j];
 						values[j] = w + randomGaussian();
 						model.mutations ++;
 					}
-		        }
-		        let newTensor = tf.tensor(values, shape);
-		        mutatedWeights[i] = newTensor;
-	      	}
-	      	if (gmutation && !origFiles.includes(filename)) {
-	      		model.mutations = 0;
-	      		origFiles.push(filename);
-	      	} else {
-	      		console.log(filename);
-	      		(!gauntlet || gmutation) && model.setWeights(mutatedWeights);
-	      	}
+				}
+				let newTensor = tf.tensor(values, shape);
+				mutatedWeights[i] = newTensor;
+			}
+			if (gmutation && !origFiles.includes(filename)) {
+				model.mutations = 0;
+				origFiles.push(filename);
+			} else {
+				console.log(filename);
+				(!gauntlet || gmutation) && model.setWeights(mutatedWeights);
+			}
 		}
 		//console.log(i, NUM_MODELS);
 		model.gains = 0;
