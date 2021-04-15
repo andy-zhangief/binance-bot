@@ -597,7 +597,6 @@ async function scanForMLBuys() {
 	});
 	await Promise.raceAll(promises, 15 * ONE_SEC);
 	goodCoins = await ml_model.makeBatchPredictions(goodCoins);
-	console.log(goodCoins);
 	return goodCoins.sort((a, b) => a.gain - b.gain);
 }
 
@@ -965,11 +964,11 @@ async function tick(buying) {
 			fetching_prices_from_graph_mode = false;
 		});
 	}
-	while (!websocketTicker.bestAsk) {
+	while (!websocketTicker[coinpair] || !websocketTicker[coinpair].bestAsk) {
 		await sleep(POLL_INTERVAL);
 	}
 	await sleep(POLL_INTERVAL);
-	bidask = {askPrice: websocketTicker.bestAsk, bidPrice: websocketTicker.bestBid};
+	bidask = {askPrice: websocketTicker[coinpair].bestAsk, bidPrice: websocketTicker[coinpair].bestBid};
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice);
 	initializeQs();
 	pushToLookback(latestPrice);
@@ -1034,7 +1033,7 @@ function endTransaction(sym) {
 async function initializeTickerWebsocket(sym) {
 	let endpoint = sym.toLowerCase() + "@bookTicker";
 	if (!Object.keys(binance.websockets.subscriptions()).includes(endpoint)) {
-		binance.websockets.bookTickers(sym, (ticker) => websocketTicker = ticker);
+		binance.websockets.bookTickers(sym, (ticker) => websocketTicker[sym] = ticker);
 	}
 }
 
@@ -1043,6 +1042,7 @@ function terminateTickerWebsocket(sym) {
 	for ( let endpoint in endpoints ) {
 		binance.websockets.terminate(endpoint);
 	}
+	websocketTicker[sym] = null;
 }
 
 async function fetchCandlestickGraph(sym, interval, segments, force = false, cache = true, endTime = Date.now()) {
