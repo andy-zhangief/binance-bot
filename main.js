@@ -874,8 +874,10 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
-						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
-						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
+						if (!buy_ml) {
+							fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
+							wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
+						}
 					}
 					if (Date.now() > start + 2 * ONE_HOUR && !isAbove4hMean && wasAbove4hMean && latestPrice > mean + 1.8 * stdev) {
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
