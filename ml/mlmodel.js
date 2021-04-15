@@ -1,10 +1,3 @@
-/**
- * @class MLModel
- *
- * @author: darryl.west@roundpeg.com
- * @created: 6/21/14 7:28 PM
- */
-
 const tf = require('@tensorflow/tfjs-node');
 
 const MLModel = function(options) {
