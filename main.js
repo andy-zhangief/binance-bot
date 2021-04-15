@@ -844,7 +844,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 	wasAbove4hMean = false;
 	isAbove4hMean = false;
 	mean15 = 0;
-	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits || prevent_trip_stoploss) {
+	while (!auto || (latestPrice >= stop_loss && latestPrice <= take_profit) || ride_profits || prevent_trip_stoploss || Date.now() < timeBeforeSale) {
 		var [mean, stdev] = await tick(false);
 		console.clear();
 		if (manual_sell) {
