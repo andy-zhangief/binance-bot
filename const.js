@@ -121,6 +121,12 @@ module.exports = {
 	CLUSTER_SUPPORT_BUY_LEVEL: 1, // leave this at 1
 	CLUSTER_RESISTANCE_SELL_LEVEL_INC: 1, // ideally this is 1 also
 
+	// ML SETTINGS
+	ML_MODEL_PATH : 'file://ml/v1/model.json',
+	buy_ml : true,
+	ml_buy_threshold : 0.99,
+	ml_model : null,
+
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
 	latestPrice : 0,
@@ -145,7 +151,7 @@ module.exports = {
 	detection_mode : false,
 	buy_good_buys : false,
 	buy_clusters : false,
-	buy_rallys : true,
+	buy_rallys : false,
 	buy_new_method: false,
 	buy_linear_reg : false,
 	last_keypress : "",
