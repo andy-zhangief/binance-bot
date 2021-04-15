@@ -1694,9 +1694,11 @@ function msToTime(duration) {
 	if (duration < 0) {
 		return 0;
 	}
-	var seconds = Math.floor((duration / ONE_SEC) % 60), minutes = Math.floor((duration / (ONE_MIN))),
+	var seconds = Math.floor((duration / ONE_SEC) % 60), minutes = Math.floor((duration / (ONE_MIN))), hours = Math.floor((duration / (ONE_HOUR)));
 	seconds = (seconds < 10) ? "0" + seconds : seconds;
-	return minutes + ":" + seconds;
+	minutes = (minutes < 10) ? "0" + minutes : minutes;
+	hours = (hours < 10) ? "0" + hours : hours;
+	return hours + ":" + minutes + ":" + seconds;
 }
 
 function beep() {
