@@ -3,3 +3,6 @@ minimums.json
 *.log
 logs/*
 node_modules/*
+!node_modules/asciichart
+!node_modules/socket-model
+!node_modules/node-binance-api
