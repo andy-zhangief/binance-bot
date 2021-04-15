@@ -912,7 +912,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 		}
 		previousTrend = (meanTrend.includes("Up") || meanTrend.includes("Down")) ? meanTrend : previousTrend;
 	}
-	lastSellReason = "Sold because stop loss was hit";
+	lastSellReason = "Sold because stop loss was hit at " + stop_loss;
 	return latestPrice
 }
 
