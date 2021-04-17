@@ -527,7 +527,7 @@ async function waitUntilPrepump() {
 				rally = await maybeGetGoodBuys();
 			}
 			if (rally && Date.now() > dont_buy_before) {
-				if (!yolo) {
+				if (!yolo || buy_ml) {
 					// This avoids the race condition if we're waiting to buy anyways
 					if (getPricesForCoin(rally.sym).length < PRICES_HISTORY_LENGTH) {
 						console.log("not enough data to purchase " + rally.sym);
