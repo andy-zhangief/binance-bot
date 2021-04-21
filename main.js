@@ -139,7 +139,8 @@ var {
 	CLUSTER_RESISTANCE_SELL_LEVEL_INC,
 
 	// ML SETTINGS
-	ML_MODEL_PATH,
+	ML_MODEL_USDT_PATH,
+	ML_MODEL_BTC_PATH,
 	buy_ml,
 	ml_buy_threshold,
 	ml_model,
@@ -273,7 +274,7 @@ async function initArgumentVariables() {
 		buy_good_buys = process.argv.includes("--goodbuys") && !buy_new_method && !buy_ml;
 		buy_linear_reg = process.argv.includes("--lreg") && !buy_good_buys && !buy_new_method && !buy_ml;
 		buy_clusters = process.argv.includes("--clusters") && !buy_good_buys && !buy_linear_reg && !buy_new_method && !buy_ml;
-		SELL_RIDE_PROFITS = process.argv.includes("--ride-profits");
+		SELL_RIDE_PROFITS = !process.argv.includes("--no-ride-profits");
 		if (buy_good_buys || buy_clusters || buy_linear_reg || buy_new_method || buy_ml) {
 			GOOD_BUY_SEED = process.argv.includes("--fastseed") ? 3 : GOOD_BUY_SEED;
 			PREPUMP_TAKE_PROFIT_MULTIPLIER = GOOD_BUY_PROFIT_MULTIPLIER;
@@ -483,7 +484,7 @@ async function initClient() {
 }
 
 async function initMLModel() {
-	ml_model = new MLModel({path: ML_MODEL_PATH, threshold: ml_buy_threshold});
+	ml_model = new MLModel({path: (DEFAULT_BASE_CURRENCY == 'USDT' ? ML_MODEL_USDT_PATH : ML_MODEL_BTC_PATH), threshold: ml_buy_threshold});
 	await ml_model.loadModelFromFile();
 };
 
@@ -873,10 +874,8 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
-						if (!buy_ml) {
-							fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
-							wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
-						}
+						fetchCandlestickGraph(coinpair, "4h", 20, true).then(([ticker]) => isAbove4hMean = latestPrice > average(ticker) - 0.25 * getStandardDeviation(ticker));
+						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
 					}
 					if (Date.now() > start + 2 * ONE_HOUR && !isAbove4hMean && wasAbove4hMean && latestPrice > mean + 1.8 * stdev) {
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
