@@ -865,12 +865,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 						ride_profits = true;
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
-					if (ride_profits && Date.now() > take_profit_hit_check_time) {
-						if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
-							lastSellReason = "sold because take profit is reached";
-							return latestPrice;
-						}
-					}
+					// if (ride_profits && Date.now() > take_profit_hit_check_time) {
+					// 	if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
+					// 		lastSellReason = "sold because take profit is reached";
+					// 		return latestPrice;
+					// 	}
+					// }
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
