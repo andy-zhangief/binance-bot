@@ -571,15 +571,18 @@ async function maybeBuyML() {
 		return false
 	}
 	mlbuys = await scanForMLBuys();
-	goodBuy = null;
+	let goodBuy = null;
 	while (mlbuys.length) {
-		goodBuy = mlbuys.shift();
-		if (getBalance(getCoin(goodBuy.sym)) > 0 || getCombinedBlacklist().includes(getCoin(goodBuy.sym)) || coinpair == goodBuy.sym) {
-			goodBuy == null
+		let temp = mlbuys.shift();
+		if (getBalance(getCoin(temp.sym)) > 0 
+			|| getCombinedBlacklist().includes(getCoin(temp.sym)) 
+			|| coinpair == temp.sym
+			|| temp.gain < GOOD_BUY_MIN_GAIN ) {
+			// DO NOTHING
+		} else {
+			goodBuy = temp;
+			goodBuy.gain = Math.min(GOOD_BUY_MAX_GAIN, goodBuy.gain);
 		}
-	}
-	if (goodBuy) {
-		goodBuy.gain = Math.min(GOOD_BUY_MAX_GAIN, Math.max(GOOD_BUY_MIN_GAIN, goodBuy.gain));
 	}
 	return goodBuy;
 }

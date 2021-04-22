@@ -107,7 +107,7 @@ module.exports = {
 	RALLY_MIN_DELTA : 1.015,
 	FUTURES_RALLY_MAX_DELTA : 1.05,
 	RALLY_GREEN_RED_RATIO : 1.5,
-	GOOD_BUY_MIN_GAIN : 1.03,
+	GOOD_BUY_MIN_GAIN : 1.05,
 	GOOD_BUY_MAX_GAIN : 1.1,
 	MIN_24H_BTC : 50,
 	MIN_24H_USDT : 2500000,
@@ -128,7 +128,7 @@ module.exports = {
 	ML_MODEL_BTC_PATH : 'file://ml/v2/btc/model.json',
 	buy_ml : true,
 	ml_buy_usdt_threshold : 0.99,
-	ml_buy_btc_threshold: 0.5,
+	ml_buy_btc_threshold: 0.99,
 	ml_model : null,
 
 	// DONT TOUCH THESE GLOBALS
