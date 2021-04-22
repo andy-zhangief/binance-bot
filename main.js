@@ -889,7 +889,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
 						return latestPrice;
 					}
-					if (ride_profits && latestPrice < mean15) {
+					if (ride_profits && latestPrice < mean15 && latestPrice > mean + 2 * stdev) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
 						return latestPrice;
 					}
