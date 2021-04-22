@@ -578,8 +578,8 @@ async function maybeBuyML() {
 			goodBuy == null
 		}
 	}
-	if (goodbuy) {
-		goodbuy.gain = Math.min(GOOD_BUY_MAX_GAIN, Math.max(GOOD_BUY_MIN_GAIN, goodbuy.gain));
+	if (goodBuy) {
+		goodBuy.gain = Math.min(GOOD_BUY_MAX_GAIN, Math.max(GOOD_BUY_MIN_GAIN, goodBuy.gain));
 	}
 	return goodBuy;
 }
