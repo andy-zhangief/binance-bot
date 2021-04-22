@@ -142,7 +142,8 @@ var {
 	ML_MODEL_USDT_PATH,
 	ML_MODEL_BTC_PATH,
 	buy_ml,
-	ml_buy_threshold,
+	ml_buy_usdt_threshold,
+	ml_buy_btc_threshold,
 	ml_model,
 
 	// DONT TOUCH THESE GLOBALS
@@ -484,7 +485,12 @@ async function initClient() {
 }
 
 async function initMLModel() {
-	ml_model = new MLModel({path: (DEFAULT_BASE_CURRENCY == 'USDT' ? ML_MODEL_USDT_PATH : ML_MODEL_BTC_PATH), threshold: ml_buy_threshold});
+	if (DEFAULT_BASE_CURRENCY == 'USDT') {
+		ml_model = new MLModel({path: ML_MODEL_USDT_PATH , threshold: ml_buy_usdt_threshold});
+	} else if (DEFAULT_BASE_CURRENCY == 'BTC') {
+		ml_model = new MLModel({path: ML_MODEL_BTC_PATH , threshold: ml_buy_btc_threshold});
+	}
+	
 	await ml_model.loadModelFromFile();
 };
 
@@ -572,6 +578,9 @@ async function maybeBuyML() {
 			goodBuy == null
 		}
 	}
+	if (goodbuy) {
+		goodbuy.gain = Math.min(GOOD_BUY_MAX_GAIN, Math.max(GOOD_BUY_MIN_GAIN, goodbuy.gain));
+	}
 	return goodBuy;
 }
 
@@ -598,7 +607,7 @@ async function scanForMLBuys() {
 	});
 	await Promise.raceAll(promises, 15 * ONE_SEC);
 	goodCoins = await ml_model.makeBatchPredictions(goodCoins);
-	return goodCoins.sort((a, b) => a.gain - b.gain);
+	return goodCoins.sort((a, b) => a.volume - b.volume);
 }
 
 async function getTickerForML(sym) {
@@ -609,9 +618,8 @@ async function getTickerForML(sym) {
 	let last = closes.slice().pop();
 	// TODO: Make constants for these
 	let gain = Math.abs(Math.min(...lows.slice(-4))/last - 1) * 2 + 1.01;
-	let gainInTargetRange = gain >= 1.03 && gain <= 1.1;
 	let reachesMin24hVolume = totalVolume > (DEFAULT_BASE_CURRENCY == "USDT" ? MIN_24H_USDT * 8 : MIN_24H_BTC * 8);
-	if (gainInTargetRange && reachesMin24hVolume) {
+	if (reachesMin24hVolume) {
 		return {
 			sym: sym,
 			gain: gain,

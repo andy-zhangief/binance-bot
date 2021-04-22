@@ -124,10 +124,11 @@ module.exports = {
 	CLUSTER_RESISTANCE_SELL_LEVEL_INC: 1, // ideally this is 1 also
 
 	// ML SETTINGS
-	ML_MODEL_USDT_PATH : 'file://ml/v1_usdt/model.json',
-	ML_MODEL_BTC_PATH : 'file://ml/v1_btc/model.json',
+	ML_MODEL_USDT_PATH : 'file://ml/v1/usdt/model.json',
+	ML_MODEL_BTC_PATH : 'file://ml/v2/btc/model.json',
 	buy_ml : true,
-	ml_buy_threshold : 0.99,
+	ml_buy_usdt_threshold : 0.99,
+	ml_buy_btc_threshold: 0.5,
 	ml_model : null,
 
 	// DONT TOUCH THESE GLOBALS
