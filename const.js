@@ -129,7 +129,7 @@ module.exports = {
 	ML_MODEL_BTC_PATH : 'file://ml/v2/btc/model.json',
 	buy_ml : true,
 	ml_buy_usdt_threshold : 0.99,
-	ml_buy_btc_threshold: 0.5,
+	ml_buy_btc_threshold: 0.99,
 	ml_model : null,
 
 	// DONT TOUCH THESE GLOBALS
