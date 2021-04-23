@@ -568,7 +568,8 @@ async function waitUntilPrepump() {
 }
 
 async function maybeBuyML() {
-	if (new Date(Date.now()).getMinutes() < 55 || (prices_data_points_count % GOOD_BUY_SEED_MAX != GOOD_BUY_SEED)) {
+	let now = new Date(Date.now());
+	if (now.getHours() % 4 != 3 || now.getMinutes() < 55 || (prices_data_points_count % GOOD_BUY_SEED_MAX != GOOD_BUY_SEED)) {
 		return false
 	}
 	mlbuys = await scanForMLBuys();
