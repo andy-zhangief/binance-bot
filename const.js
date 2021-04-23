@@ -1,13 +1,15 @@
 ONE_SEC = 1000;
 ONE_MIN = 60 * ONE_SEC;
+ONE_HOUR = 60 * ONE_MIN;
+ONE_DAY = 24 * ONE_HOUR;
 DEFAULT_SYMBOL_PRICE_CHECK_TIME = 10 * 1000;
 GOOD_BUY_SEED_MAX = 30;
 module.exports = {
 	// DO NOT CHANGE THESE
 	ONE_SEC : ONE_SEC,
 	ONE_MIN : ONE_MIN,
-	ONE_HOUR : 60 * ONE_MIN,
-	ONE_DAY : 24 * 60 * ONE_MIN,
+	ONE_HOUR : ONE_HOUR,
+	ONE_DAY : ONE_DAY,
 	APPROX_LOCAL_MIN_MAX_BUFFER_PCT : 0.069420,
 	MIN_COIN_VAL_IN_BTC : 0.00000150,
 	TERMINAL_HEIGHT_BUFFER : 4,
@@ -105,8 +107,9 @@ module.exports = {
 	RALLY_MIN_DELTA : 1.015,
 	FUTURES_RALLY_MAX_DELTA : 1.05,
 	RALLY_GREEN_RED_RATIO : 1.5,
-	GOOD_BUY_MIN_GAIN : 1.03,
+	GOOD_BUY_MIN_GAIN : 1.05,
 	GOOD_BUY_MAX_GAIN : 1.1,
+	ML_MAX_GAIN : 1.2,
 	MIN_24H_BTC : 50,
 	MIN_24H_USDT : 2500000,
 	GOOD_BUY_SEED_MAX : GOOD_BUY_SEED_MAX,
@@ -115,11 +118,19 @@ module.exports = {
 	GOOD_BUY_LOSS_MULTIPLIER: 0.5,
 	GOOD_BUY_BUFFER_ADD: 3 * ONE_MIN,
 	GOOD_BUY_BUFFER_SUBTRACT: 0 * ONE_MIN,
-	REMOVE_FROM_BLACKLIST_TIMER : 60 * ONE_MIN,
+	REMOVE_FROM_BLACKLIST_TIMER : ONE_DAY ,
 	NUMBER_OF_CLUSTERS : 5,
 	NUMBER_OF_CLUSTER_ITERATIONS : 15,
 	CLUSTER_SUPPORT_BUY_LEVEL: 1, // leave this at 1
 	CLUSTER_RESISTANCE_SELL_LEVEL_INC: 1, // ideally this is 1 also
+
+	// ML SETTINGS
+	ML_MODEL_USDT_PATH : 'file://ml/v2/usdt/model.json',
+	ML_MODEL_BTC_PATH : 'file://ml/v2/btc/model.json',
+	buy_ml : true,
+	ml_buy_usdt_threshold : 0.99,
+	ml_buy_btc_threshold: 0.99,
+	ml_model : null,
 
 	// DONT TOUCH THESE GLOBALS
 	dump_count : 0,
@@ -145,7 +156,7 @@ module.exports = {
 	detection_mode : false,
 	buy_good_buys : false,
 	buy_clusters : false,
-	buy_rallys : true,
+	buy_rallys : false,
 	buy_new_method: false,
 	buy_linear_reg : false,
 	last_keypress : "",
