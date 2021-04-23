@@ -124,6 +124,7 @@ var {
 	RALLY_GREEN_RED_RATIO,
 	GOOD_BUY_MIN_GAIN,
 	GOOD_BUY_MAX_GAIN,
+	ML_MAX_GAIN,
 	MIN_24H_BTC,
 	MIN_24H_USDT,
 	GOOD_BUY_SEED_MAX,
@@ -577,7 +578,8 @@ async function maybeBuyML() {
 		if (getBalance(getCoin(temp.sym)) > 0 
 			|| getCombinedBlacklist().includes(getCoin(temp.sym)) 
 			|| coinpair == temp.sym
-			|| temp.gain < GOOD_BUY_MIN_GAIN ) {
+			|| temp.gain < GOOD_BUY_MIN_GAIN
+			|| temp.gain > ML_MAX_GAIN) {
 			// DO NOTHING
 		} else {
 			goodBuy = temp;
