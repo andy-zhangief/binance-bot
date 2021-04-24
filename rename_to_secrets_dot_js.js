@@ -8,5 +8,5 @@ module.exports = {
 	MAX_OVERRIDE_BTC : 0.0005,
 	MAX_OVERRIDE_USDT : 20,
 	// Coins you don't want the bot to buy. Comma separated wrapped in quotations. E.G ["BTC", "ETH", "LTC"]
-	OVERRIDE_BLACKLIST : [],
+	OVERRIDE_BLACKLIST : ['PAX'],
 }

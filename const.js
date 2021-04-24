@@ -51,7 +51,7 @@ module.exports = {
 	STOP_LOSS_CHANGE_PCT : 1.0025,
 	PROFIT_LOSS_CHECK_TIME : 0.5 * ONE_MIN,
 	SELL_RIDE_PROFITS : true,
-	SELL_RIDE_PROFITS_PCT : 0.97,
+	SELL_RIDE_PROFITS_PCT : 0.05,
 	SELL_PREVENT_TRIP_STOP_LOSS : true,
 	SELL_STOP_LOSS_BUFFER_TIME : ONE_MIN,
 	FOLLOW_BTC_MIN_BUY_MEDIAN : 0.66,
@@ -125,8 +125,8 @@ module.exports = {
 	CLUSTER_RESISTANCE_SELL_LEVEL_INC: 1, // ideally this is 1 also
 
 	// ML SETTINGS
-	ML_MODEL_USDT_PATH : 'file://ml/v2/usdt/model.json',
-	ML_MODEL_BTC_PATH : 'file://ml/v2/btc/model.json',
+	ML_MODEL_USDT_PATH : 'file://ml/v3/usdt/model.json',
+	ML_MODEL_BTC_PATH : 'file://ml/v3/btc/model.json',
 	buy_ml : true,
 	ml_buy_usdt_threshold : 0.99,
 	ml_buy_btc_threshold: 0.99,

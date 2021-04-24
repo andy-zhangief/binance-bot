@@ -578,13 +578,11 @@ async function maybeBuyML() {
 		let temp = mlbuys.shift();
 		if (getBalance(getCoin(temp.sym)) > 0 
 			|| getCombinedBlacklist().includes(getCoin(temp.sym)) 
-			|| coinpair == temp.sym
-			|| temp.gain < GOOD_BUY_MIN_GAIN
-			|| temp.gain > ML_MAX_GAIN) {
+			|| coinpair == temp.sym) {
 			// DO NOTHING
 		} else {
 			goodBuy = temp;
-			goodBuy.gain = Math.min(GOOD_BUY_MAX_GAIN, goodBuy.gain);
+			goodBuy.gain = Math.max(GOOD_BUY_MIN_GAIN, Math.min(GOOD_BUY_MAX_GAIN, goodBuy.gain));
 		}
 	}
 	return goodBuy;
@@ -880,12 +878,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 						ride_profits = true;
 						take_profit_hit_check_time = Date.now() + 2 * ONE_MIN;
 					}
-					// if (ride_profits && Date.now() > take_profit_hit_check_time) {
-					// 	if (latestPrice < (take_profit * SELL_RIDE_PROFITS_PCT)) {
-					// 		lastSellReason = "sold because take profit is reached";
-					// 		return latestPrice;
-					// 	}
-					// }
+					if (ride_profits && Date.now() > take_profit_hit_check_time) {
+						if (latestPrice >= (take_profit/buy_price + SELL_RIDE_PROFITS_PCT) * buy_price) {
+							lastSellReason = "sold because take profit is reached";
+							return latestPrice;
+						}
+					}
 					if (new Date(Date.now()).getMinutes() % 15 == 14 && Date.now() > fetch_15m_candlestick_time + ONE_MIN) {
 						fetch_15m_candlestick_time = Date.now();
 						fetchCandlestickGraph(coinpair, "15m", 20, true).then(([ticker]) => mean15 = average(ticker) + 0.5 * getStandardDeviation(ticker));
@@ -896,11 +894,11 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 						});
 						wasAbove4hMean = wasAbove4hMean || isAbove4hMean;
 					}
-					if (sell4hMean && latestPrice > mean + 2 * stdev) {
+					if (sell4hMean && latestPrice >= mean + 2 * stdev) {
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
 						return latestPrice;
 					}
-					if (ride_profits && latestPrice < mean15 && latestPrice > mean + 2 * stdev) {
+					if (ride_profits && latestPrice < mean15 && latestPrice >= mean + 2 * stdev) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
 						return latestPrice;
 					}
@@ -908,12 +906,12 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 				default:
 					break;
 			}
-			if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice < stop_loss && !prevent_trip_stoploss) {
+			if (SELL_PREVENT_TRIP_STOP_LOSS && latestPrice <= stop_loss && !prevent_trip_stoploss) {
 				prevent_trip_stoploss = true;
 				stop_loss_hit_time = Date.now();
 			}
 			if (prevent_trip_stoploss && Date.now() > stop_loss_hit_time + SELL_STOP_LOSS_BUFFER_TIME) {
-				if (latestPrice < stop_loss) {
+				if (latestPrice <= stop_loss) {
 					lastSellReason = "Sold because stop loss was hit";
 					return latestPrice;
 				}
