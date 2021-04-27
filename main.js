@@ -154,7 +154,6 @@ var {
 	q,
 	lowstd,
 	highstd,
-	lookback,
 	means,
 	mabuy,
 	masell,
@@ -723,7 +722,7 @@ async function waitUntilTimeToBuy() {
 		if (Date.now() > dont_buy_before && auto) {
 			switch (BUY_SELL_STRATEGY) {
 				case 7:
-					if ((!prices_data_points_count && lookback.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
+					if ((!prices_data_points_count && q.length < QUEUE_SIZE) || prices_data_points_count * SYMBOLS_PRICE_CHECK_TIME / ONE_SEC < QUEUE_SIZE) {
 						break;
 					}
 					if (prepump && (Date.now() > opportunity_expired_time || latestPrice < starting_price * PRICE_DROP_NEW_OPPORTUNITY_MULTIPLER)) {
@@ -898,7 +897,7 @@ async function waitUntilTimeToSell(take_profit, stop_loss, buy_price, must_sell_
 						lastSellReason = "sold because it dipped below 4h mean after rising above it";
 						return latestPrice;
 					}
-					if (ride_profits && latestPrice < mean15 && latestPrice >= mean + 2 * stdev) {
+					if (ride_profits && latestPrice < mean15) {
 						lastSellReason = "sold because it dropped below mean15 after hitting take profit";
 						return latestPrice;
 					}
@@ -963,7 +962,6 @@ function initializeQs() {
 }
 
 function clearQs() {
-	lookback = [];
 	q = [];
 	means = [];
 	lowstd = [];
@@ -987,24 +985,16 @@ async function tick(buying) {
 	bidask = {askPrice: websocketTicker[coinpair].bestAsk, bidPrice: websocketTicker[coinpair].bestBid};
 	latestPrice = buying ? parseFloat(bidask.askPrice) : parseFloat(bidask.bidPrice);
 	initializeQs();
-	pushToLookback(latestPrice);
 	q.push(latestPrice);
 	stdev = getStandardDeviation([...Array(Math.floor(QUEUE_SIZE/60)).keys()].map(v => average(q.slice(v * 60, (v + 1) * 60))));
 	mean = average(q);
 	means.push(mean);
 	lowstd.push(mean + LOWER_BB_PCT * stdev);
 	highstd.push(mean + UPPER_BB_PCT * stdev);
-	mabuy.push(average(lookback.slice(-BB_BUY)));
-	masell.push(average(lookback.slice(-BB_SELL)));
+	mabuy.push(average(q.slice(-BB_BUY)));
+	masell.push(average(q.slice(-BB_SELL)));
 	q.shift() != 0 && lowstd.shift() != 0 && highstd.shift() != 0 && means.shift() != 0 && mabuy.shift() != 0 && masell.shift() != 0;
 	return [mean, stdev]
-}
-
-function pushToLookback(latestPrice) {
-	lookback.push(latestPrice);
-	if (lookback.length > LOOKBACK_SIZE) {
-		lookback.shift();
-	}
 }
 
 function isUptrend(q2, buffer = 0, kinda = true, stdev = 0) {
@@ -1127,6 +1117,7 @@ async function waitUntilFetchPricesAsync() {
 
 function parseServerPrices() {
 	while (prices.length >= PRICES_HISTORY_LENGTH) {
+		// TODO: Think about memory management
 		prices.shift();
 	}
 	newPrices = {};
@@ -1480,7 +1471,7 @@ function plot(buying) {
 		GRAPH_HEIGHT = process.stdout.rows - TERMINAL_HEIGHT_BUFFER;
 		PLOT_DATA_POINTS = process.stdout.columns - TERMINAL_WIDTH_BUFFER;
 	}
-	num_points_to_plot = Math.min(lookback.length, PLOT_DATA_POINTS);
+	num_points_to_plot = Math.min(q.length, PLOT_DATA_POINTS);
 	if (GRAPH_HEIGHT < 5 || num_points_to_plot < 5) {
 		return;
 	}
